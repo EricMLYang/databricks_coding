@@ -1,0 +1,15 @@
+# 專案預設值（唯一填寫處）。Agent 產出的 notebook 會把這些值當作 widgets / job parameters 的預設值，
+# 不會寫死在 code 內。填完後可視需要 commit。
+
+catalog: "micenter"             # 例：main
+schema: "mi3_datahub_prod"      # 例：analytics
+env: "dev"           # dev / test / prod，供命名與參數預設用
+
+runtime:
+  dbr_version: "17.3 LTS (includes Apache Spark 4.0.0, Scala 2.13)"   # DBR 17.3 LTS
+  compute: "job_cluster"            # 原則 job cluster
+
+# 常用來源 / 目標 table 可先登記在這裡（選填），讓 Agent 不必反覆詢問。
+# tables:
+#   orders: "main.sales.orders"
+#   customers: "main.crm.customers"

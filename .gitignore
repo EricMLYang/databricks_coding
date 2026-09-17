@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Spark local
+spark-warehouse/
+metastore_db/
+derby.log
+*.log
+
+# Databricks
+.databricks/
+.databrickscfg
+*.token
+.env
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# scratch 內容預設不追蹤（保留目錄說明）
+scratch/*
+!scratch/README.md

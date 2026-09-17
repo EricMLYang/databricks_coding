@@ -1,0 +1,6 @@
+# 本機開發工具。建議在 venv 內安裝：
+#   python -m venv .venv && .venv/Scripts/activate && pip install -r requirements-dev.txt
+# pyspark 版本對齊 DBR 17.3（Spark 4.0）；需要 Java 17。
+pyspark>=4.0,<4.1
+pytest>=8
+ruff>=0.5
