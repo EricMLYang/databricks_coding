@@ -1,0 +1,16 @@
+# 文字檔一律以 LF 存入 repo 與 checkout，避免 Windows autocrlf 造成整檔換行 diff。
+* text=auto eol=lf
+*.ipynb text eol=lf
+*.py    text eol=lf
+*.sql   text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.txt   text eol=lf
+
+# 二進位
+*.png  binary
+*.jpg  binary
+*.parquet binary
+*.whl  binary
