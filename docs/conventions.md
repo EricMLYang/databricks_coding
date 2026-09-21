@@ -73,6 +73,30 @@ python tools/nb.py export <nb> <tag> [<tag>...]  # 串接 cell 原始碼輸出�
 - 寫入：`df.write.mode("overwrite").saveAsTable(...)` 或 `DeltaTable.merge`，在 cell 內註明選擇理由。
 - Lint：`ruff check .`；格式：`ruff format .`。
 
+### 2.1 Table 命名與分層
+
+`<層級>_<領域>_<名稱>`，層級前綴固定四種：
+
+| 前綴 | 意義 | 例 |
+|---|---|---|
+| `b_` | 原始層（bronze）：外部來源原樣落地，目前爬蟲機來的都是這層 | `b_ir_calendar_record` |
+| `s_` | 銀質（silver）：清洗、去重、標準化，給查詢 | `s_ir_calendar_conference` |
+| `g_` | 金質（gold）：彙總、給報表 / Genie 用 | `g_ir_calendar_monthly_summary` |
+| `app_` | 其他系統（應用系統 DB）同步過來的表 | `app_company` |
+
+領域名由 widget `domain` 帶入，層級前綴在 code 內固定，code 只寫短名。
+
+各層的規則（實例：`docs/20260921_ir_calendar_lakehouse_design.md`）：
+
+| 層 | 寫入 | schema | 內容 |
+|---|---|---|---|
+| `b_` | **append-only**；同一批重跑用「刪該批再 append」保持冪等，不 MERGE、不去重 | 固定，不隨來源欄位變動：來源原文整包放 `payload`（STRING JSON），外加批次血緣（`batch_id`、`seq`、`ingested_at`…） | 一個來源 feed 一張表，不同 record_type 用欄位區分，不各建一張 |
+| `s_` | MERGE，鍵值明確唯一；同鍵多列取最新批次 | 型別化欄位，只列要用的；來源多的欄位忽略、少的補 NULL | 由 `b_` 的純函式 transform 產生，**隨時可整表重算**，不從 Volume / 來源重刷 |
+| `g_` | overwrite 或 MERGE，看報表性質 | 依報表 | 只從 `s_` 建，不直接讀 `b_` |
+| job 遙測（batch log 之類） | 允許 MERGE 覆蓋 | — | 放 `b_`，因為它記的是這一層的搬運結果 |
+
+時間欄位：`TIMESTAMP` 一律存 UTC 瞬間，來源無時區字串在 silver 轉換時補時區；`DATE` 為曆日、不做時區處理。
+
 ## 3. SQL（`sql/`）
 
 - 一檔一題，檔名 `YYYYMMDD_主題.sql`。

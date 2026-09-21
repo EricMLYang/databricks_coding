@@ -40,6 +40,7 @@ Notebook（`.ipynb`）、SQL query、開發 / 修改建議，偶爾是 Genie Spa
 **Catalog 與資料**
 - 三段式 `catalog.schema.table`；不用 `hive_metastore`、不用 mount、不用 `dbfs:/` 路徑；檔案走 UC Volume。
 - 讀寫都是 Delta。每次寫入明示 append / overwrite / MERGE；MERGE 必須有明確、唯一的鍵值。
+- 表名 `<層級>_<領域>_<名稱>`（`b_` 原始 append-only 含 `payload` 原文 / `s_` 銀質 MERGE、可從 `b_` 重算 / `g_` 金質 / `app_` 其他系統），規則見 `docs/conventions.md` 2.1。
 - Schema 變更用 `mergeSchema` / `overwriteSchema` 時要在 cell 註明原因。
 - 憑證只走 `dbutils.secrets` 或 job parameters，不出現在 code。
 
