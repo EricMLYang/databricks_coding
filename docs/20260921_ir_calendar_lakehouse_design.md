@@ -1,6 +1,6 @@
 # ir_calendar 在 Databricks 的分層設計（bronze / silver）
 
-> 2026-09-21。適用 `jobs/ir_calendar_init_tables/`（建表）與 `jobs/ir_calendar_consume_batches/`（消費 job）。
+> 2026-09-21。適用 `jobs/ir_calendar/init_tables/`（建表）與 `jobs/ir_calendar/consume_batches/`（消費 job）；第 8 節（2026-09-22）加上 `jobs/ir_calendar/parse_documents/`（財報檔案解析）。
 > 分層通則見 `docs/conventions.md` 2.1；本文只講這個領域怎麼套。
 
 ## 1. 一句話
@@ -97,3 +97,29 @@ DBR 17.3（Spark 4.0）有 `VARIANT`，查詢與儲存效率較好。這裡選 S
 ## 7. 下一層（gold）什麼時候建
 
 目前沒有 gold。當出現「月份 × 分類的場次數」、「某公司歷年法說清單」這種固定報表或 Genie Space 需求時，從 silver 建 `g_ir_calendar_*`；不從 bronze 直接建，也不回頭改 silver 的鍵。
+
+## 8. 財報檔案解析層（`parse_documents`）
+
+Volume 上的 PDF / HTM 本身是原始資料，但「解析出來的文字」是另一個來源（`ai_parse_document`）的產出，所以再套一次 bronze / silver：
+
+```
+Volume <root>/<分類>/<公司>/<檔名>      ← consume_batches 落地；s_ir_calendar_document_file 是索引
+   │  binaryFile + ai_parse_document（逐檔 / 小組，重試、限量）
+   ▼
+b_ir_calendar_document_parse            ← bronze：一檔一版 (volume_path, sha256) 一列，payload = 輸出 JSON 全文 + status / 頁數 / 元素數
+   │  from_json + select（純函式，本機可測）
+   ├─► s_ir_calendar_document_text      ← silver：一檔一列，全文 markdown（給 ai_query 摘要、全文檢索、人工查閱）
+   └─► s_ir_calendar_document_element   ← silver：一元素一列（段落 / 表格 / 圖表描述；給切塊、表格抽取）
+```
+
+| 決定 | 理由 |
+|---|---|
+| 分類（客戶 / 供應商 / 面板同業…）與公司是**欄位**，`CLUSTER BY (category, company_key)` | 分類會慢慢增加；一種文件類型或分類一張表（參考腳本 `ROUTING_MAP` 的作法）每加一種就要建表、改路由。欄位 + clustering 讓「某分類 / 某公司」查詢只讀自己那塊，新值直接進來 |
+| 工作清單來自 `s_document_file` 與 `b_document_parse` 的反查，不在索引表加 `is_parsed` 旗標 | silver 索引要能從 bronze 重算，塞工作狀態進去就不能重算了。解析狀態就是 bronze 自己的列：沒列 = 沒解析、最新列 failed 且 attempt 未達上限 = 重試 |
+| bronze 鍵 `(volume_path, sha256)`，刪後 append | 同名檔的新 revision 是新的一列，舊版的解析結果留著；重跑同一版本不留重複列 |
+| `payload` 存 `CAST(ai_parse_document(...) AS STRING)` 而非 VARIANT | 同第 5 節：本機 pyspark 用 `from_json` 才能測；`payload:document.elements` 路徑查詢一樣可用 |
+| status 三值 `success / partial / failed`，`attempt` 累計 | `ai_parse_document` 的頁級錯誤放在輸出的 `error_status`，不是例外；呼叫層的例外（rate limit）才是 failed。壞檔重試 `max_attempts` 次後停，不無限花費 |
+| 只對簡報開圖表描述 | 按頁計費；財報 / 逐字稿以文字為主 |
+| `document_element` 以文件為單位刪後 append，不逐列 MERGE | 重新解析後元素數會變，MERGE 清不掉多出來的舊元素 |
+
+限制：`PARSE_PAYLOAD`（[c04]）的形狀依官方文件 2.0 假設，未對真實輸出核對；首次跑完先看一列 `payload` 再決定要不要改 silver 的 transform（改完 `rebuild_silver = true`，不必重新呼叫 `ai_parse_document`）。

@@ -12,8 +12,8 @@ from datetime import date, datetime, timezone
 import pytest
 from nbload import ROOT, load_cells, nbtool
 
-CONSUME_NB = "jobs/ir_calendar_consume_batches/notebook.ipynb"
-INIT_NB = "jobs/ir_calendar_init_tables/notebook.ipynb"
+CONSUME_NB = "jobs/ir_calendar/consume_batches/notebook.ipynb"
+INIT_NB = "jobs/ir_calendar/init_tables/notebook.ipynb"
 UTC = timezone.utc  # noqa: UP017 - 本機 Python 3.10
 NOW = datetime(2026, 9, 21, 1, 0, tzinfo=UTC)
 

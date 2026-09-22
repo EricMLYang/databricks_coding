@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 import pytest
 from nbload import load_cells
 
-CHECK_NB = "jobs/ir_calendar_check_api_status/notebook.ipynb"
-CONSUME_NB = "jobs/ir_calendar_consume_batches/notebook.ipynb"
+CHECK_NB = "jobs/ir_calendar/check_api_status/notebook.ipynb"
+CONSUME_NB = "jobs/ir_calendar/consume_batches/notebook.ipynb"
 UTC = timezone.utc  # noqa: UP017 - 本機 Python 3.10
 NOW = datetime(2026, 9, 22, 3, 30, tzinfo=UTC)
 
