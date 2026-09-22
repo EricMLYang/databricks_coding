@@ -7,7 +7,8 @@
   - bronze `b_ir_calendar_record`（append-only）、`b_ir_calendar_batch_log`
   - silver `s_ir_calendar_{conference, summary, document_file, company}`（MERGE；`rebuild_silver = true` 可整表重算）
   - 系統 API `<api_base_url>/companies/sync`、`<api_base_url>/ir-conferences/sync`
-- 參數（widgets）：`catalog`、`schema`、`domain`、`root_url`、`volume_root`、`api_base_url`、`api_key_secret`、`verify_ssl`、`dry_run`、`write_tables`、`rebuild_silver`、`max_batches`、`health_max_age_hours`、`job_run_id`
+- 參數（widgets）：`catalog`、`schema`、`domain`、`root_url`、`volume_root`、`api_base_url`、`api_key_secret`、`api_fiscal_period`、`verify_ssl`、`dry_run`、`write_tables`、`rebuild_silver`、`max_batches`、`health_max_age_hours`、`job_run_id`
+  - `api_fiscal_period`：POST 前把 body 的 `fiscalPeriod` 換成 `quarter`（`2026Q3` → `Q3`）／`null`／`as_is`（原值）。系統端要哪一種還在試，用 dropdown 切；bronze / silver 永遠存原值
 - 排程：跟著 VM 班次（08:10 / 17:10 掃描、09:40 / 18:40 抓檔之後各一次），或每小時；job cluster
 - 負責人 / 更新日期：（填）/ 2026-09-21
 

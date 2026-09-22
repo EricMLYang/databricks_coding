@@ -97,6 +97,57 @@ def test_endpoint_for_fallback(mod):
     assert mod.endpoint_for({"path": "api/other.json"}) is None
 
 
+@pytest.mark.parametrize(("mode", "value", "expected"), [
+    ("quarter", "2026Q3", "Q3"),
+    ("quarter", "FY2026Q3", "Q3"),
+    ("quarter", "Q2", "Q2"),
+    ("quarter", "q4", "Q4"),
+    ("quarter", "2026上半年", None),      # 取不到季別就送 None，不亂猜
+    ("quarter", None, None),
+    ("null", "2026Q3", None),
+    ("as_is", "2026Q3", "2026Q3"),
+    ("as_is", None, None),
+])
+def test_fiscal_period_for_api(mod, mode, value, expected):
+    assert mod.fiscal_period_for_api(value, mode) == expected
+
+
+def test_fiscal_period_for_api_rejects_unknown_mode(mod):
+    with pytest.raises(ValueError, match="api_fiscal_period"):
+        mod.fiscal_period_for_api("2026Q3", "Q")
+
+
+def _conf_payload():
+    return {"batch_id": "000007_20260922T081002", "rows": [
+        {"stockCode": "2409", "fiscalPeriod": "2026Q3", "conferenceDate": "2026-10-28"},
+        {"stockCode": "3481", "fiscalPeriod": "FY2026Q3", "conferenceDate": "2026-10-29"},
+        {"stockCode": "6116", "conferenceDate": "2026-11-04"},          # 沒這個欄位就不補
+    ]}
+
+
+@pytest.mark.parametrize(("mode", "sent"), [
+    ("quarter", ["Q3", "Q3", "absent"]),
+    ("null", [None, None, "absent"]),
+    ("as_is", ["2026Q3", "FY2026Q3", "absent"]),
+])
+def test_apply_fiscal_period_rewrites_rows_only(mod, mode, sent):
+    payload = _conf_payload()
+    out, changed = mod.apply_fiscal_period(payload, mode)
+
+    assert [r.get("fiscalPeriod", "absent") for r in out["rows"]] == sent
+    assert out["rows"][0]["conferenceDate"] == "2026-10-28"             # 其他欄位照舊
+    assert out["batch_id"] == payload["batch_id"]
+    assert payload["rows"][0]["fiscalPeriod"] == "2026Q3"               # 原 body 不被改（bronze 收原文）
+    assert changed == ({} if mode == "as_is" else {"2026Q3": sent[0], "FY2026Q3": sent[1]})
+
+
+def test_apply_fiscal_period_passes_through_other_payloads(mod):
+    company = {"rows": [{"stockCode": "2409", "companyName": "友達"}]}
+    assert mod.apply_fiscal_period(company, "quarter") == (company, {})
+    assert mod.apply_fiscal_period({"rows": []}, "null") == ({"rows": []}, {})
+    assert mod.apply_fiscal_period({"data": 1}, "null") == ({"data": 1}, {})
+
+
 # ---------- 測試資料（形狀照爬蟲實際產出）----------
 
 CALENDAR_EVENT = {
