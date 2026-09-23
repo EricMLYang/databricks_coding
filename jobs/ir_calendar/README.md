@@ -10,6 +10,7 @@
 | `check_landing/` | `ir_calendar_check_landing` | 只讀檢查：bronze / silver / Volume 三邊對得上 | 人工 |
 | `check_api_status/` | `ir_calendar_check_api_status` | 只讀檢查：系統端 status API 與送出內容對照（1 次 GET） | 人工 |
 | `parse_documents/` | `ir_calendar_parse_documents` | Volume 財報檔案依分類 × 公司用 `ai_parse_document` 初步解析 → bronze `b_ir_calendar_document_parse` / silver `s_ir_calendar_document_{text, element}` | 接在 consume_batches 之後，或每天一次 |
+| `inspect_record/` | `ir_calendar_inspect_record` | 只讀檢視：一筆 summary + 一份文件的 text / element 內容，並印出給 user 的整理版 | 人工 |
 
 順序：`init_tables` → `consume_batches` → `parse_documents` →（視情況）`check_landing` / `check_api_status`。
 
