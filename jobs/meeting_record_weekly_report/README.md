@@ -4,7 +4,7 @@
 - 輸入：`b_internal_meeting_record`、`b_internal_meeting_record_scm`（欄位：`create_date`、`mail_from`、`mail_subject`）
 - 輸出：stdout 文字報告 + `display` 表格 / 圖
 - 參數（widgets）：`catalog`、`schema`、`tables`（逗號分隔）、`run_date`（空 = 今天）、`weeks_back`、`detail_weeks`、`detail_limit`、`top_senders`
-- 排程：每週人工 Run All（all-purpose 或 job cluster 都可以）
+- 排程：每週人工 Run All（serverless、all-purpose、job cluster 都可以；因 serverless 不支援 cache，notebook 不用 cache）
 - 負責人 / 更新日期：（填）/ 2026-09-25
 
 純函式測試：`tests/test_meeting_record_weekly_report.py`（[c02]～[c03]）。
