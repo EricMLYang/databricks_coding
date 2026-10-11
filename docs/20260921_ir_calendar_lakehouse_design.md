@@ -29,7 +29,7 @@ Volume（實體檔落地 + JSON 歸檔）    ← 給人看、給 PDF 用
    ├─► b_ir_calendar_record         ← bronze：一檔一列，payload = JSON 全文，append-only
    │        │  from_json + select（純函式，本機可測）
    │        ▼
-   │   s_ir_calendar_conference / summary / document_file / company   ← silver：MERGE，給查詢
+   │   s_ir_calendar_conference / summary / document_file / company / financials   ← silver：MERGE，給查詢
    │
    └─► b_ir_calendar_batch_log      ← bronze：每批處理紀錄 + API 回應（job 遙測）
 ```
@@ -46,7 +46,7 @@ Volume（實體檔落地 + JSON 歸檔）    ← 給人看、給 PDF 用
 
 每批一列：manifest 摘要（seq、kind、producer、counts）、本 job 的處理結果（落地 / 歸檔 / bronze 列數、SUCCESS / FAILED、錯誤）、API 回應（`api_results` 陣列）。這是 job 自己的紀錄不是來源資料，所以允許以 `batch_id` MERGE 覆蓋。
 
-### 3.3 silver：4 張
+### 3.3 silver：5 張
 
 | 表 | 鍵 | 來源 record_type | 保留 |
 |---|---|---|---|
@@ -54,6 +54,7 @@ Volume（實體檔落地 + JSON 歸檔）    ← 給人看、給 PDF 用
 | `s_ir_calendar_summary` | `(company_key, period)` | `ir_summary` | 同鍵以較新批次為準 |
 | `s_ir_calendar_document_file` | `volume_path` | `ir_document_file` | 同名檔以較新批次為準（舊版 sha 仍在 bronze） |
 | `s_ir_calendar_company` | `company_key` | `app_company`（rows[] 展開） | 同鍵以較新批次為準 |
+| `s_ir_calendar_financials` | `(company_key, period)` | `ir_financials`（annual[] + quarterly[] 展開，2026-10 新增） | 同鍵以較新批次為準；爬蟲整檔重發，新檔沒帶的舊期別保留 |
 
 不建 silver 的：`app_company_category`（3 列常數，`category_name` 已在 company 表）、`ir_document`（docs manifest，是爬蟲的工作狀態）、`api_payload`（送出去的 body，回應在 batch_log）。都在 bronze，要查就查 `payload`。
 

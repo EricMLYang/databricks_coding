@@ -25,10 +25,10 @@ def mod(spark):  # 依賴 spark：cell 內的 F.* 要有 SparkContext
 
 @pytest.fixture(scope="module")
 def ddl_columns():
-    """執行建表 notebook 的 [c02] 與 [c10]～[c15]（預先塞入 catalog 等變數），從 DDL 抓欄位名。"""
+    """執行建表 notebook 的 [c02] 與 [c10]～[c15]、[c19]（預先塞入 catalog 等變數），從 DDL 抓欄位名。"""
     nb = nbtool.load(str(ROOT / INIT_NB))
     ns = {"catalog": "c", "schema": "s", "domain": "ir_calendar"}
-    for tag in ["c02", "c10", "c11", "c12", "c13", "c14", "c15"]:
+    for tag in ["c02", "c10", "c11", "c12", "c13", "c14", "c15", "c19"]:
         exec(nbtool.source_of(nb["cells"][nbtool.find(nb, tag)]), ns)
     out = {}
     for (layer, short), ddl in ns["DDLS"].items():
@@ -478,3 +478,70 @@ def test_format_alerts_and_log_lines(mod):
         "[WARN] - TPE:8213:2026Q2 缺 presentation",
         "[WARN] - TYO:6963:2026Q2 缺 presentation,financial_report",
     ]
+
+
+# ---------- [c06] transform_financials ----------
+
+# 形狀照 MI_Crawler financials.py：台股 MOPS（仟元，Q4 由全年 − Q3 累計推得）、美股 SEC（元，3M 毛利推算）
+FIN_TW = {
+    "record_type": "ir_financials", "company_key": "TPE:2353", "company_name": "宏碁", "stock_code": "2353",
+    "market": "TPE", "category": "CUSTOMER", "currency": "TWD", "unit": "thousand", "source": "MOPS t164sb03/04/05",
+    "annual": [
+        {"fiscal_year": 2025, "period_end": "2025-12-31", "revenue": 20284221, "gross_profit": 2000000, "operating_income": 500000,
+         "pretax_income": 450000, "net_income": 400000, "net_income_parent": 390000, "eps": -0.98,
+         "current_assets": 1, "total_assets": 1000, "current_liabilities": 1, "total_liabilities": 450.7, "equity": 549.3,
+         "operating_cash_flow": 300, "capex": -50, "investing_cash_flow": -80,
+         "gross_margin": 9.86, "operating_margin": 2.47, "net_margin": 1.97, "debt_ratio": 45.07, "current_ratio": 1.0,
+         "source_urls": ["https://mops/is", "https://mops/bs", "https://mops/cf"]},
+    ],
+    "quarterly": [
+        {"period": "2025Q4", "period_end": "2025-12-31", "revenue": 5000000, "net_income": 100000, "eps": None,
+         "total_assets": 1000, "operating_cash_flow_ytd": 300, "capex_ytd": -50,
+         "derived": ["revenue", "net_income"], "source_urls": ["https://mops/is"]},
+        {"period": "2025Q3", "period_end": "2025-09-30", "revenue": 5100000, "eps": 0.3, "revenue_ytd": 15284221,
+         "net_income_ytd": 300000, "operating_cash_flow_ytd": 200, "capex_ytd": -30, "source_urls": []},
+    ],
+    "generated_at": "2026-10-10T09:00:00",
+}  # fmt: skip
+FIN_US = {
+    "record_type": "ir_financials", "company_key": "NYSE:MMM", "company_name": "3M", "stock_code": "MMM",
+    "market": "NYSE", "category": "SUPPLIER", "currency": "USD", "unit": "one", "source": "SEC companyfacts",
+    "annual": [{"fiscal_year": 2025, "period_end": "2025-12-31", "revenue": 24575000000, "cost_of_revenue": 14000000000,
+                "gross_profit": 10575000000, "derived": ["gross_profit"], "source_urls": ["https://sec/facts"]}],
+    "quarterly": [],
+    "generated_at": "2026-10-10T09:00:00",
+}  # fmt: skip
+
+
+def _fin_bronze(mod, spark, items):
+    rows = []
+    for seq, payload in items:
+        m = _manifest(seq, f"{seq:06d}_20261010T090000", [])
+        f = {"path": f"financials/{payload['company_key'].replace(':', '_')}.json", "record_type": "ir_financials",
+             "company_key": payload["company_key"]}
+        rows.append(mod.bronze_row(m, f, json.dumps(payload, ensure_ascii=False), volume_path=None, now=NOW))
+    return spark.createDataFrame(rows, schema=mod.BRONZE_SCHEMA)
+
+
+def test_transform_financials(mod, spark):
+    out = {(r.company_key, r.period): r for r in mod.transform_financials(_fin_bronze(mod, spark, [(10, FIN_TW), (10, FIN_US)])).collect()}
+    assert set(out) == {("TPE:2353", "2025FY"), ("TPE:2353", "2025Q4"), ("TPE:2353", "2025Q3"), ("NYSE:MMM", "2025FY")}
+    fy = out[("TPE:2353", "2025FY")]
+    assert (fy.period_type, fy.fiscal_year, fy.period_end) == ("annual", 2025, date(2025, 12, 31))
+    assert (fy.currency, fy.unit, fy.revenue, fy.eps, fy.debt_ratio) == ("TWD", "thousand", 20284221.0, -0.98, 45.07)
+    assert fy.capex == -50 and fy.investing_cash_flow == -80 and len(fy.source_urls) == 3 and fy.derived is None
+    q4 = out[("TPE:2353", "2025Q4")]
+    assert (q4.period_type, q4.fiscal_year, q4.eps, q4.derived) == ("quarterly", None, None, ["revenue", "net_income"])
+    assert out[("TPE:2353", "2025Q3")].revenue_ytd == 15284221
+    us = out[("NYSE:MMM", "2025FY")]
+    assert (us.unit, us.revenue, us.derived) == ("one", 24575000000.0, ["gross_profit"])    # 超過 INT 範圍
+    assert us.batch_path == "financials/NYSE_MMM.json" and us.seq == 10
+
+
+def test_transform_financials_latest_file_wins(mod, spark):
+    newer = {**FIN_TW, "annual": [{**FIN_TW["annual"][0], "revenue": 1.0}], "quarterly": []}
+    df = mod.latest_per_key(mod.transform_financials(_fin_bronze(mod, spark, [(10, FIN_TW), (11, newer)])),
+                            mod.TABLE_KEYS["financials"])
+    out = {r.period: r for r in df.collect()}
+    assert out["2025FY"].revenue == 1.0 and out["2025FY"].seq == 11
+    assert out["2025Q3"].seq == 10                       # 新檔沒帶的期別保留舊值

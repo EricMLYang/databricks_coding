@@ -61,6 +61,18 @@ def test_summary_report(mod):
 def test_summary_report_all_null(mod):
     md = mod.summary_report({})
     assert "| 找到法說內容 | — |" in md and "### 備註" not in md
+    assert "### 重點財務數字" not in md and "### 經營層觀點" not in md and "### 正面訊號" not in md
+
+
+def test_summary_report_new_fields(mod):
+    md = mod.summary_report({**SUMMARY,
+        "headline_metrics": [{"metric": "營收", "period": "2026Q2", "value": "NT$87.56 億", "yoy": "-3.78%", "note": None}],
+        "management_views": [{"topic": "本業需求", "view": " 下半年回溫 "}],
+        "positive_signals": ["p1"], "watch_items": [], "open_questions": None})
+    assert "| 營收 | 2026Q2 | NT$87.56 億 | -3.78% |  |" in md
+    assert "- **本業需求**：下半年回溫" in md
+    assert "### 正面訊號\n- p1" in md
+    assert "### 觀察事項" not in md and "### 待釐清問題" not in md    # 空陣列 / NULL 不印
 
 
 def test_element_line_uses_description_for_figure(mod):
