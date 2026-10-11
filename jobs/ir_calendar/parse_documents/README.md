@@ -10,6 +10,8 @@
 - 排程：接在 `ir_calendar_consume_batches` 之後（同 job 下一個 task 或每天一次）；job cluster。`ai_parse_document` 按頁計費，`max_files` 是費用閘門。
 - 負責人 / 更新日期：（填）/ 2026-09-22
 
+`.htm` / `.html` 不送 `ai_parse_document`（不支援 HTML），改由 [c03a] 純 Python 抽文字，`parser = html_text`、不計費（2026-10-11，同上交代文件 §3.2）。
+
 流程、參數說明、維護者須知、首次上線順序見 notebook 第一個 markdown cell；表設計見 `docs/20260921_ir_calendar_lakehouse_design.md` 第 8 節。
 表由 `ir_calendar_init_tables` [c16]～[c18] 建。
-本機測試：`pytest tests/test_ir_calendar_parse_documents.py`（載入 [c02]～[c06]，用假的 `ai_parse_document` JSON 跑 transform）。
+本機測試：`pytest tests/test_ir_calendar_parse_documents.py`（載入 [c02]～[c06] 與 [c03a]，用假的 `ai_parse_document` JSON 與 EDGAR 樣式 HTML 跑 transform）。

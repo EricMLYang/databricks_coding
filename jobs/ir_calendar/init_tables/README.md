@@ -7,5 +7,7 @@
 - 排程：無，手動跑一次；先於 `ir_calendar_consume_batches` / `ir_calendar_parse_documents`
 - 負責人 / 更新日期：（填）/ 2026-09-21
 
+既有表補欄位：[c21] `ADD_COLUMNS`（2026-10-11 加 `b_ir_calendar_batch_log.crawler_alerts`），已有就略過。
+
 分層設計見 `docs/20260921_ir_calendar_lakehouse_design.md`；主鍵、加欄位方式見 notebook 第一個 markdown cell。
 DDL 欄位與各 job 的 schema / transform 是否一致由 `tests/test_ir_calendar_consume.py`（[c10]～[c15]）、`tests/test_ir_calendar_parse_documents.py`（[c16]～[c18]）檢查。

@@ -166,7 +166,11 @@ SUMMARY = {
     "conference_date": "2026-08-28", "fallback": False, "recipients": ["A00"],
     "crawled_at": "2026-09-01T10:00:00+08:00",
     "summary": {"found": True, "core_points": ["a", "b"], "guidance": "g", "key_numbers": ["1"],
-                "risks": ["x"], "notes": "n", "sources": [{"title": "t", "url": "u", "media": "m"}]},
+                "risks": ["x"], "notes": "n", "sources": [{"title": "t", "url": "u", "media": "m"}],
+                # 2026-10 新增的五個選填欄位
+                "headline_metrics": [{"metric": "營收", "period": "2026Q2", "value": "NT$87.56 億", "yoy": "-3.78%", "note": ""}],
+                "management_views": [{"topic": "本業需求", "view": "下半年回溫"}],
+                "positive_signals": ["p1"], "watch_items": ["w1", "w2"], "open_questions": []},
 }  # fmt: skip
 DOC_FILE = {
     "path": "docs/HK_1070/2026Q2/TCL-Electronics_Q2CY26_Financial_Statements.pdf",
@@ -281,6 +285,9 @@ def test_batch_log_row_and_schema(mod, spark):
     got = df.collect()[0]
     assert got["api_results"][0]["created"] == 1 and got["api_results"][0]["failures_json"] == "[]"
     assert got["counts"] == {"ir_conference": 1, "ir_document_file": 1}
+    assert got["crawler_alerts"] == []
+    row = mod.batch_log_row(m, status="SUCCESS", now=NOW, crawler_alerts=["[WARN] x", "[WARN] - y"])
+    assert spark.createDataFrame([row], schema=mod.BATCH_LOG_SCHEMA).collect()[0]["crawler_alerts"] == ["[WARN] x", "[WARN] - y"]
 
 
 # ---------- [c04] 欄位 helper ----------
@@ -348,6 +355,23 @@ def test_transform_summary(mod, df_bronze):
     assert r["sources"][0]["media"] == "m"
     assert json.loads(r["summary_json"])["notes"] == "n"  # 原文保留
     assert r["fallback"] is False
+    assert r["headline_metrics"][0].asDict() == {"metric": "營收", "period": "2026Q2", "value": "NT$87.56 億",
+                                                 "yoy": "-3.78%", "note": ""}
+    assert r["management_views"][0]["topic"] == "本業需求"
+    assert (r["positive_signals"], r["watch_items"], r["open_questions"]) == (["p1"], ["w1", "w2"], [])
+
+
+def test_transform_summary_old_shape_new_fields_null(mod, spark):
+    """舊批次的 summary 沒有新欄位：照常展開，五欄為 NULL。"""
+    old = {**SUMMARY, "summary": {k: v for k, v in SUMMARY["summary"].items()
+                                  if k in ("found", "core_points", "guidance", "key_numbers", "risks", "notes", "sources")}}
+    m = _manifest(5, "000005_20260920T081002", [])
+    f = {"path": "summaries/old.json", "record_type": "ir_summary"}
+    df = spark.createDataFrame([mod.bronze_row(m, f, json.dumps(old, ensure_ascii=False), volume_path=None, now=NOW)],
+                               schema=mod.BRONZE_SCHEMA)
+    r = mod.transform_summary(df).collect()[0]
+    assert r["core_points"] == ["a", "b"]
+    assert all(r[c] is None for c in ("headline_metrics", "management_views", "positive_signals", "watch_items", "open_questions"))
 
 
 def test_transform_document_file_latest_wins(mod, df_bronze):
@@ -370,10 +394,12 @@ def test_transform_company_explodes_rows(mod, df_bronze):
 
 
 def test_silver_transforms_match_ddl(mod, df_bronze, ddl_columns):
-    """每張 silver 表：transform 輸出欄位 + updated_at == DDL 欄位（順序也一致）。"""
+    """每張 silver 表：transform 輸出欄位 == DDL 去掉 updated_at 的欄位（順序也一致）。
+    updated_at 由 [c09] 寫入時補；上線後加的欄位（ADD COLUMNS）在 DDL 裡排在 updated_at 之後，MERGE 依欄名對應。"""
     for short, transform in mod.SILVER_TRANSFORMS.items():
-        got = transform(df_bronze).columns + ["updated_at"]
-        assert got == ddl_columns[("silver", short)], f"{short}: transform 與 DDL 欄位不一致"
+        got = transform(df_bronze).columns
+        ddl = ddl_columns[("silver", short)]
+        assert "updated_at" in ddl and got == [c for c in ddl if c != "updated_at"], f"{short}: transform 與 DDL 欄位不一致"
         for k in mod.TABLE_KEYS[short]:
             assert k in got
 
@@ -382,3 +408,73 @@ def test_bronze_schemas_match_ddl(mod, ddl_columns):
     assert [f.name for f in mod.BRONZE_SCHEMA.fields] == ddl_columns[("bronze", "record")]
     assert [f.name for f in mod.BATCH_LOG_SCHEMA.fields] == ddl_columns[("bronze", "batch_log")]
     assert set(mod.SILVER_TRANSFORMS) == {s for (layer, s) in ddl_columns if layer == "silver"}
+
+
+# ---------- [c03] 爬蟲端告警分級 ----------
+
+HEALTH_NOW = datetime(2026, 10, 20, 11, 0, tzinfo=UTC)   # 台北 19:00
+HEALTH = {
+    "generated_at": "2026-10-20T18:41:07",              # 不帶時區 = 台北，距 HEALTH_NOW 19 分鐘
+    "status": "ALERT",
+    "alerts": [
+        "實體檔案放棄 2 筆，需人工補",
+        "來源 mops_docs 連續失敗 3 次",
+        "某種未來新增的告警",
+    ],
+    "docs": {
+        "give_up": ["TPE:8213:2026Q2 缺 presentation", "TYO:6963:2026Q2 缺 presentation,financial_report"],
+        "pending": ["TPE:2330:2026Q3 缺 presentation"] * 12,
+    },
+}
+
+
+@pytest.mark.parametrize("msg, level", [
+    ("來源 mops_docs 連續失敗 3 次", "FATAL"),
+    ("LLM CLI 不可用", "FATAL"),
+    ("TPE:3718 缺公司代稱（company_slugs.json），實體檔案無法命名", "FATAL"),
+    ("TPE:2330 2026Q2 找不到已落地檔案 docs/x.pdf", "FATAL"),
+    ("實體檔案放棄 7 筆，需人工補", "WARN"),
+    ("沒看過的新告警", "WARN"),
+])
+def test_alert_level(mod, msg, level):
+    assert mod.alert_level(msg) == level
+
+
+def test_crawler_alerts_levels_order_and_details(mod):
+    out = mod.crawler_alerts(HEALTH, HEALTH_NOW, 24)
+    assert [(a["level"], a["msg"]) for a in out] == [
+        ("FATAL", "來源 mops_docs 連續失敗 3 次"),
+        ("WARN", "實體檔案放棄 2 筆，需人工補"),
+        ("WARN", "某種未來新增的告警"),
+        ("INFO", "實體檔案待抓 12 筆（health.docs.pending）"),
+    ]
+    assert out[1]["details"] == HEALTH["docs"]["give_up"]          # 放棄明細全列
+    assert all(not a["details"] for a in out if a["msg"] != "實體檔案放棄 2 筆，需人工補")
+
+
+def test_crawler_alerts_job_side_fatal(mod):
+    assert mod.crawler_alerts({"generated_at": "2026-10-20T18:41:07", "alerts": []}, HEALTH_NOW, 24) == []
+    stale = mod.crawler_alerts({"generated_at": "2026-10-18T18:00:00"}, HEALTH_NOW, 24)
+    assert [a["level"] for a in stale] == ["FATAL"] and "超過 24 小時未更新" in stale[0]["msg"]
+    bad = mod.crawler_alerts({"generated_at": "not-a-time"}, HEALTH_NOW, 24)
+    assert [a["level"] for a in bad] == ["FATAL"]
+    unread = mod.crawler_alerts(None, HEALTH_NOW, 24, read_error="ConnectionError()")
+    assert unread == [{"level": "FATAL", "msg": "讀不到 health.json：ConnectionError()", "details": []}]
+
+
+def test_format_alerts_and_log_lines(mod):
+    assert mod.format_alerts([], None) == "==== 爬蟲端告警：無 ===="
+    out = mod.crawler_alerts(HEALTH, HEALTH_NOW, 24)
+    text = mod.format_alerts(out, HEALTH["generated_at"])
+    lines = text.splitlines()
+    assert lines[0] == "==== 爬蟲端告警（health.json generated_at=2026-10-20T18:41:07）===="
+    assert lines[1] == "[FATAL] 來源 mops_docs 連續失敗 3 次"
+    assert lines[2] == "[WARN ] 實體檔案放棄 2 筆，需人工補"
+    assert lines[3] == "         - TPE:8213:2026Q2 缺 presentation"
+    assert lines[-2] == "[INFO ] 實體檔案待抓 12 筆（health.docs.pending）" and lines[-1].startswith("====")
+    assert mod.alerts_for_log(out)[:4] == [
+        "[FATAL] 來源 mops_docs 連續失敗 3 次",
+        "[WARN] 實體檔案放棄 2 筆，需人工補",
+        "[WARN] - TPE:8213:2026Q2 缺 presentation",
+        "[WARN] - TYO:6963:2026Q2 缺 presentation,financial_report",
+    ]

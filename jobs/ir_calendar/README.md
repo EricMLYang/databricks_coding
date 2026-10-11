@@ -15,6 +15,7 @@
 順序：`init_tables` → `consume_batches` → `parse_documents` →（視情況）`check_landing` / `check_api_status`。
 
 - 分層與 table 設計：`docs/20260921_ir_calendar_lakehouse_design.md`
+- 2026-10-11 對應爬蟲端變更（告警分級、`.htm` 抽文字、彙整五欄）與 Databricks 複製清單：`docs/20261011_ir_calendar_crawler_change_updates.md`
 - 純函式測試：`tests/test_ir_calendar_consume.py`、`tests/test_ir_calendar_check_api_status.py`、`tests/test_ir_calendar_parse_documents.py`
 - `check_landing` / `check_api_status` 內的常數是 `consume_batches` 的副本，那邊改了這裡要一起改。
 - `財報檔案處理參考/`：舊環境的解析腳本，只當參考，不部署。

@@ -1,5 +1,5 @@
 # ruff: noqa: E501 - 測試資料照 ai_parse_document 實際 JSON 形狀，逐字保留比對齊寬度重要
-"""ir_calendar_parse_documents 的純函式 cell 測試（[c02]～[c06]），並比對建表 notebook [c16]～[c18] 的 DDL 欄位。
+"""ir_calendar_parse_documents 的純函式 cell 測試（[c02]～[c06]，含 [c03a] HTML 抽文字），並比對建表 notebook [c16]～[c18] 的 DDL 欄位。
 
 ai_parse_document 的輸出用假 JSON（形狀依官方文件 2.0：document.pages / document.elements / error_status）。
 """
@@ -21,7 +21,7 @@ T2 = datetime(2026, 9, 22, 2, 0, tzinfo=UTC)
 
 @pytest.fixture(scope="module")
 def mod(spark):  # 依賴 spark：cell 內的 F.* 要有 SparkContext
-    return load_cells(PARSE_NB, ["c02", "c03", "c04", "c05", "c06"], name="irparse")
+    return load_cells(PARSE_NB, ["c02", "c03", "c03a", "c04", "c05", "c06"], name="irparse")
 
 
 @pytest.fixture(scope="module")
@@ -243,3 +243,101 @@ def test_silver_transforms_match_ddl(mod, df_bronze, ddl_columns):
         for k in mod.TABLE_KEYS[short]:
             assert k in got
     assert set(mod.SILVER_TRANSFORMS) == {s for (layer, s) in ddl_columns if layer == "silver"}
+
+
+# ---------- HTML（.htm 不走 ai_parse_document）----------
+
+VP_HTM = "/Volumes/c/s/v/supplier/3M/3M_Q2CY26_Presentation.htm"
+HTM_ROW = (VP_HTM, "3M_Q2CY26_Presentation.htm", "NYSE:MMM", "3M", "SUPPLIER", "2026Q2", "Presentation", "FY2026Q2", "d003", 3000)
+
+EDGAR_EX99 = b"""<DOCUMENT>
+<TYPE>EX-99.1
+<SEQUENCE>2
+<FILENAME>mmm-ex99_1.htm
+<DESCRIPTION>EX-99.1
+<TEXT>
+<html><head><title>EX-99.1</title><style>p{}</style></head><body>
+<div style="display:none"><ix:header><ix:hidden>HIDDEN XBRL 123</ix:hidden></ix:header></div>
+<h1>3M Reports Q2 2026 Results</h1>
+<p>Sales of <span>$6.3</span>&nbsp;billion,
+   up 2%.</p>
+<ul><li>Adjusted EPS of $2.10</li></ul>
+<div style="page-break-before: always"></div>
+<table>
+  <tr><td></td><td colspan="2">Q2 2026</td><td>Q2 2025</td></tr>
+  <tr><td>Net sales</td><td>$</td><td>6,300</td><td>6,150</td></tr>
+  <tr><td>Operating margin</td><td></td><td>(1.5</td><td>)%</td></tr>
+  <tr><td>A|B</td><td></td><td><table><tr><td>in</td><td>ner</td></tr></table></td><td></td></tr>
+</table>
+<p>After table</p>
+</body></html>
+</TEXT>
+</DOCUMENT>
+"""
+
+
+def test_parse_options_html_by_extension(mod):
+    assert mod.is_html_path(VP_HTM) and mod.is_html_path("/a/B.HTML") and not mod.is_html_path(VP)
+    assert mod.parse_options("Presentation", VP_HTM) == {"parser": "html_text", "version": "1.0"}
+    work = [mod.to_work(_work(r)) for r in [*DOC_FILE_ROWS, HTM_ROW]]
+    chunks = mod.plan_chunks(work, chunk_size=10)
+    assert [VP_HTM] in [[w["volume_path"] for w in c] for c in chunks]   # HTML 自成一組，不和 PDF 混
+
+
+def test_html_to_payload_edgar_ex99(mod):
+    p = json.loads(mod.html_to_payload(EDGAR_EX99))
+    els = [(e["type"], e["content"], e["page_id"]) for e in p["document"]["elements"]]
+    assert els[:3] == [
+        ("section_header", "# 3M Reports Q2 2026 Results", 0),
+        ("text", "Sales of $6.3 billion, up 2%.", 0),
+        ("text", "- Adjusted EPS of $2.10", 0),
+    ]
+    kind, table, page = els[3]
+    assert kind == "table" and page == 1
+    assert table.splitlines() == [
+        "|  | Q2 2026 | Q2 2025 |",
+        "|---|---|---|",
+        "| Net sales | $6,300 | 6,150 |",
+        "| Operating margin | (1.5)% |  |",
+        "| A\\|B | in ner |  |",
+    ]
+    assert els[4] == ("text", "After table", 1)
+    assert p["document"]["pages"] == [{"id": 0}, {"id": 1}] and p["error_status"] is None
+    assert "HIDDEN" not in json.dumps(p) and "EX-99.1" not in json.dumps(p)   # iXBRL 隱藏區、SGML 包頭、title 都不進
+
+
+def test_html_to_payload_empty_and_cp1252(mod):
+    empty = json.loads(mod.html_to_payload(b"<html><head><title>x</title></head><body> </body></html>"))
+    assert empty["document"]["elements"] == [] and empty["error_status"]
+    p = json.loads(mod.html_to_payload("<p>caf\u00e9 \u2013 ok</p>".encode("cp1252")))
+    assert p["document"]["elements"][0]["content"] == "caf\u00e9 \u2013 ok"
+
+
+def test_transform_parse_result_html_rows(mod, spark):
+    data = [{**mod.to_work(_work(HTM_ROW)), "payload": mod.html_to_payload(EDGAR_EX99)},
+            {**mod.to_work(_work(HTM_ROW)), "volume_path": VP_HTM + "x.htm", "payload": mod.html_to_payload(b"<p></p>")}]
+    schema = StructType([*mod.WORK_SCHEMA.fields, StructField("payload", StringType())])
+    out = {r.volume_path: r for r in mod.transform_parse_result(spark.createDataFrame(data, schema=schema), now=T1, job_run_id=None).collect()}
+    ok, empty = out[VP_HTM], out[VP_HTM + "x.htm"]
+    assert (ok.parser, ok.parser_version, ok.status) == ("html_text", "1.0", "success")
+    assert ok.page_count == 2 and ok.element_count == 5
+    assert ok.parse_options == '{"parser": "html_text", "version": "1.0"}'
+    assert empty.status == "partial" and "no text extracted" in empty.error
+    rows = mod.failed_rows([mod.to_work(_work(HTM_ROW))], "boom", now=T1, job_run_id=None)
+    assert rows[0]["parser"] == "html_text"
+    # silver 照常展開
+    text = {r.volume_path: r for r in mod.transform_document_text(spark.createDataFrame(
+        [r.asDict() for r in out.values()], schema=mod.PARSE_SCHEMA)).collect()}
+    assert text[VP_HTM].text_md.startswith("# 3M Reports Q2 2026 Results\n\nSales of $6.3 billion")
+
+
+def test_select_work_requeues_html_parsed_by_ai_parse_document(mod, spark):
+    docs = spark.createDataFrame([HTM_ROW, DOC_FILE_ROWS[2]], schema=DOC_FILE_SCHEMA)
+    # 以前 .htm 送 ai_parse_document：failed 且 attempt 已達上限；PDF 同樣 failed 達上限
+    old = _parsed_df(mod, spark, [(HTM_ROW, 2, None), (DOC_FILE_ROWS[2], 2, None)]).withColumn(
+        "parser", mod.F.lit("ai_parse_document"))
+    out = mod.select_work(docs, old, max_attempts=3).collect()
+    assert [(r.volume_path, r.attempt) for r in out] == [(VP_HTM, 0)]       # 只有 .htm 重排，attempt 歸零
+    # 改走 html_text 成功後就不再排
+    done = _parsed_df(mod, spark, [(HTM_ROW, 0, json.loads(mod.html_to_payload(EDGAR_EX99)))]).withColumn("parsed_at", mod.F.lit(T2))
+    assert mod.select_work(docs.filter(mod.F.col("volume_path") == VP_HTM), old.unionByName(done)).count() == 0

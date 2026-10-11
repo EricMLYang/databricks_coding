@@ -12,6 +12,8 @@
 - 排程：跟著 VM 班次（08:10 / 17:10 掃描、09:40 / 18:40 抓檔之後各一次），或每小時；job cluster
 - 負責人 / 更新日期：（填）/ 2026-09-21
 
+爬蟲端 `health.json` 告警分 FATAL / WARN / INFO，只有 FATAL 讓 job 失敗；所有告警每次都印在輸出並寫進 `batch_log.crawler_alerts`（2026-10-11，依 MI_Crawler `doc/20261010_給Databricks_notebook開發者_爬蟲端變更交代.md` §3.1）。
+
 流程、參數說明、維護者須知、首次上線順序見 notebook 第一個 markdown cell；分層設計見 `docs/20260921_ir_calendar_lakehouse_design.md`。
 來源程式：`PM_Head/projects/MI_Crawler/ir_calendar/deploy/databricks/consume_batches.py`（本 notebook 為其 job 版，另加 bronze / silver 寫入）。
 本機測試：`pytest tests/test_ir_calendar_consume.py`（載入 [c02]～[c06]，用本機 pyspark 跑 silver transform）。
