@@ -2,6 +2,8 @@
 
 會議紀錄萃取（PM_Head `metting_record/01_meeting_to_sales_brief_進階規劃.md` v0.4.1 §2.3）的一次性 migration。每支 notebook 以流水號命名，**不得由 W1 / W2 呼叫**；重跑必須冪等（`CREATE TABLE IF NOT EXISTS` ＋ MERGE）。每次正式執行寫一列 `b_meeting_migration_log`。
 
+接手先讀 [STATUS.md](STATUS.md)（決定、Phase 0 結論、進度、下一步）。
+
 所有 migration 都**自帶資料、不讀外部檔案**，整支 notebook 複製貼上到 Databricks 即可執行。
 
 | 流水號 | 內容 | 重跑時機 |
