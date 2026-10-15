@@ -10,7 +10,7 @@
 | W1 task 2 `meeting_extracted_w1_t1_clean`（本資料夾） | 🟡 Databricks `dry_run = true` 第 3 輪**關卡全過**，**還沒跑 `dry_run = false`**，清洗表目前是空的 |
 | Databricks 上的 notebook | 與 repo 的 `notebook.ipynb` **同步**（最後一次同步：[c02]、[c05] 替換，已跑過 dry_run 確認） |
 | 本機測試 | `py -3.10 -m pytest tests/test_meeting_extracted_w1_t1_clean.py` 14 passed；ruff clean；notebook 已 strip |
-| git | **未 commit**：`STATUS.md`、`meeting_extracted_w1_t1_mail/`、`meeting_extracted_w1_t1_clean/`、兩個測試檔（見第 4 節） |
+| git | ✅ 已 commit 並 push：`75f3d97`（含 eda80fb 一起推上 origin/main）。之後的改動再照第 4 節流程 |
 
 最後一輪 dry_run 的 [c12] log（2026-10-15）：
 
@@ -38,7 +38,7 @@ seg0_kept 199（三輪分別 214 → 214 → 199；剩下的內容還沒看過�
 
 ## 4. Commit 提醒
 
-使用者只授權過一次 commit（`eda80fb`），之後的改動都還沒 commit。**要先問使用者**，同意後：
+2026-10-15 已 commit / push 到 `75f3d97`。之後的改動**要先問使用者**，同意後：
 
 ```
 py -3.10 tools/nb.py strip jobs/meeting_record/meeting_extracted_w1_t1_mail/notebook.ipynb
