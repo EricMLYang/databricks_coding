@@ -17,7 +17,9 @@
 |---|---|---|
 | `jobs/meeting_record/meeting_extracted_phase0_explore/` | Phase 0 探勘（一次性，已完成） | 只讀統計 notebook；`phase0_result.md` 是 2026-06-01～10-14 實跑結果（JSON） |
 | `jobs/meeting_record/meeting_extracted_migration/` | 一次性 migration | 流水號 notebook，見本資料夾 `README.md`；**不得由 W1 / W2 呼叫** |
-| `jobs/meeting_record/meeting_extracted_w1_*`（未建） | 定期 Job | 中立層週跑 T1-a → T1-m → T1-c → T1-b → T2 |
+| `jobs/meeting_record/meeting_extracted_w1_t1_mail/` | 定期 Job（W1 task 1） | T1-a → T1-m → T1-c：寫 mail 表與 participants 表 |
+| `jobs/meeting_record/meeting_extracted_w1_t1_clean/` | 定期 Job（W1 task 2） | T1-b：分段、token 化、content_type、content_hash / dup_of，寫 clean 表。**`HANDOFF.md` = 2026-10-15 中斷點，新 session 先讀** |
+| `jobs/meeting_record/meeting_extracted_w1_t2_*`（未建） | 定期 Job（W1 task 3） | T2 L1 萃取，寫 items 表 |
 | `jobs/meeting_record/meeting_extracted_w2_*`（未建） | 定期 Job | Sales Brief 鏡頭月跑 T3 → T4 → T5 |
 | `tests/test_meeting_extracted_*.py` | 本機測試 | 純函式 cell 測試 |
 
@@ -38,6 +40,16 @@
 | D9 | 公司種子（2026-10-15 使用者決定）：**Samsung 拆** `samsung_vd`（TV / MNT，Sales Brief 的 Samsung）與 `samsung`（非 VD / 分不出事業部；`samsung.com` 網域、素材只寫「Samsung / 三星」歸此）。**T3 規則：`customer = samsung` 且 `app ∈ {TV, MNT}` 視同 `samsung_vd`**。BenQ 與 Qisda **不合併**。`auodplus.com` 是集團子公司 → `entity_type = affiliate`、`side = auo`。LG `TV\|MNT`、BenQ `MNT`、Qisda `MNT`、Inventec `NB`、S-Core = Samsung SDS 子公司（partner）、Sumika = 住華（supplier）是推測值，使用者授權先用 | §6.3 初表 |
 | D10 | 信件品質問題（38% 無 md、base64 圖片翻倍、23% 整封重複）**先在我們這邊做防呆**，不先找 ETL owner：T1-m 三個正文欄都套初洗、刪 base64、mail 層 `body_hash` 去重、`has_headers` 標記 | – |
 | D11 | 中立層四張表 `CLUSTER BY (pk_seq)`，不做 partition；View 用 `CREATE OR REPLACE`，表改欄開新流水號 `ALTER TABLE ADD COLUMNS` | §3 型別由 Agent 定 |
+| D12 | `oversize` 看**初洗後**的 `display_len` > 200k（base64 圖片刪掉後那 4 封其實正常）；規格是初洗前 | §4.0 關卡 |
+| D13 | `segment_no` 用**文件順序**（上 → 下，第 n 個標頭區塊 = 第 n 段；段 0 = 第一個標頭前的文字或整筆未分段）；時間順序靠 `segment_date` 排，不改段序。參與者表與清洗表以此對齊 | §4.1 (c)「順序改為舊到新」 |
+| D14 | W1 增量水位 = mail 表 `max(create_date)`，不建 `job_run_log`；`cleaner_version` 不同的舊列自動重洗。轉寄人 token 固定 `P01`，T1-m 直接填，不需 T1-c 回填 | §2.1、§4.0b 4 |
+| D15 | 複雜逐封規則（標頭區塊、token 配發）用回傳 struct 的 Python UDF，不用 pandas UDF（本機測試環境無 pandas；日量百封級成本可忽略） | CLAUDE.md 效能原則的例外，cell 內註明 |
+| D16 | 規則 6 攤表格：**不猜表頭**（欄數未知，`key: value;` 重組無法 deterministic），改成連續 ≥ 8 個短行（≤ 20 字，可夾空行）併成一行、` \| ` 分隔；quote 仍是 `clean_text` 子字串 | §4.1 (b) 6 |
+| D17 | 規則 7 簡轉繁 **Phase 1 不做**（cluster library 無 OpenCC，內嵌字表易錯）；`clean_text` 保留原字，L1 輸出繁中即可。token 化不換「只寫英文名字」的稱呼（Hi Quinn），參與者表沒有這種寫法、硬換會吃掉一般英文字（Will、May） | §4.1 (b) 5、7 |
+| D18 | `content_type` 150–300 字且沒有其他訊號的段：thread 段 → `thread_reply`、有型號 → `inline_minutes`、否則 `noise`（規格表沒涵蓋這段區間）。紀要段落用行首型號切，每段通常只有 1 個型號，所以「≥ 3 型號」規則對紀要段改看「段內有型號」。整封重複（`dup_of_pk` 非 NULL）、`none`、`oversize` 的信**不寫段**（跳過，log 計數） | §4.1 (d) |
+| D20 | token 化後仍有 email 樣式（簽名檔、非標頭區塊的收件列、IMCEAEX 位址尾巴；參與者表沒有這些人）→ 遮成 `[email]`、只計數不擋；硬規則改成只檢查「參與者姓名殘留」。2026-10-15 第一次 Databricks dry_run 就是被這個擋下 | §4.1 (b) 5 硬規則 |
+| D21 | 第一次 Databricks dry_run（2026-10-15）看到的兩件事：(1) 段 0 幾乎都是 AUO e-news 橫幅的 md 表格（293 字，214 封），清洗時刪掉「每格都是空 / 分隔線 / 純網址 / [image]」的表格列，段 0 就會因太短不留；(2) token 編號是 pk 內出現順序，同一段被不同信轉寄時 `<P02>` 會變 `<P05>`，`content_hash` 改在抹掉編號（`<P>` / `<G>`）後計算，否則跨信去重對不到（首跑 dup_of 只有 12%）。另修 `app_hint` 讀 `app_default`（表裡是 ARRAY，不是字串）。第二次 dry_run 看到段 0 其實是**轉寄人簽名檔塞在表格列**（左格橫幅圖網址、右格「英文名 中文名 職稱 email」），再加：裸網址 → `[url]`、外連圖 → `[image]`；「英文名第一個字 ＋ 空白 ＋ 該人 token」→ token（只換這個組合，不單獨換名字） | §4.1 (e) 1 |
+| D19 | W1 task 2 增量不另設水位：mail 表有而清洗表沒有的 pk、mail 表 `cleaned_at` 比清洗表新的 pk、清洗表 `cleaner_version` 不同的 pk 都算本批；本批 pk 的段先 DELETE 再 append（重切後段數可能變，MERGE 留不住消失的段） | §2.1 |
 
 ## 4. Phase 0 結論（決定 T1 規則）
 
@@ -65,7 +77,9 @@
 | `001_semantic_entity` v1（公司 20、別名 68） | ✅ 2026-10-14 已在 Databricks 正式執行；無重複、無孤兒 |
 | `001_semantic_entity` v2（公司 21、別名 72；D9 的種子） | ✅ 2026-10-15 已在 Databricks 正式執行（entity insert 1 / update 8、alias insert 4 / update 4；無重複、無孤兒） |
 | `002_meeting_neutral_tables` | ✅ 2026-10-15 已在 Databricks 正式執行：4 表（33 / 34 / 19 / 35 欄）＋ 3 View（38 / 7 / 28 欄）建立，[c30] 無 PROBLEM |
-| W1（T1-a～T2） | ⬜ |
+| W1 task 1 `meeting_extracted_w1_t1_mail`（T1-a / T1-m / T1-c） | ✅ 2026-10-15 Databricks 正式寫表（incremental 首跑 = 全窗 493 封）。dry_run 關卡全過：conflict 0、from_ok 0.998、md 0.586、has_headers 0.544、oversize 0、side_unknown 0、participants 40,321 列 / 9,364 token。使用者未貼 [c30] 輸出與 §6.1 診斷結果。**待查**（不擋）：`dup_of_pk` 3.4%（17 封）遠低於 Phase 0 的 112 封；1 封 `mail_from` 解析失敗；1 個 `auo.comhi` 網域 |
+| W1 task 2 `meeting_extracted_w1_t1_clean`（T1-b） | 🟡 2026-10-15 Databricks `dry_run = true` 第 3 輪關卡全過（D20、D21 修了 4 輪）：493 封 → 454 封分段、1,865 段、每封 4.1 段；thread_reply 981 / inline_minutes 583 / noise 228 / attachment_only 49 / appointment 24；可萃取 1,564 段；dup_of 24.4%；clean_len P50 603 / P95 7,636；壓縮率 0.58；殘留姓名 0、遮掉 email 128；段 0 留 199（未細看，寫表後用 SQL 抽查）。**待 `dry_run = false` 寫表** |
+| W1 task 3（T2 L1） | ⬜ |
 | L1 prompt | ⬜ |
 | golden set | ⬜（需 PM 標註） |
 | W2（T3～T5） | ⬜ |
@@ -74,20 +88,70 @@
 
 ### 6.1 使用者端（Databricks）
 
-（001 v2、002 皆已執行，無待辦。）
+1. ✅ 2026-10-15 `dry_run = true` 跑過，關卡全過（結果見第 5 節）。
+2. 改 `dry_run = false` 跑 → 貼 [c30] 輸出。
+3. 寫表後跑下面三段診斷 SQL（輸出只有 pk / 筆數 / 長度 / 遮罩後形狀，無人名），貼回來：
 
-### 6.2 W1 第一支：`meeting_extracted_w1_t1`（T1-a ～ T1-c，規則、無 LLM）
+```sql
+-- 診斷 1：去重落差（Phase 0 整封相同 112 封 vs W1 dup_of_pk 17 封）。看 body_hash 為 NULL 的信有多少是初洗後縮到 150 字以下
+SELECT body_source_field, count(*) AS mails,
+       sum(CASE WHEN body_hash IS NULL THEN 1 ELSE 0 END) AS hash_null,
+       sum(CASE WHEN body_hash IS NULL AND raw_len >= 150 THEN 1 ELSE 0 END) AS shrunk_below_150,
+       sum(CASE WHEN dup_of_pk IS NOT NULL THEN 1 ELSE 0 END) AS dups
+FROM micenter.mi3_datahub_prod.s_meeting_record_mail_bu
+GROUP BY 1 ORDER BY 1;
 
-寫入 002 建的 `s_meeting_record_mail_bu`、`s_meeting_participants_bu`、`s_meeting_record_clean_bu`。先純函式＋測試，再接 Spark：
+-- 診斷 2：用 Phase 0 口徑（原始正文去空白後 sha1）重算整封相同的群，和 W1 口徑比
+WITH src AS (
+  SELECT m.pk_seq, m.body_source_field, m.display_len, m.body_hash,
+         sha1(regexp_replace(CASE m.body_source_field
+                WHEN 'mail_body_md' THEN b.mail_body_md
+                WHEN 'mail_without_fw' THEN b.mail_without_fw
+                ELSE b.mail_body END, '\\s+', '')) AS h_raw
+  FROM micenter.mi3_datahub_prod.s_meeting_record_mail_bu m
+  JOIN micenter.mi3_datahub_prod.b_internal_meeting_record b USING (pk_seq)
+  WHERE m.body_source_field <> 'none'
+)
+SELECT body_source_field,
+       count(*) - count(DISTINCT h_raw) AS raw_dup_copies,
+       count(*) - count(DISTINCT coalesce(body_hash, cast(pk_seq AS string))) AS w1_dup_copies,
+       sum(CASE WHEN display_len < 150 THEN 1 ELSE 0 END) AS short_after_clean
+FROM src GROUP BY 1 ORDER BY 1;
 
-- T1-a 取數：`is_test = false`、`create_date` 水位（`run_mode = incremental / backfill`）。
-- T1-m 初洗（D10）：來源選擇 md → `mail_without_fw` → `mail_body`；三欄都套規則 1–3；刪 `data:image/...;base64,`、`![…](cid:…)`、Word 殘渣、免責聲明；`[文字](網址)` 縮成文字；`has_headers`；`body_hash = sha1(normalize(body_display))` → `dup_of_pk`（命中較早 pk）；`oversize`。
-- T1-c 參與者：`mail_from` 四段 → forwarder（`P01`）；md `**From:** / **To:** / **Cc:**` 標頭 → 人與群組；email 網域後綴比對 `s_semantic_entity_alias`（`alias_type = email_domain`）→ `side / company`；關卡列出對不到的網域。
-- T1-b 分段與 token 化：`-----Original Message-----` / `**From:**` 切 thread；ITEM 表頭 / 型號行切紀要；`**Sent:**` 解析含 `MMMM d, yyyy h:mm:ss a`、處理 U+00A0；`display_start / end`；token 化後算 `content_hash` → `dup_of`。
-- `cleaner_version = "0.1"`；W1 第一個 task 做 §2.4 的一致性檢查（別名表涵蓋近 90 天網域）。
+-- 診斷 3：mail_from 解析失敗的那封與 auo.comhi 的形狀（字元遮成 x，只留 / @ . 與數字位數）
+SELECT 'from_fail' AS kind, b.pk_seq, regexp_replace(b.mail_from, '[^/]', 'x') AS shape
+FROM micenter.mi3_datahub_prod.s_meeting_record_mail_bu m
+JOIN micenter.mi3_datahub_prod.b_internal_meeting_record b USING (pk_seq)
+WHERE m.forwarder_emp_id IS NULL
+UNION ALL
+SELECT 'comhi', pk_seq, regexp_replace(display_name_raw, '[^@.<>; ]', 'x')
+FROM micenter.mi3_datahub_prod.s_meeting_participants_bu
+WHERE email_domain = 'auo.comhi';
+```
 
-### 6.3 之後
+### 6.2 W1 task 2：`meeting_extracted_w1_t1_clean`（T1-b）— 已建，待跑
 
+4. 新建 notebook `meeting_extracted_w1_t1_clean`（整支貼上 12 個 cell），`run_mode = backfill`、`date_from = 2026-06-01`、`dry_run = true` 跑全部 → 貼 [c12] 的 JSON log 與樣本（樣本是 token 化後前 200 字，不含人名）。重點看 `content_type` 分布、`dup_of_rate`（預期 0.3–0.6）、`residual_pii`（必須 0）、`segments_per_mail`、`date_inferred_rate`。
+5. ✅ dry_run 第 3 輪關卡全過（數字見第 5 節）。改 `dry_run = false` 跑 → 貼 [c30] 輸出。
+6. 寫表後抽查段 0（199 段留下來，不確定是轉寄人附註還是殘渣）：
+
+```sql
+-- 段 0 的分布
+SELECT content_type, count(*) AS n, percentile_approx(clean_len, 0.5) AS len_p50
+FROM micenter.mi3_datahub_prod.s_meeting_record_clean_bu WHERE segment_no = 0 GROUP BY 1;
+-- 抽 8 段看前 160 字（已 token 化；貼之前掃一眼有沒有人名）
+SELECT pk_seq, content_type, clean_len, substring(clean_text, 1, 160) AS head
+FROM micenter.mi3_datahub_prod.s_meeting_record_clean_bu WHERE segment_no = 0 ORDER BY rand(7) LIMIT 8;
+```
+7. 規則細節見該資料夾 `README.md`；之後要改規則就升 `cleaner_version`（下一版 0.2），incremental 會自動重洗舊版本的 pk。
+
+### 6.3 W1 task 3：T2 L1 萃取（下一步開發）
+
+讀清洗表 `content_type ∈ {inline_minutes, thread_reply}` 且 `dup_of IS NULL` 的段（`clean_len > 12k` 先整段送並記 log），每段呼叫 L1（規格 §5.1，prompt 內嵌成 cell 常數、附錄 A 當 few-shot），寫 `g_meeting_items_bu`：`item_id` / `item_key`（`sha1(pk ‖ seg ‖ normalize(quote))`）/ `supersedes_item_id`；quote 必須是 `clean_text` 子字串（否則 `extract_status = failed_quote`）；`speaker_side` 由 `speaker_token` 查參與者表（轉寄人 / 群組不得當發言人 → NULL 並記 log）；`customer` 經別名表正規化（Samsung + TV/MNT → samsung_vd 是 T3 的事，這裡只填 entity_id）；`sensitivity` 關鍵字規則 §6.6；`model` / `prompt_version` / `cleaner_version` lineage。LLM 端點與費用上限（§10.1）要先問使用者：用 `ai_query` 還是 Foundation Model API、模型名、每次跑最多幾段。
+
+### 6.4 之後
+
+0. W1 第一個 task 加 §2.4 一致性檢查（別名表涵蓋近 90 天網域）——目前以 [c12] 的 unmatched_domains 代替。
 1. L1 prompt（規格 §5.1）內嵌成 cell 常數；附錄 A 當 few-shot；T2 寫 `g_meeting_items_bu`（`item_key`、`supersedes_item_id`、quote 必須是 `clean_text` 子字串）。
 2. golden set 模板，請 PM 標。
 3. 003 migration：Sales Brief 鏡頭表（§3.4、§3.5）、`v_meeting_participants_q` column mask、分應用 View。
