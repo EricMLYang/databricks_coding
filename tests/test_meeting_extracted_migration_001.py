@@ -92,4 +92,4 @@ def test_inline_seed_is_valid(mod):
     ents = mod.parse_csv_text(mod.ENTITY_SEED, mod.ENTITY_COLS)
     alis = mod.parse_csv_text(mod.ALIAS_SEED, mod.ALIAS_COLS)
     assert mod.validate_seed(ents, alis) == []
-    assert len(ents) == 20 and len(alis) == 68
+    assert len(ents) == 21 and len(alis) == 72

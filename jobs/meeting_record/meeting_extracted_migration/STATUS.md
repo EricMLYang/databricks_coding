@@ -1,6 +1,6 @@
 # 會議紀錄萃取（meeting_extracted）現況與接手說明
 
-> 最後更新：2026-10-14。給下一個接手的人或 Agent：**先讀完本檔再動手**。每完成一步就回來更新「進度」與「下一步」。
+> 最後更新：2026-10-15。給下一個接手的人或 Agent：**先讀完本檔再動手**。每完成一步就回來更新「進度」與「下一步」。
 
 ## 1. 這是什麼
 
@@ -35,6 +35,9 @@
 | D6 | `brief_month` 窗口：以 `g_sales_brief_market_intelligence` 每 app × 期別的 `max(submitted_at)` 為截止點（上期截止後～本期截止）。**必須可微調**：`window_mode`（submitted_at / calendar / fixed_day）、`grace_days`、個別 app × 期別 `overrides`；對照格記 `window_start / window_end` | §6.5 日曆月（待決 #3） |
 | D7 | 待決 #1（三正文欄不一致）視為已解決：Phase 0 衝突 0%，pk 193 已確認三欄同一封信。一致性改抽樣 | §4.1 (a) 4 |
 | D8 | LLM 費用不是限制；不需 Batch API 優化 | §10.1 |
+| D9 | 公司種子（2026-10-15 使用者決定）：**Samsung 拆** `samsung_vd`（TV / MNT，Sales Brief 的 Samsung）與 `samsung`（非 VD / 分不出事業部；`samsung.com` 網域、素材只寫「Samsung / 三星」歸此）。**T3 規則：`customer = samsung` 且 `app ∈ {TV, MNT}` 視同 `samsung_vd`**。BenQ 與 Qisda **不合併**。`auodplus.com` 是集團子公司 → `entity_type = affiliate`、`side = auo`。LG `TV\|MNT`、BenQ `MNT`、Qisda `MNT`、Inventec `NB`、S-Core = Samsung SDS 子公司（partner）、Sumika = 住華（supplier）是推測值，使用者授權先用 | §6.3 初表 |
+| D10 | 信件品質問題（38% 無 md、base64 圖片翻倍、23% 整封重複）**先在我們這邊做防呆**，不先找 ETL owner：T1-m 三個正文欄都套初洗、刪 base64、mail 層 `body_hash` 去重、`has_headers` 標記 | – |
+| D11 | 中立層四張表 `CLUSTER BY (pk_seq)`，不做 partition；View 用 `CREATE OR REPLACE`，表改欄開新流水號 `ALTER TABLE ADD COLUMNS` | §3 型別由 Agent 定 |
 
 ## 4. Phase 0 結論（決定 T1 規則）
 
@@ -59,8 +62,9 @@
 | 步驟 | 狀態 |
 |---|---|
 | Phase 0 探勘 | ✅ 完成（2026-10-14） |
-| `001_semantic_entity`（公司 20、別名 68） | ✅ 已在 Databricks 正式執行；無重複、無孤兒 |
-| `002` 中立層 DDL | ⬜ 未開始（下一步） |
+| `001_semantic_entity` v1（公司 20、別名 68） | ✅ 2026-10-14 已在 Databricks 正式執行；無重複、無孤兒 |
+| `001_semantic_entity` v2（公司 21、別名 72；D9 的種子） | ✅ 2026-10-15 已在 Databricks 正式執行（entity insert 1 / update 8、alias insert 4 / update 4；無重複、無孤兒） |
+| `002_meeting_neutral_tables` | ✅ 2026-10-15 已在 Databricks 正式執行：4 表（33 / 34 / 19 / 35 欄）＋ 3 View（38 / 7 / 28 欄）建立，[c30] 無 PROBLEM |
 | W1（T1-a～T2） | ⬜ |
 | L1 prompt | ⬜ |
 | golden set | ⬜（需 PM 標註） |
@@ -68,27 +72,31 @@
 
 ## 6. 下一步
 
-### 6.1 `002_meeting_neutral_tables`（migration）
+### 6.1 使用者端（Databricks）
 
-建規格 §3.0b、§3.1、§3.2、§3.3 四張表與 §3.6 三個核心 View，形式同 001（自帶、`dry_run`、冪等、寫 `b_meeting_migration_log`）：
+（001 v2、002 皆已執行，無待辦。）
 
-- `s_meeting_record_mail_bu`：規格欄位 ＋ **`body_hash`、`dup_of_pk`（mail 層去重）、`has_headers`**
-- `s_meeting_participants_bu`
-- `s_meeting_record_clean_bu`：含 `content_hash / dup_of`、`display_start / display_end`
-- `g_meeting_items_bu`：含 `item_key / supersedes_item_id`
-- View：`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`
-- 規格 §11.1 延後的欄位（`sub_no`、`title_hint`、`dept_name`…）**先開欄、不填值**（加欄便宜、改鍵貴）
+### 6.2 W1 第一支：`meeting_extracted_w1_t1`（T1-a ～ T1-c，規則、無 LLM）
 
-### 6.2 之後
+寫入 002 建的 `s_meeting_record_mail_bu`、`s_meeting_participants_bu`、`s_meeting_record_clean_bu`。先純函式＋測試，再接 Spark：
 
-1. W1 的 T1-m（初洗，見第 4 節要多做的規則）→ T1-c（參與者，查 `s_semantic_entity_alias`，網域後綴比對）→ T1-b（分段、token 化）。全是規則、無 LLM，先寫純函式＋測試。
-2. L1 prompt（規格 §5.1）內嵌成 cell 常數；附錄 A 當 few-shot。
-3. golden set 模板，請 PM 標。
+- T1-a 取數：`is_test = false`、`create_date` 水位（`run_mode = incremental / backfill`）。
+- T1-m 初洗（D10）：來源選擇 md → `mail_without_fw` → `mail_body`；三欄都套規則 1–3；刪 `data:image/...;base64,`、`![…](cid:…)`、Word 殘渣、免責聲明；`[文字](網址)` 縮成文字；`has_headers`；`body_hash = sha1(normalize(body_display))` → `dup_of_pk`（命中較早 pk）；`oversize`。
+- T1-c 參與者：`mail_from` 四段 → forwarder（`P01`）；md `**From:** / **To:** / **Cc:**` 標頭 → 人與群組；email 網域後綴比對 `s_semantic_entity_alias`（`alias_type = email_domain`）→ `side / company`；關卡列出對不到的網域。
+- T1-b 分段與 token 化：`-----Original Message-----` / `**From:**` 切 thread；ITEM 表頭 / 型號行切紀要；`**Sent:**` 解析含 `MMMM d, yyyy h:mm:ss a`、處理 U+00A0；`display_start / end`；token 化後算 `content_hash` → `dup_of`。
+- `cleaner_version = "0.1"`；W1 第一個 task 做 §2.4 的一致性檢查（別名表涵蓋近 90 天網域）。
+
+### 6.3 之後
+
+1. L1 prompt（規格 §5.1）內嵌成 cell 常數；附錄 A 當 few-shot；T2 寫 `g_meeting_items_bu`（`item_key`、`supersedes_item_id`、quote 必須是 `clean_text` 子字串）。
+2. golden set 模板，請 PM 標。
+3. 003 migration：Sales Brief 鏡頭表（§3.4、§3.5）、`v_meeting_participants_q` column mask、分應用 View。
 
 ## 7. 待使用者回覆
 
-- 001 [c05] 標「待確認」的列：`samsung.com` / Samsung 是否要拆非 VD 事業部；BenQ 與 Qisda 是否合併；`auodplus.com` 是否算自家；LG、BenQ、Qisda、Inventec 的 `app_default`；S-Core、Sumika 的身分。
-- 要不要向 ETL owner 反映：10 月 38% 的信沒有 `mail_body_md`；md 內 base64 圖片每轉寄翻倍；23% 整封重複（重複轉寄或重複入庫）。使用者決定「先看我們這裡能做什麼，需要再去說明」。
+- **部門代碼名稱**（待決 #13）：使用者 2026-10-15 決定**先不提供**（名稱可能變動），`dept_name` 一律 NULL，不擋流程。Phase 0 轉寄人部門代碼 14 種，依封數：`DTDBB0` 183、`DTDAB0` 93、`DTDDC0` 71、`DTDBA0` 69、`DTDDB0` 28、`DTDAA0` 18、`DNB000` 11、`ABSBA0` 7、`DITA00` 4、`DNBAC0` 2、`DNBBF0` 1、`DTDCA0` 1、`DGMA0A` 1、`DTVAB0` 1。之後要填再開 003 建 `s_meeting_dept_code`（種子內嵌，形式同 001）。
+- （已答）Samsung 拆 VD / 非 VD、BenQ 與 Qisda 分開、auodplus 為集團子公司 → D9；其餘推測值先用。
+- （已答）信件品質問題先在我們這邊防呆 → D10；需要再去向 ETL owner 說明。
 
 ## 8. 開發注意事項
 

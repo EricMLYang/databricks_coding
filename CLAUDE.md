@@ -18,6 +18,7 @@ Notebook（`.ipynb`）、SQL query、開發 / 修改建議，偶爾是 Genie Spa
 - 局部修改**以整個 cell 為單位**輸出：`### [c05] 名稱 → 替換整個 cell` + 完整 code block，讓使用者直接貼上。
   動作只有：替換整個 cell、新增於 [cNN] 之後、刪除、不變。新增用字母尾碼 `[c05a]`，不重新編號。
 - 回覆順序：變更點摘要 → 逐 cell 完整內容 → 假設與需確認事項。
+- 每次改完 notebook，回覆最後附「**Databricks 同步清單**」：逐檔列出哪些 cell 替換、哪些新增於哪個 cell 之後、哪些刪除、新 notebook 則整支匯入；使用者照清單搬到 Databricks。
 - 改 `.ipynb` 檔用 `python tools/nb.py`，不手改 JSON。新 notebook 從 `jobs/_template/` 複製。
 - 轉換邏輯寫成 `DataFrame -> DataFrame` 純函式放獨立 cell，不含 I/O，才能被 `tests/` 載入測試。
 

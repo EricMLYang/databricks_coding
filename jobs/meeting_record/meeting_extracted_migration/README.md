@@ -9,6 +9,7 @@
 | 流水號 | 內容 | 重跑時機 |
 |---|---|---|
 | `001_semantic_entity` | 建 `s_semantic_entity`、`s_semantic_entity_alias`；從 [c05] 內嵌種子 MERGE | 改 [c05] 後重跑（預設 `dry_run = true` 先看差異） |
+| `002_meeting_neutral_tables` | 建中立層四張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`）與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS` |
 
 ## 001_semantic_entity
 
@@ -19,6 +20,20 @@
 - 改種子的流程：本機改 [c05] → `pytest tests/test_meeting_extracted_migration_001.py`（會驗種子合法）→ 把 [c05] 貼到 Databricks → `dry_run = true` 看差異 → `false` 執行。
 - 為什麼不建 `b_` 層：幾十列人工維護資料，notebook 裡的種子就是原始層，git 歷史就是變更紀錄。
 - 為什麼不放 `mi3_semantic`：那是 `SemanticLayerPlan.md` 預留的位置，尚未建立；之後若建，在那邊建 View 指向這兩張表即可。
-- 負責人 / 更新日期：（填）/ 2026-10-14
+- 2026-10-15 種子決定：Samsung 拆 `samsung_vd`（Sales Brief 的 Samsung）與 `samsung`（非 VD / 分不出事業部；`samsung.com` 網域歸此）；BenQ 與 Qisda 分開；`auodplus.com` 為 `affiliate`（集團子公司，side = auo）。LG / BenQ / Qisda / Inventec 的 `app_default` 與 S-Core / Sumika 身分是推測值（note 標「推測」）。
+- 負責人 / 更新日期：（填）/ 2026-10-15
 
 純函式測試：`tests/test_meeting_extracted_migration_001.py`（[c02]～[c05]）。
+
+## 002_meeting_neutral_tables
+
+- 輸入：[c04] `table_specs`（表：欄名 / 型別 / COMMENT / 鍵 / cluster_by）、[c05] `view_specs`（View：select 清單與 body SQL）。兩者是正本。
+- 輸出：規格 §3.0b / §3.1 / §3.2 / §3.3 四張表＋ §3.6 三個核心 View；`b_meeting_migration_log` 也 `IF NOT EXISTS`（以防跑在新 schema）。
+- 參數（widgets）：`catalog`、`schema`、`dry_run`（`true` 只驗 spec、印 DDL）。
+- 加的欄（STATUS.md §4）：mail 表 `body_hash / dup_of_pk / has_headers`；clean 表 `content_hash / dup_of / display_start / display_end`；items 表 `item_key / supersedes_item_id`。[c03] `validate_specs` 強制這些欄存在，也強制任何 View 不暴露 S3 欄（姓名、email、工號、原文）。
+- 四張表 `CLUSTER BY (pk_seq)`（liquid clustering；全部以 pk_seq 回溯 / MERGE，日量百封級不做 partition）。
+- 冪等：表 `IF NOT EXISTS`、View `CREATE OR REPLACE`。[c30] 比對實際欄位 vs spec，缺欄印 `ALTER TABLE ADD COLUMNS` 語句並 fail，不自動執行。
+- 不在本支：column mask / GRANT、分應用 View、Sales Brief 鏡頭表（§3.4 / §3.5）→ 之後的 003。
+- 負責人 / 更新日期：（填）/ 2026-10-15
+
+純函式測試：`tests/test_meeting_extracted_migration_002.py`（[c02]～[c05]；View SQL 在本機 Spark 以假資料實跑）。
