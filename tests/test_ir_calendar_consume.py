@@ -81,6 +81,12 @@ def test_volume_target_uses_manifest_fields_not_filename(mod):
     assert mod.volume_target("/Volumes/c/s/v", {"path": "docs/x/y/a.pdf"}) == (
         "/Volumes/c/s/v/uncategorized/_unknown_company/a.pdf"
     )
+    # 2026-10-15 新分類 SEMI（半導體 14 家）→ semiconductor/；漏加會掉進 uncategorized/
+    semi = {"path": "docs/NASDAQ_NVDA/2027Q3/Nvidia_Q3FY27_Presentation.pdf",
+            "category": "SEMI", "company_slug": "Nvidia"}
+    assert mod.volume_target("/Volumes/c/s/v", semi) == (
+        "/Volumes/c/s/v/semiconductor/Nvidia/Nvidia_Q3FY27_Presentation.pdf"
+    )
 
 
 def test_is_stale_treats_naive_as_taipei(mod):
@@ -434,6 +440,8 @@ HEALTH = {
     ("TPE:3718 缺公司代稱（company_slugs.json），實體檔案無法命名", "FATAL"),
     ("TPE:2330 2026Q2 找不到已落地檔案 docs/x.pdf", "FATAL"),
     ("實體檔案放棄 7 筆，需人工補", "WARN"),
+    # backlog B1/B2：爬蟲端之後會新增「法說漏抓」告警；先維持 WARN 跑一季看噪音量，要升 FATAL 時改 [c03] alert_level 並改這一列
+    ("法說漏抓 3 家（歷年同季有開）：TPE:3481:2026Q3, TPE:2409:2026Q3, TYO:6963:2026Q3", "WARN"),
     ("沒看過的新告警", "WARN"),
 ])
 def test_alert_level(mod, msg, level):
