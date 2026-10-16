@@ -18,8 +18,8 @@
 | `jobs/meeting_record/meeting_extracted_phase0_explore/` | Phase 0 探勘（一次性，已完成） | 只讀統計 notebook；`phase0_result.md` 是 2026-06-01～10-14 實跑結果（JSON） |
 | `jobs/meeting_record/meeting_extracted_migration/` | 一次性 migration | 流水號 notebook，見本資料夾 `README.md`；**不得由 W1 / W2 呼叫** |
 | `jobs/meeting_record/meeting_extracted_w1_t1_mail/` | 定期 Job（W1 task 1） | T1-a → T1-m → T1-c：寫 mail 表與 participants 表 |
-| `jobs/meeting_record/meeting_extracted_w1_t1_clean/` | 定期 Job（W1 task 2） | T1-b：分段、token 化、content_type、content_hash / dup_of，寫 clean 表。**`HANDOFF.md` = 2026-10-15 中斷點，新 session 先讀** |
-| `jobs/meeting_record/meeting_extracted_w1_t2_*`（未建） | 定期 Job（W1 task 3） | T2 L1 萃取，寫 items 表 |
+| `jobs/meeting_record/meeting_extracted_w1_t1_clean/` | 定期 Job（W1 task 2） | T1-b：分段、token 化、content_type、content_hash / dup_of，寫 clean 表。**`HANDOFF.md` = 2026-10-16 中斷點，新 session 先讀** |
+| `jobs/meeting_record/meeting_extracted_w1_t2_extract/` | 定期 Job（W1 task 3） | T2 L1 萃取（LLM，Azure Foundry）：prompt 內嵌 [c04]、後處理 [c05]、寫 items 表。2026-10-16 建好，未上 Databricks |
 | `jobs/meeting_record/meeting_extracted_w2_*`（未建） | 定期 Job | Sales Brief 鏡頭月跑 T3 → T4 → T5 |
 | `tests/test_meeting_extracted_*.py` | 本機測試 | 純函式 cell 測試 |
 
@@ -50,6 +50,10 @@
 | D20 | token 化後仍有 email 樣式（簽名檔、非標頭區塊的收件列、IMCEAEX 位址尾巴；參與者表沒有這些人）→ 遮成 `[email]`、只計數不擋；硬規則改成只檢查「參與者姓名殘留」。2026-10-15 第一次 Databricks dry_run 就是被這個擋下 | §4.1 (b) 5 硬規則 |
 | D21 | 第一次 Databricks dry_run（2026-10-15）看到的兩件事：(1) 段 0 幾乎都是 AUO e-news 橫幅的 md 表格（293 字，214 封），清洗時刪掉「每格都是空 / 分隔線 / 純網址 / [image]」的表格列，段 0 就會因太短不留；(2) token 編號是 pk 內出現順序，同一段被不同信轉寄時 `<P02>` 會變 `<P05>`，`content_hash` 改在抹掉編號（`<P>` / `<G>`）後計算，否則跨信去重對不到（首跑 dup_of 只有 12%）。另修 `app_hint` 讀 `app_default`（表裡是 ARRAY，不是字串）。第二次 dry_run 看到段 0 其實是**轉寄人簽名檔塞在表格列**（左格橫幅圖網址、右格「英文名 中文名 職稱 email」），再加：裸網址 → `[url]`、外連圖 → `[image]`；「英文名第一個字 ＋ 空白 ＋ 該人 token」→ token（只換這個組合，不單獨換名字） | §4.1 (e) 1 |
 | D19 | W1 task 2 增量不另設水位：mail 表有而清洗表沒有的 pk、mail 表 `cleaned_at` 比清洗表新的 pk、清洗表 `cleaner_version` 不同的 pk 都算本批；本批 pk 的段先 DELETE 再 append（重切後段數可能變，MERGE 留不住消失的段） | §2.1 |
+| D22 | T2 的 LLM 端點照 §5.0「沿 Sales Brief Job」：Azure Foundry Anthropic Messages（URL、secret `llm-api-keys/ms-foundry` 與 `jobs/sales_report_mail` [c04] 相同），`model` widget 預設 `claude-sonnet-5`；用 `requests` 直打不裝套件；thinking 關；**不送 `temperature`**（2026-10-16 實測 claude-sonnet-5 回 400「temperature is deprecated」，§5.0 的 temperature 0 做不到）；system prompt 開 `cache_control`（`prompt_cache` widget 可關）。**Phase 1 不走 Batch API**（週量千段內，同步 ＋ `concurrency` 併發夠用；費用 §10.1 本來就不是限制）；llama 比較延後到 golden set 有了再做。**2026-10-16 Agent 自定，使用者尚未確認模型名與費用上限** | §5.0、§10 |
+| D23 | items 表多一個 `extract_status = empty`：LLM 回 `items: []` 的段寫一列標記（`item_id` 流水號 000、summary 放 `segment_note`），否則每週 incremental 會對同一段重打。`failed_schema` / `failed_quote` 也照樣寫列（S3 命中的列 summary / quote 清空），View 只看 `ok`。`item_id` 流水號接著該段既有最大值編，「每次萃取新發」才不撞鍵 | §3.3、§4.2 |
+| D24 | T2 增量鍵 = (segment, `cleaner_version`, `prompt_version`)，不含 `model`（換模型要重萃就升 `prompt_version`）。段落 collect 到 driver 逐段呼叫（ThreadPool），不用 UDF 內打 HTTP：好控流量 / 重試 / 記 usage，筆數受 `max_segments` 閘門限制。重萃：本批段既有條目 MERGE 標 `superseded = true` 再 append 新條目；端點失敗的段不產生列、舊條目不動、下次再撿 | §10 成本 / 冪等 |
+| D25 | S3 關卡拆兩層：**寫進表的內容 S3 = 0** 由程式保證（[c05] 命中的列 summary / quote 清空、標 `failed_schema`；[c30] 用 SQL 再查）；LLM 輸出命中率 > 5% 才停、否則 WARN，避免一個誤判擋掉整批。S3 掃描除了參與者全名，再加參與者**英文名首字整字比對**（D17 讓 clean_text 留著 Luke 這種稱呼，50 段 dry_run 看到被抄進 summary）。prompt 0.2 同步加「summary 不得帶人名、quote 挑不含人名的片段」 | §4.2 關卡「S3 命中 = 0」 |
 
 ## 4. Phase 0 結論（決定 T1 規則）
 
@@ -78,9 +82,9 @@
 | `001_semantic_entity` v2（公司 21、別名 72；D9 的種子） | ✅ 2026-10-15 已在 Databricks 正式執行（entity insert 1 / update 8、alias insert 4 / update 4；無重複、無孤兒） |
 | `002_meeting_neutral_tables` | ✅ 2026-10-15 已在 Databricks 正式執行：4 表（33 / 34 / 19 / 35 欄）＋ 3 View（38 / 7 / 28 欄）建立，[c30] 無 PROBLEM |
 | W1 task 1 `meeting_extracted_w1_t1_mail`（T1-a / T1-m / T1-c） | ✅ 2026-10-15 Databricks 正式寫表（incremental 首跑 = 全窗 493 封）。dry_run 關卡全過：conflict 0、from_ok 0.998、md 0.586、has_headers 0.544、oversize 0、side_unknown 0、participants 40,321 列 / 9,364 token。使用者未貼 [c30] 輸出與 §6.1 診斷結果。**待查**（不擋）：`dup_of_pk` 3.4%（17 封）遠低於 Phase 0 的 112 封；1 封 `mail_from` 解析失敗；1 個 `auo.comhi` 網域 |
-| W1 task 2 `meeting_extracted_w1_t1_clean`（T1-b） | 🟡 2026-10-15 Databricks `dry_run = true` 第 3 輪關卡全過（D20、D21 修了 4 輪）：493 封 → 454 封分段、1,865 段、每封 4.1 段；thread_reply 981 / inline_minutes 583 / noise 228 / attachment_only 49 / appointment 24；可萃取 1,564 段；dup_of 24.4%；clean_len P50 603 / P95 7,636；壓縮率 0.58；殘留姓名 0、遮掉 email 128；段 0 留 199（未細看，寫表後用 SQL 抽查）。**待 `dry_run = false` 寫表** |
-| W1 task 3（T2 L1） | ⬜ |
-| L1 prompt | ⬜ |
+| W1 task 2 `meeting_extracted_w1_t1_clean`（T1-b） | ✅ 2026-10-16 Databricks 正式寫表（backfill 2026-06-01 起、`dry_run = false`）。[c30]：`batch_segments_in_table 1865 / stale 0 / dup_keys 0 / email_left 0 / dangling_dup_of 0 / table_total 1865`。dry_run 第 3 輪數字：493 封 → 454 封分段、1,865 段；thread_reply 981 / inline_minutes 583 / noise 228 / attachment_only 49 / appointment 24；可萃取 1,564 段（扣 dup_of 後約 1,180 段會送 T2）；dup_of 24.4%；段 0 留 199（**還沒抽查**，SQL 在 §6.2 第 6 點） |
+| W1 task 3 `meeting_extracted_w1_t2_extract`（T2 L1） | 🟡 2026-10-16 建好並貼到 Databricks（13 個 cell、README、tests 15 passed）。dry_run 四輪（10 / 10 / 10 / 50 段）調完：quote 失敗 1%、S3 0、customer NULL 0、費用 3 美元 / 50 段。**2026-10-16 下午全量 backfill 跑中**（`prompt_version 0.2`、`dry_run false`、`max_segments 0`、`date_from 2026-06-01`、`concurrency 4`，約 1,180 段、估 70 美元、2.5–3.5 小時）；使用者尚未貼 [c12] / [c30] 結果。D22–D25 |
+| L1 prompt | 🟡 v0.2 內嵌在 task 3 [c04]（0.2：人名規則，D25）（§5.1 十個構件、§6 規則、詞彙表壓縮版、附錄 A 5 條 few-shot）；50 段 dry_run 樣本品質可接受（事實 / 要求分開、S2 判定合理、thread 段 speaker 正確） |
 | golden set | ⬜（需 PM 標註） |
 | W2（T3～T5） | ⬜ |
 
@@ -131,9 +135,9 @@ WHERE email_domain = 'auo.comhi';
 
 ### 6.2 W1 task 2：`meeting_extracted_w1_t1_clean`（T1-b）— 已建，待跑
 
-4. 新建 notebook `meeting_extracted_w1_t1_clean`（整支貼上 12 個 cell），`run_mode = backfill`、`date_from = 2026-06-01`、`dry_run = true` 跑全部 → 貼 [c12] 的 JSON log 與樣本（樣本是 token 化後前 200 字，不含人名）。重點看 `content_type` 分布、`dup_of_rate`（預期 0.3–0.6）、`residual_pii`（必須 0）、`segments_per_mail`、`date_inferred_rate`。
-5. ✅ dry_run 第 3 輪關卡全過（數字見第 5 節）。改 `dry_run = false` 跑 → 貼 [c30] 輸出。
-6. 寫表後抽查段 0（199 段留下來，不確定是轉寄人附註還是殘渣）：
+4. ✅ notebook 已在 Databricks，dry_run 三輪調完（D20、D21）。
+5. ✅ 2026-10-16 `dry_run = false` 寫表，[c30] 全過（數字見第 5 節）。
+6. **待做**：抽查段 0（199 段留下來，不確定是轉寄人附註還是殘渣）：
 
 ```sql
 -- 段 0 的分布
@@ -145,16 +149,28 @@ FROM micenter.mi3_datahub_prod.s_meeting_record_clean_bu WHERE segment_no = 0 OR
 ```
 7. 規則細節見該資料夾 `README.md`；之後要改規則就升 `cleaner_version`（下一版 0.2），incremental 會自動重洗舊版本的 pk。
 
-### 6.3 W1 task 3：T2 L1 萃取（下一步開發）
+### 6.3 W1 task 3：`meeting_extracted_w1_t2_extract`（T2 L1）— 已在 Databricks，全量跑中
 
-讀清洗表 `content_type ∈ {inline_minutes, thread_reply}` 且 `dup_of IS NULL` 的段（`clean_len > 12k` 先整段送並記 log），每段呼叫 L1（規格 §5.1，prompt 內嵌成 cell 常數、附錄 A 當 few-shot），寫 `g_meeting_items_bu`：`item_id` / `item_key`（`sha1(pk ‖ seg ‖ normalize(quote))`）/ `supersedes_item_id`；quote 必須是 `clean_text` 子字串（否則 `extract_status = failed_quote`）；`speaker_side` 由 `speaker_token` 查參與者表（轉寄人 / 群組不得當發言人 → NULL 並記 log）；`customer` 經別名表正規化（Samsung + TV/MNT → samsung_vd 是 T3 的事，這裡只填 entity_id）；`sensitivity` 關鍵字規則 §6.6；`model` / `prompt_version` / `cleaner_version` lineage。LLM 端點與費用上限（§10.1）要先問使用者：用 `ai_query` 還是 Foundation Model API、模型名、每次跑最多幾段。
+規則見該資料夾 `README.md`；決定 D22–D25。模型 / 端點 / 費用使用者已確認：`claude-sonnet-5`、Azure Foundry（同 Sales Brief Job）、全量一次跑完（實測 3 美元 / 50 段 → 全量約 70 美元，比 §10.1 估的高一倍多，主因輸出 token）。
+
+7. ✅ dry_run 10 段 ×3 輪、50 段 ×1 輪調完（經過見 `../meeting_extracted_w1_t1_clean/HANDOFF.md` §3）。
+8. ✅ 關卡：quote 失敗 1%（三層比對後）、schema 失敗 < 1%、S3 0、customer NULL 0。
+9. 🟡 **2026-10-16 全量 backfill 跑中**（`dry_run = false`、`max_segments = 0`）。跑完使用者會貼 [c12] JSON log 與 [c30] dict。接手 Agent 要做：
+   - 看 [c12]：endpoint errors、`segments_truncated`、quote / schema 失敗率、S3 命中率、費用；[c30]：寫入後 S3 = 0、dup 0、superseded 數。
+   - 出 summary 人名抽查 SQL（大寫英文字樣式；輸出只給 pk / item_id / 遮罩形狀）。
+   - [c11] 加進度 log（每 50 段印 已完成 / 耗時 / 錯誤數），這次全量盲等 2 小時以上是因為 [c11] 不印逐段進度。
+   - 若有 endpoint errors 的段：`run_mode = incremental`、`retry_failed = false` 再跑一次會自動撿回（D24）。
+10. 之後 W1 Job 三個 task 串起來週跑（`run_mode = incremental`）；加 §2.4 設定一致性檢查。
 
 ### 6.4 之後
 
 0. W1 第一個 task 加 §2.4 一致性檢查（別名表涵蓋近 90 天網域）——目前以 [c12] 的 unmatched_domains 代替。
-1. L1 prompt（規格 §5.1）內嵌成 cell 常數；附錄 A 當 few-shot；T2 寫 `g_meeting_items_bu`（`item_key`、`supersedes_item_id`、quote 必須是 `clean_text` 子字串）。
-2. golden set 模板，請 PM 標。
-3. 003 migration：Sales Brief 鏡頭表（§3.4、§3.5）、`v_meeting_participants_q` column mask、分應用 View。
+1. ✅ L1 prompt v0.2 與 T2 已建並跑（task 3）。
+2. cleaner 0.2（task 2）：去掉落單的 `**` 粗體殘渣（會進 quote）；只有與會名單的段歸 `attachment_only`（pk 112 那類被當 thread_reply 送 LLM 回 empty）。升版後 incremental 自動重洗，T2 會重萃那些段（舊條目標 superseded）。
+3. thread 近似段（152-7 / 152-8）萃出重複條目：Phase 1 接受，T3 時以相似度合併或段層近似去重。
+4. golden set 模板，請 PM 標；有了再做 llama 比較（D22）、算 §9.2 指標。
+5. 003 migration：Sales Brief 鏡頭表（§3.4、§3.5）、`v_meeting_participants_q` column mask、分應用 View。
+6. W2：T3 標註（程式規則 + `sb_facet_map`，Phase 1 不做 L2）→ T4 對照（L3，單邊程式判）→ T5 關卡與 `job_run_log`；PM 審核匯出 md（§4.6）。
 
 ## 7. 待使用者回覆
 
