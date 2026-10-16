@@ -62,7 +62,29 @@ PK_TOKENS = {
     "P03": {"side": "auo", "company": "auo", "kind": "person", "is_forwarder": False},
     "G01": {"side": "customer", "company": "acer", "kind": "group", "is_forwarder": False},
 }
-NAMES = {"王小美", "Amy Wang", "Wang, Amy"}
+PARTS = [
+    {
+        "kind": "person",
+        "token": "P02",
+        "display_name_raw": "Amy Wang 王小美",
+        "name_zh": "王小美",
+        "name_en": "Amy Wang",
+    },
+    {
+        "kind": "group",
+        "token": "G01",
+        "display_name_raw": "MNT PM",
+        "name_zh": None,
+        "name_en": None,
+    },
+    {
+        "kind": "person",
+        "token": "P03",
+        "display_name_raw": "Li",
+        "name_zh": "李",
+        "name_en": "Li",
+    },  # 太短不算
+]
 ALIASES = [
     ("acer", "acer"),
     ("Acer", "acer"),
@@ -78,7 +100,7 @@ def _ctx(mod, **kw):
     exact, ordered = mod.build_alias_index(ALIASES)
     ctx = {
         "pk_tokens": PK_TOKENS,
-        "names": NAMES,
+        "s3_patterns": mod.name_patterns_of(PARTS),
         "alias_exact": exact,
         "alias_ordered": ordered,
         "prompt_version": "0.1",
@@ -143,8 +165,7 @@ def test_user_prompt_has_tokens_but_no_names(mod):
     assert "thread 標頭 Sent:" in up and "2026-08-13" in up
     assert CLEAN_TEXT in up
     assert not mod.EMAIL_ANY_RE.search(up)
-    for n in NAMES:
-        assert n not in up
+    assert mod.s3_hits([up], mod.name_patterns_of(PARTS)) == 0
     up2 = mod.build_user_prompt(dict(SEG, date_inferred=True, content_type="inline_minutes"), {})
     assert "以信件日期代替" in up2 and "沒有解析到參與者" in up2
 
@@ -205,6 +226,10 @@ def test_normalize_customer(mod):
     assert mod.normalize_customer("vd", exact, ordered) == "samsung_vd"  # 精確可以短
     assert mod.normalize_customer("DVD player", exact, ordered) is None  # 短別名不做包含比對
     assert mod.normalize_customer(None, exact, ordered) is None
+    # [c21] 別名表更新後補對：只回傳對得上的，None / 重複略過
+    assert mod.renormalize_customers(
+        ["acer", "unknownco", None, "Samsung VD", "acer"], exact, ordered
+    ) == {"acer": "acer", "Samsung VD": "samsung_vd"}
 
 
 def test_resolve_speaker(mod):
@@ -217,32 +242,47 @@ def test_resolve_speaker(mod):
     assert mod.resolve_speaker("Amy", PK_TOKENS) == (None, None, "unknown_token")
 
 
-def test_name_variants_and_s3(mod):
-    parts = [
-        {
-            "kind": "person",
-            "display_name_raw": "Amy Wang 王小美",
-            "name_zh": "王小美",
-            "name_en": "Amy Wang",
-        },
-        {"kind": "group", "display_name_raw": "MNT PM", "name_zh": None, "name_en": None},
-        {"kind": "person", "display_name_raw": "Li", "name_zh": "李", "name_en": "Li"},  # 太短不算
+def test_name_patterns_and_s3_mask(mod):
+    pats = mod.name_patterns_of(
+        PARTS + [{"kind": "person", "token": "P05", "name_en": "Will Chen"}]
+    )
+    # 長的先換（同長度照字串排）；群組與太短的不算；英文名首字另成一條（區分大小寫）
+    assert [
+        (rx.pattern.count(r"[\s\-_.]*") + 1 if "A-Za-z0-9" in rx.pattern else 0, repl)
+        for rx, repl in pats
+    ] == [
+        (0, "<P02>"),  # Amy Wang 王小美（含中文 → 子字串）
+        (2, "<P05>"),  # Chen, Will
+        (2, "<P02>"),  # Wang, Amy
+        (2, "<P05>"),  # Will Chen
+        (2, "<P02>"),  # Amy Wang
+        (1, "<P05>"),  # Will（首字）
+        (1, "<P02>"),  # Amy（首字）
+        (0, "<P02>"),  # 王小美
     ]
-    names = mod.name_variants_of(parts)
-    assert names == {"Amy Wang 王小美", "王小美", "Amy Wang", "Wang, Amy"}
-    assert mod.s3_hits(["<P02> 說明規格"], names) == 0
-    assert mod.s3_hits(["王小美 說明規格", None], names) == 1
-    assert mod.s3_hits(["聯絡 amy@acer.example"], names) == 1
-    assert mod.s3_hits(["wang, amy 回覆"], names) == 1  # 不分大小寫
-    # 英文名首字：整字、區分大小寫；< 3 字母或群組不算
-    res = mod.first_name_res(parts + [{"kind": "person", "name_en": "Will Chen"}])
-    assert [r.pattern for r in res] == [
-        r"(?<![A-Za-z])Amy(?![A-Za-z])",
-        r"(?<![A-Za-z])Will(?![A-Za-z])",
-    ]
-    assert mod.s3_hits(["分享給 MNT 成員（Amy, Juno）"], set(), res) == 1
-    assert mod.s3_hits(["we are willing to; AMY"], set(), res) == 0
-    assert mod.s3_hits(["Will 確認"], set(), res) == 1
+    assert mod.s3_mask("<P02> 說明規格", pats) == ("<P02> 說明規格", 0)
+    assert mod.s3_mask("王小美 說明規格", pats) == ("<P02> 說明規格", 1)
+    assert mod.s3_mask("聯絡 amy@acer.example", pats) == ("聯絡 <email>", 1)
+    assert mod.s3_mask("wang, amy 回覆", pats) == ("<P02> 回覆", 1)  # 全名不分大小寫
+    assert mod.s3_mask("Amy Wang 王小美 與 Amy 同意", pats) == (
+        "<P02> 與 <P02> 同意",
+        2,
+    )  # 長的先換，不留半截
+    assert mod.s3_mask("分享給 MNT 成員（Amy, Juno）", pats) == (
+        "分享給 MNT 成員（<P02>, Juno）",
+        1,
+    )
+    assert mod.s3_mask("we are willing to; AMY; maximum", pats) == (
+        "we are willing to; AMY; maximum",
+        0,
+    )  # 首字區分大小寫、整字
+    assert mod.s3_mask("Will 確認 Amy-Wang 的 Samsung", pats) == ("<P05> 確認 <P02> 的 Samsung", 2)
+    assert mod.s3_mask(None, pats) == (None, 0) and mod.s3_mask("王小美", pats) == ("<P02>", 1)
+    assert mod.s3_hits(["王小美 說", None, "x@y.example"], pats) == 2
+    # 沒有 token 的參與者列 → <P00>，不會漏遮
+    assert mod.s3_mask(
+        "Bob Lee 到", mod.name_patterns_of([{"kind": "person", "name_en": "Bob Lee"}])
+    ) == ("<P00> 到", 1)
 
 
 # ---------- [c05] build_item_rows ----------
@@ -339,25 +379,40 @@ def test_build_item_rows_failures(mod):
             _item(summary="分享給 MNT 成員（Amy, Juno）"),
         ],
     }
-    first = mod.first_name_res([{"kind": "person", "name_en": "Amy Wang"}])
-    rows, st = mod.build_item_rows(resp, None, SEG, _ctx(mod, nnn_offset=5, first_names=first))
+    rows, st = mod.build_item_rows(resp, None, SEG, _ctx(mod, nnn_offset=5))
     assert [r["item_id"][-3:] for r in rows] == ["006", "007", "008", "009", "010", "011"]
+    # S3 命中改遮罩不作廢（D26）：姓名 → <Pnn>、email → <email>，條目保留
     assert [r["extract_status"] for r in rows] == [
         "failed_quote",
         "failed_schema",
+        "ok",
+        "failed_quote",
         "failed_schema",
-        "failed_schema",
-        "failed_schema",
-        "failed_schema",
+        "ok",
     ]
-    assert st == {**st, "items": 6, "ok": 0, "failed_schema": 5, "failed_quote": 1, "s3": 3}
-    assert rows[5]["summary"] == "[L1 failed] S3 hit in summary/quote"
+    assert st == {
+        **st,
+        "items": 6,
+        "ok": 2,
+        "failed_schema": 2,
+        "failed_quote": 2,
+        "s3": 3,
+        "s3_masked": 3,
+    }
     assert (
-        rows[0]["summary"] and rows[0]["quote"] == "這句不在正文裡"
+        rows[0]["summary"] and rows[0]["quote"] == "這句不在正文裡" and rows[0]["s3_masked"] == 0
     )  # failed_quote 保留內容供調 prompt
-    assert rows[2]["summary"] == "[L1 failed] S3 hit in summary/quote" and rows[2]["quote"] is None
-    assert rows[3]["summary"] == "[L1 failed] S3 hit in summary/quote" and rows[3]["quote"] is None
-    assert not any(mod.s3_hits([r["summary"], r["quote"]], NAMES) for r in rows)
+    assert rows[2]["summary"] == "<P02> 說 MP 延後" and rows[2]["s3_masked"] == 1
+    assert rows[3]["quote"] == "聯絡 <email>" and rows[3]["s3_masked"] == 1
+    assert rows[5]["summary"] == "分享給 MNT 成員（<P02>, Juno）" and rows[5]["s3_masked"] == 1
+    pats = mod.name_patterns_of(PARTS)
+    assert not any(mod.s3_hits([r["summary"], r["quote"]], pats) for r in rows)
+    # quote 裡的稱呼被換成 token 後仍要能對上正文（正文已 token 化的情況）
+    resp = {"segment_note": "", "items": [_item(quote="Amy Wang: Sent: 2026-08-13 10:00")]}
+    seg = {**SEG, "clean_text": "<P02>: Sent: 2026-08-13 10:00\n其餘"}
+    rows, st = mod.build_item_rows(resp, None, seg, _ctx(mod))
+    assert rows[0]["extract_status"] == "ok" and rows[0]["quote"] == "<P02>: Sent: 2026-08-13 10:00"
+    assert rows[0]["item_key"] == mod.item_key_of(7, 2, rows[0]["quote"])
 
 
 def test_build_item_rows_empty_and_segment_failure(mod):
@@ -377,11 +432,11 @@ def test_build_item_rows_empty_and_segment_failure(mod):
         and rows[0]["item_id"] == "BU-MTG-7-2-0-003"
     )
     assert rows[0]["summary"].startswith("[L1 failed] invalid JSON") and st["failed_schema"] == 1
-    # segment_note 含姓名 → 不落表
-    rows, _ = mod.build_item_rows(
+    # segment_note 含姓名 → 換成 token 再落表
+    rows, st = mod.build_item_rows(
         {"segment_note": "王小美 寒暄", "items": []}, None, SEG, _ctx(mod)
     )
-    assert rows[0]["summary"] is None
+    assert rows[0]["summary"] == "<P02> 寒暄" and rows[0]["s3_masked"] == 1 and st["s3"] == 1
 
 
 def test_merge_stats(mod):
@@ -454,6 +509,9 @@ def test_select_batch_segments(mod, spark, clean_schema, items_schema):
             _seg_row(clean_schema, pk_seq=4, segment_no=1),  # 上次 failed_schema
             _seg_row(clean_schema, pk_seq=5, segment_no=1),  # 上次 empty
             _seg_row(clean_schema, pk_seq=6, segment_no=1),  # 全新
+            _seg_row(
+                clean_schema, pk_seq=7, segment_no=1
+            ),  # 有 ok 也有 failed_quote → retry_failed 才重打
         ],
         clean_schema,
     )
@@ -469,6 +527,10 @@ def test_select_batch_segments(mod, spark, clean_schema, items_schema):
             _item_row(
                 items_schema, item_id="F", pk_seq=6, segment_no=1, superseded=True
             ),  # 已 superseded 不算
+            _item_row(items_schema, item_id="G", pk_seq=7, segment_no=1),
+            _item_row(
+                items_schema, item_id="H", pk_seq=7, segment_no=1, extract_status="failed_quote"
+            ),
         ],
         items_schema,
     )
@@ -481,7 +543,7 @@ def test_select_batch_segments(mod, spark, clean_schema, items_schema):
         (r.pk_seq, r.segment_no)
         for r in mod.select_batch_segments(clean, items, "0.1", True).collect()
     )
-    assert got == [(1, 2), (3, 1), (4, 1), (6, 1)]
+    assert got == [(1, 2), (3, 1), (4, 1), (6, 1), (7, 1)]
 
 
 def test_segment_offsets_and_supersedes(mod, spark, items_schema):

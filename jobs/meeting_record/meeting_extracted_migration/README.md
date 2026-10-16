@@ -9,7 +9,7 @@
 | 流水號 | 內容 | 重跑時機 |
 |---|---|---|
 | `001_semantic_entity` | 建 `s_semantic_entity`、`s_semantic_entity_alias`；從 [c05] 內嵌種子 MERGE | 改 [c05] 後重跑（預設 `dry_run = true` 先看差異） |
-| `002_meeting_neutral_tables` | 建中立層四張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`）與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS` |
+| `002_meeting_neutral_tables` | 建中立層四張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`）與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS`（例外：items 表 `s3_masked` 一欄由 task 3 [c10] 缺欄時自動補，D26；spec 已同步） |
 
 ## 001_semantic_entity
 
@@ -21,7 +21,8 @@
 - 為什麼不建 `b_` 層：幾十列人工維護資料，notebook 裡的種子就是原始層，git 歷史就是變更紀錄。
 - 為什麼不放 `mi3_semantic`：那是 `SemanticLayerPlan.md` 預留的位置，尚未建立；之後若建，在那邊建 View 指向這兩張表即可。
 - 2026-10-15 種子決定：Samsung 拆 `samsung_vd`（Sales Brief 的 Samsung）與 `samsung`（非 VD / 分不出事業部；`samsung.com` 網域歸此）；BenQ 與 Qisda 分開；`auodplus.com` 為 `affiliate`（集團子公司，side = auo）。LG / BenQ / Qisda / Inventec 的 `app_default` 與 S-Core / Sumika 身分是推測值（note 標「推測」）。
-- 負責人 / 更新日期：（填）/ 2026-10-15
+- 2026-10-16 v3（29 公司 / 93 別名）：task 3 全量後 `customer_raw` 對不上的名單補進來，全部標「推測」待使用者更正——`AOC → tpv`；`SEHC / SEC / SAMEX / SIEL → samsung`（分不出事業部，T3 依 app 歸 VD）；Wistron / Foxconn / Amtran / Wacom 建 `customer`（ODM / SI，app 多數未定）；NVIDIA `partner`；HKC / BOE / Innolux 建新類別 `competitor`（side = third_party，`customer` 欄對不到是刻意的）。跑完 001 後，task 3 跑一輪 `dry_run = false`、`retry_failed = false` 就會由 [c21] 把既有條目的 `customer` 補對，不重萃。
+- 負責人 / 更新日期：（填）/ 2026-10-16
 
 純函式測試：`tests/test_meeting_extracted_migration_001.py`（[c02]～[c05]）。
 

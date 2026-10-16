@@ -92,4 +92,14 @@ def test_inline_seed_is_valid(mod):
     ents = mod.parse_csv_text(mod.ENTITY_SEED, mod.ENTITY_COLS)
     alis = mod.parse_csv_text(mod.ALIAS_SEED, mod.ALIAS_COLS)
     assert mod.validate_seed(ents, alis) == []
-    assert len(ents) == 21 and len(alis) == 72
+    assert len(ents) == 29 and len(alis) == 93
+    # v3（2026-10-16）：同業面板廠是 competitor / third_party，不會被當 customer
+    by_id = {e["entity_id"]: e for e in ents}
+    assert by_id["hkc"]["entity_type"] == "competitor" and by_id["hkc"]["side"] == "third_party"
+    assert {a["alias"] for a in alis if a["entity_id"] == "samsung"} >= {
+        "SEHC",
+        "SEC",
+        "SAMEX",
+        "SIEL",
+    }
+    assert any(a["alias"] == "AOC" and a["entity_id"] == "tpv" for a in alis)
