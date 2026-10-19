@@ -17,6 +17,7 @@
 
 ## 2. 下一步（照順序）
 
+0a. **方向 C 開工（2026-10-19）**：`003_meeting_semantic_lens` 在 repo（鏡頭表 ＋ 候選 View ＋ 消費 View、tests 9 passed），**Databricks 已執行（2026-10-19）**，探索 SQL 已跑、分布記在 STATUS §6.5，**Stage A job `meeting_extracted_sem_stage_a` 已建並全量寫表（D30；12,686 列、event 12,048 / intel 448 / semantic 190、USD 1.36）**。接手要做：PM 審核（直接 UPDATE 表的 verified / review_note）→ Stage B（STATUS §6.5 第 4 點）。
 0. **D28 / D29 同步 ＋ 三個 task 各跑一輪 incremental**（STATUS §6.1 第 0 點）。✅ task 1 dry_run 跑過三次（D28 版、D29 版、CSS 400 字上限版——第三次誤救 42 封 CSS 垃圾、`dup_of_pk` 11%，`HTML_DROP_RE` 已修，見 STATUS §6.1 第 0b 點的處置）：**只救回 4 封**，其餘 142 封四個欄位都沒正文（`mail_body_html` 只有 `<head>`）→ **ETL 截斷，找 ETL owner**（STATUS §7、證據 SQL §6.1 第 0c 點）。D28 / D29 版照樣 `dry_run = false` 寫表（這些信變 `none`、task 2 跳過，不再有 27 字假段），再 task 2 → task 3 各一輪 incremental。✅ **2026-10-19 三個 task 都跑完寫表**（task 2 1,817 段；task 3 90 段 / 545 列 / 約 5 美元；[c30] 都一致）。剩：STATUS §6.1 第 0c 點 ETL 證據 SQL → 找 ETL owner；commit。
 1. ✅ Databricks 已同步（task 3 14 cell、001 v3、002 [c04]），001 v3 與 task 3 incremental 一輪都跑完（2026-10-16）。
 2. ✅ 001 v3 推測對應使用者沒改；[c21] 更新 502 列。
@@ -24,7 +25,7 @@
 4. **補跑撿回 583 條**（使用者決定時機；**先做第 0 點**，因為重洗後 `retry_failed` 的段數可能變）：`run_mode = backfill`、`retry_failed = true`、`dry_run = false`、`max_segments = 0`、`concurrency = 8`；289 段、35–40 美元、約 1 小時。
 5. **prompt 0.3 ＋ cleaner 0.2 一起出**：prompt 0.3 加「條目所在章節 / 標題指明客戶，或整段是單一客戶會議，每條都填 customer_raw」；cleaner 0.2 去 `**` 殘渣、只有名單的段歸 `attachment_only`。兩者都會讓全量重萃（約 70 美元），所以一起做一次。做之前先做段 0 抽查（STATUS §6.2 第 6 點）。
 6. W1 三個 task 串成一個 Job 週跑（`run_mode = incremental`）；加規格 §2.4 設定一致性檢查。
-7. 之後：golden set 模板（有了才做 llama 比較、§9.2 指標）、003 migration（Sales Brief 鏡頭表、column mask、分應用 View；`s3_masked` 已由 task 3 [c10] ALTER 補，003 只需列入 spec）、W2 T3–T5（STATUS §6.4）。
+7. 之後：golden set 模板（有了才做 llama 比較、§9.2 指標）、004 migration（Sales Brief 鏡頭表、column mask、分應用 View；`s3_masked` 已由 task 3 [c10] ALTER 補，004 只需列入 spec）、W2 T3–T5（STATUS §6.4）。
 
 ## 3. 掛著的問題（都不擋）
 
@@ -81,8 +82,8 @@ W1 中立層三個 task 都已正式寫表，下一階段是「拿中立層做�
 1. **先補資料品質，再開鏡頭**（兩個都要花 LLM 錢，使用者決定時機）：
    - 撿回 583 條：task 3 `run_mode = backfill`、`retry_failed = true`、`dry_run = false`、`max_segments = 0`、`concurrency = 8`（289 段、35–40 美元、約 1 小時）。
    - prompt 0.3 ＋ cleaner 0.2 一起出、一次全量重跑（約 70 美元）。prompt 0.3 要加：(a) 條目所在章節 / 標題指明客戶或整段是單一客戶會議 → 每條都填 `customer_raw`；(b) 非參與者的人名一律改寫為角色；(c) 同步升 [c04] `PROMPT_VERSION_IN_CELL` 與 widget 預設。cleaner 0.2：去掉落單 `**`、只有與會名單的段歸 `attachment_only`、看段 0 抽查結果決定是否再加規則（STATUS §6.2 第 6 點）。
-2. **方向 C 彙整語意（§8.3）**：Stage A 的會議來源改讀 `v_meeting_items_q`。先做的事：(a) 003 migration 建 `g_meeting_items_sem_bu`（schema 草案在 §8.3，欄位：item_id / item_key / week / category / app / term / summary / quote / date / source / tags / as_of / dup_of / route_hint / extract_note / verified / review_note）；(b) 候選規則用 SQL 先算（semantic：`statement_type = definition` 或 `terms_mentioned` 非空且 quote 含「指 / 定義 / 算法 / 口徑」；intel：`statement_type ∈ {opinion, fact}` 且 `topic_tag_primary ∈ {demand, commercial_relation, supply_chain, capacity}`；其餘 event），看分布再決定 LLM 只判哪些；(c) PM 審核以 `item_key` 承接（重萃後 `item_id` 會變，`item_key` 不變）。會議紀要（`content_type = inline_minutes`）可降權。
-3. **W2 Sales Brief 鏡頭（§4.3–§4.5）**：003 migration 建 `g_meeting_items_sb_bu`、`g_meeting_sb_reconcile_bu`、`v_meeting_sb_reconcile_q`、`v_meeting_report_cells`、`v_meeting_participants_q`（外部人員 column mask）、分應用 View；T3 程式規則（`sb_facet_map`、§7.2 `sb_relevant`，Phase 1 不做 L2）→ T4 對照（兩邊都有才呼叫 L3，單邊程式判）→ T5 關卡寫 `job_run_log`；PM 審核匯出 md（§4.6）。前置：Phase 0 探勘 Sales Brief 三張文字表的欄位與品牌值（待決 #10）。
+2. **方向 C 彙整語意（§8.3）**：Stage A 的會議來源改讀 `v_meeting_items_q`。**(a)(b)(c) 2026-10-19 已做成 003（repo）**，剩 Databricks 執行 ＋ 探索 SQL ＋ Stage A job。原規劃：(a) 003 migration 建 `g_meeting_items_sem_bu`（schema 草案在 §8.3，欄位：item_id / item_key / week / category / app / term / summary / quote / date / source / tags / as_of / dup_of / route_hint / extract_note / verified / review_note）；(b) 候選規則用 SQL 先算（semantic：`statement_type = definition` 或 `terms_mentioned` 非空且 quote 含「指 / 定義 / 算法 / 口徑」；intel：`statement_type ∈ {opinion, fact}` 且 `topic_tag_primary ∈ {demand, commercial_relation, supply_chain, capacity}`；其餘 event），看分布再決定 LLM 只判哪些；(c) PM 審核以 `item_key` 承接（重萃後 `item_id` 會變，`item_key` 不變）。會議紀要（`content_type = inline_minutes`）可降權。
+3. **W2 Sales Brief 鏡頭（§4.3–§4.5）**：**004** migration（003 已給方向 C）建 `g_meeting_items_sb_bu`、`g_meeting_sb_reconcile_bu`、`v_meeting_sb_reconcile_q`、`v_meeting_report_cells`、`v_meeting_participants_q`（外部人員 column mask）、分應用 View；T3 程式規則（`sb_facet_map`、§7.2 `sb_relevant`，Phase 1 不做 L2）→ T4 對照（兩邊都有才呼叫 L3，單邊程式判）→ T5 關卡寫 `job_run_log`；PM 審核匯出 md（§4.6）。前置：Phase 0 探勘 Sales Brief 三張文字表的欄位與品牌值（待決 #10）。
 4. **方向 A Genie Space「客戶會議紀錄」（§8.1）**：三個 View 已可掛；等 W2 的 reconcile View 再補。施工單用 `build/_template.md` 開 `build/X3_客戶會議紀錄.md`。
 5. **W1 Job 化**：三個 task 串成一個 Databricks Job 週跑（`run_mode = incremental`，task 1 → 2 → 3）；加規格 §2.4 設定一致性檢查（目前以 task 3 [c12] 的 `unmatched` 類計數代替）。
 6. **golden set**（§9.1）：有了才算 §9.2 指標、做 llama 比較（D22）。

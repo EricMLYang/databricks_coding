@@ -58,6 +58,7 @@
 | D27 | **別名表更新後由 task 3 [c21] 補對，不重萃**：每次跑（非 dry_run）把有效 ok 列中 `customer` NULL、`customer_raw` 有值的原名重算一次，對得上的 MERGE 回 `customer`（`customer_raw` 不動）。本批 0 段也會做。001 v3（29 公司 / 93 別名，全部「推測」）新增 `entity_type = competitor`（HKC / BOE / Innolux，side = third_party；`customer` 刻意對不到）。LLM 沒填 `customer_raw` 的 5,676 條（多客戶週會紀要）不用程式補值（段的 `customer_hint` 是「命中最多者」，在多客戶紀要裡最容易錯），等 prompt 0.3「章節客戶帶到每一條」與 cleaner 0.2 一起全量重跑 | §6.3 |
 | D28 | **task 1 來源選擇改看初洗後長度（task 1 cleaner 0.2）**。2026-10-19 段 0 抽查（§6.2 第 6 點）發現 199 個段 0 裡 177 個是同一個 27 字殘渣（Word 樣式區塊開頭 `<!--` / `/* Font Definitions */`），追到 mail 表：**146 封 `mail_without_fw` 來源 ＋ 10 封 `mail_body` 來源初洗後 < 150 字**（原始中位數 1,209 字 → 27 字）。原因不是初洗誤刪：ETL 的 `mail_without_fw` 對這些信只剩 Word 文件屬性殘渣（九成空行、Normal / DocumentEmail / EN-US…，無正文、無 HTML 標籤），0.1 的 `choose_body`「md 不到 150 字就用非空的 `mail_without_fw`」把它選走，**從不回頭看 `mail_body`**（Phase 0：`mail_body` 95% 非空、中位數約 2,000 字）。結果約 32% 的信整封只有一段 noise，task 3 全量 1,181 段完全沒有它們。修法：[c03] `choose_body` 依 md → `mail_without_fw` → `mail_body` 取**第一個初洗後 ≥ 150 字**的欄，都不到就取初洗後最長的非空欄；[c02] CSS 殘渣加 `<!--` / `-->` / `/* … */` 獨立行；[c12] log 加 `short_body_rate`（> 10% WARN）；widget `cleaner_version` 預設 0.2。連鎖：task 1 incremental 會重洗全部 493 封（`cleaner_version != 0.2`）→ task 2 依 D19（mail `cleaned_at` 變新）重切同一批 → task 3 只萃「items 表沒有的段」（新出現的可萃取段，估 300–400 段、約 20 美元，使用者決定時機）。原則：**清洗不得丟資訊**——任何「選一個來源」的規則都要以清洗後還剩多少內容為準，不以欄位非空為準。（光改這條不夠，見 D29） | §4.1 (a) 1–3 |
 | D29 | **讀 `mail_body_html` 當最後備援**（偏離 §4.0「不讀 html」）。D28 dry_run 結果：`none` 從 22 封變 164 封、`short_body_rate` 36.8%——這 146 封的 `mail_body` 與 `mail_without_fw` 是同一份殘渣（中位數 1,209 字、0 空行、無 HTML 標籤；ETL 把 `<!--[if gte mso 9]>` 裡的 Word XML 當文字、到 `<style>` 就截斷），md 空，**正文只在 `mail_body_html`（中位數 34k 字）**。修法（task 1 cleaner 0.2）：[c02] `SOURCE_COLS` 加 `mail_body_html`；[c03] `html_to_text`（stdlib regex：刪 head / style / 條件註解、軟換行併回、區塊標籤換行、表格成 md 列、cid 圖刪、`<a>` 留文字、entity 還原）；`choose_body` 三個文字欄初洗後都 < 150 字才轉 HTML，≥ 150 字就用（`body_source_field = mail_body_html`）；免責規則改成只刪命中行起到段尾（HTML 轉出的段落間常沒空行，整段刪會連坐正文）。HTML 裡的轉寄標頭是 `<b>From:</b> … <br>`，轉成純文字 `From:` 行，[c04] 標頭規則與 task 2 分段接得上（本機以合成 Outlook HTML 驗過）。預期：`source_dist` 多一類 `mail_body_html` 約 146 封、`short_body_rate` 掉到 5% 以下。費用：無 LLM；HTML 34k 字轉文字後通常幾 k。**結果（2026-10-19 第二次 dry_run）：只救回 4 封**——pk 332 / 190 的 `mail_body_html` 34k 字裡 `<p>` `<br>` `<div>` `<body` `</head>` 全是 0，**整欄只有 Word `<head>`（XML 條件註解 ＋ LatentStyles ＋ style），沒有正文**。四個欄位都沒內容 = **來源在進 Databricks 前就被截斷，ETL 問題**（D10 預留的「需要再去向 ETL owner 說明」現在要做，§7）。程式端 D28 / D29 仍保留：正確、無害（這些信變 `none`、task 2 直接跳過，不再製造 27 字假 noise 段），HTML 有 body 的信能救。另加：CSS 殘渣整行刪只限 400 字內的行（整封併成一行時不能整封陪葬）。**第三次 dry_run（加了 400 字上限後）踩到反作用**：`mail_body_html` 46 封、`dup_of_pk` 跳到 10.9%——head-only 的 HTML 停在 `<style><!--` 中間、`-->` 不存在，註解規則抓不到，幾萬字 CSS 併成一行、不再被整行刪，被當正文選走且各封相同互判重複（本機重現：5,247 字 CSS 當正文）。修：`HTML_DROP_RE` 沒關閉的 `<!--[if` / `<!--` / `<head>` `<style>` 一律吃到字串結尾（截斷的 HTML 整封視為無內容）。預期回到 `mail_body_html` 4、`none` 164、`dup_of_pk` 3.4% | §4.0 |
+| D30 | **方向 C Stage A 的分工（2026-10-19，依 §6.5 探索結果，使用者同意）**：(a) `rule_basis = default`（89%）不呼叫 LLM，直接寫 `category = event`、`model = rule`；(b) `definition` / `term_hint` / `intel_tag` 交 LLM（`meeting_extracted_sem_stage_a` [c04] prompt：§8.3 兩題判準 ＋ 常見誤判 ＋ SemanticLayerPlan §1.3 投影代號）判 category / term / route_hint / as_of / extract_note；quote / summary 由程式逐字抄 view，LLM 不輸出；intel 的 route_hint 由程式依 app 組、as_of 不合格式用 event_month；semantic 的 route_hint 不在投影代號表改 `pa:semantics`；event 的兩欄 NULL。(c) **INTEL_TAGS 加 `price` / `cost` / `allocation`**（003 [c02]；event 裡 fact/cost 100、fact/allocation 100、fact/price 74 多是商務情報）。(d) 同文重複：003 view 加 `dup_key`（quote 只留中英數字小寫、≥ 20 字、同 unit 相同 → 最早那條的 item_key），鏡頭表加 `dup_key` 欄；Stage A 對 dup 不呼叫 LLM、複製最早那條的判定（intel 的 as_of 用自己的月）；最早那條還沒判就等下次。`dup_of` 仍留給 SEM id（PM / Stage B 填）。(e) `weight_hint = low`（inline_minutes）占 79%，只寫 `content_type` 欄不當門檻。(f) MERGE on `item_key`，UPDATE / INSERT 都不含 `verified` / `review_note` / `sem_id` / `dup_of`；每次跑另做維護：候選 view 已沒有的 key → `active = false`（view 0 列時跳過）、item_id 變了就刷新。(g) **PM 直接在表上填** `verified` / `review_note`（SQL UPDATE 或 Genie），不另做匯出；`v_meeting_items_sem_q` 的 `rule_disagree` 給抽審排序。費用：第一輪 LLM 候選約 1,650 條（含 (c)）、20 條一批 ≈ 85 次呼叫，估 < USD 5；之後每週幾十條 | §8.3 |
 
 ## 4. Phase 0 結論（決定 T1 規則）
 
@@ -86,6 +87,8 @@
 | `001_semantic_entity` v2（公司 21、別名 72；D9 的種子） | ✅ 2026-10-15 已在 Databricks 正式執行（entity insert 1 / update 8、alias insert 4 / update 4；無重複、無孤兒） |
 | `001_semantic_entity` v3（公司 29、別名 93；D27，全部推測） | ✅ 2026-10-16 已在 Databricks 正式執行（entity insert 8、alias insert 21；active 29 / 93，無重複、無孤兒）。task 3 [c21] 同日套用：對不上的原名 53 個 → 對上 17 個，更新 502 列；剩 36 個長尾原名（CN客戶、代理商、Z1S、SDIC、CSD…）不處理 |
 | `002_meeting_neutral_tables` | ✅ 2026-10-15 已在 Databricks 正式執行：4 表（33 / 34 / 19 / 35 欄）＋ 3 View（38 / 7 / 28 欄）建立，[c30] 無 PROBLEM |
+| `003_meeting_semantic_lens`（方向 C 第一步） | ✅ 2026-10-19 已在 Databricks 正式執行：`g_meeting_items_sem_bu` 35 欄 ＋ `v_meeting_items_sem_cand` 36 欄 / `v_meeting_items_sem_q` 32 欄，[c30] 無 PROBLEM（tests 9 passed）；探索 SQL 已跑（§6.5）。**2026-10-19 又改**：INTEL_TAGS 加 price / cost / allocation、表加 `dup_key`、view 加 `dup_key` / `sem_active` / `sem_stage_a_version`（D30；tests 10 passed）→ ✅ 2026-10-19 DROP 後重跑：表 36 欄、view 39 / 33 欄，[c30] 無 PROBLEM |
+| `meeting_extracted_sem_stage_a`（方向 C Stage A） | ✅ **2026-10-19 全量寫表**：鏡頭表 12,686 列（= 去重後 pending；rule 5,522 ＋ LLM 915 ＋ dup 6,249）、active 分布 event 12,048 / intel 448 / semantic 190；LLM 46 次呼叫、USD 1.36、無失敗；[c30] 全過（verified 0 → 0、intel 都有 as_of、無重複 key）。首跑 [c21] 踩 MERGE 多源列（view 同 key 多列）已修。tests 8 passed |
 | W1 task 1 `meeting_extracted_w1_t1_mail`（T1-a / T1-m / T1-c） | ✅ **2026-10-19 cleaner 0.2（D28 ＋ D29）Databricks 已同步、backfill 2026-06-01 起寫表**：495 封、`source_dist` md 305 / without_fw 22 / **html 4** / none 164、`short_body_rate` 0.368（ETL 截斷，§7）、`dup_of_pk` 0.034。中間第三次 dry_run 誤救 42 封 CSS 垃圾並寫過表，修 `HTML_DROP_RE` 後用 backfill 洗回。以下是 0.1 的紀錄：✅ 2026-10-15 Databricks 正式寫表（incremental 首跑 = 全窗 493 封）。dry_run 關卡全過：conflict 0、from_ok 0.998、md 0.586、has_headers 0.544、oversize 0、side_unknown 0、participants 40,321 列 / 9,364 token。使用者未貼 [c30] 輸出與 §6.1 診斷結果。**待查**（不擋）：`dup_of_pk` 3.4%（17 封）遠低於 Phase 0 的 112 封；1 封 `mail_from` 解析失敗；1 個 `auo.comhi` 網域 |
 | W1 task 2 `meeting_extracted_w1_t1_clean`（T1-b） | ✅ **2026-10-19 跟著 task 1 0.2 重切（incremental，495 封全批）**：分段 314 封、**1,817 段**、段 0 剩 51（177 個 27 字假段 0 消失）、thread_reply 1,067 / inline_minutes 591 / noise 97 / attachment_only 46 / appointment 16、可萃取 1,658、dup_of 24.2%、residual 0；[c30] table_total 1,817。[c30] 的 batch 計數因 lazy view 變 0（關卡空跑）→ [c11] 改成 pk 釘在 driver，repo 已改、Databricks 待同步（不影響這次資料，用 §6.2 第 8 點的 SQL 補驗）。0.1 的紀錄：✅ 2026-10-16 Databricks 正式寫表（backfill 2026-06-01 起、`dry_run = false`）。[c30]：`batch_segments_in_table 1865 / stale 0 / dup_keys 0 / email_left 0 / dangling_dup_of 0 / table_total 1865`。dry_run 第 3 輪數字：493 封 → 454 封分段、1,865 段；thread_reply 981 / inline_minutes 583 / noise 228 / attachment_only 49 / appointment 24；可萃取 1,564 段（扣 dup_of 後約 1,180 段會送 T2）；dup_of 24.4%；段 0 留 199（**還沒抽查**，SQL 在 §6.2 第 6 點） |
 | W1 task 3 `meeting_extracted_w1_t2_extract`（T2 L1） | ✅ **2026-10-19 跟著 task 1 / 2 的 0.2 重切跑一輪 incremental**：本批 90 段 / 21 封、545 列、s3_masked 26 列、端點錯 0、約 5 美元；[c30] 一致，table_total 13,731 / active ok 12,774（原 12,249）。同日清洗表補驗：1,817 段、email_left 0、seg0 < 150 字剩 14（整封本來就短的 noise）。之前的紀錄：🟡 2026-10-16 建好並貼到 Databricks（13 個 cell、README、tests 15 passed）。dry_run 四輪（10 / 10 / 10 / 50 段）調完：quote 失敗 1%、S3 0、customer NULL 0、費用 3 美元 / 50 段。**2026-10-16 全量 backfill 已寫表**（`prompt_version 0.2`、1,181 段、11:43 開跑約 3 小時、69 美元）：13,185 列 / ok 12,248 / empty 119 / 截斷 46 / quote 失敗 1.5% / 端點錯 1（408）/ [c30] 一致。兩個問題：S3 誤殺 583 條（4.5%）→ D26 改遮罩，待 `retry_failed = true` 重打；`customer` NULL 52% → [c31a] 診斷待跑。D22–D26 |
@@ -212,8 +215,62 @@ SELECT count(*) AS dup_keys FROM (
 2. cleaner 0.2（task 2）：去掉落單的 `**` 粗體殘渣（會進 quote）；只有與會名單的段歸 `attachment_only`（pk 112 那類被當 thread_reply 送 LLM 回 empty）。升版後 incremental 自動重洗，T2 會重萃那些段（舊條目標 superseded）。
 3. thread 近似段（152-7 / 152-8）萃出重複條目：Phase 1 接受，T3 時以相似度合併或段層近似去重。
 4. golden set 模板，請 PM 標；有了再做 llama 比較（D22）、算 §9.2 指標。
-5. 003 migration：Sales Brief 鏡頭表（§3.4、§3.5）、`v_meeting_participants_q` column mask、分應用 View。
+5. **004** migration（原寫 003，003 已給方向 C）：Sales Brief 鏡頭表（§3.4、§3.5）、`v_meeting_participants_q` column mask、分應用 View。
 6. W2：T3 標註（程式規則 + `sb_facet_map`，Phase 1 不做 L2）→ T4 對照（L3，單邊程式判）→ T5 關卡與 `job_run_log`；PM 審核匯出 md（§4.6）。
+
+### 6.5 方向 C 業務語意（§8.3；2026-10-19 開工）
+
+1. ✅ 2026-10-19 `003_meeting_semantic_lens` 已在 Databricks 執行（[c30] 無 PROBLEM）。
+2. ✅ 2026-10-19 探索 SQL 結果（12,774 條有效條目，全在 2026-W42 / W43 兩週，因 `week` 取 `extracted_at`；第一輪 Stage A 等於一次 backfill）：
+   - 先驗分布：**event / default 11,399（89.2%）**、intel / intel_tag 1,085（8.5%）、semantic / definition 271（2.1%）、semantic / term_hint 19（0.1%）。
+   - **`weight_hint = low`（inline_minutes）占 78.8%**（10,062 條）：這批信的主體就是紀要信，§8.3「紀要段降權」在這裡不能當門檻，只能當欄位帶著，交 Stage B / PM 用。
+   - semantic 抽樣 15 條：`definition` 約半數是真定義（System matching 用途、分貨 code OU1000 / OU4000、FD spec JND 2.1 / 2.2、DDI 新舊 IC 對應），其餘是流程規則 / 政策（Cross Table 驗證規則、發票 ORD.NO 彙整、反托拉斯政策）；`term_hint` 4 條全是 event（命中「指 / 定義」字樣的時程 / 安排句）→ **這兩類都要 LLM 判**，量小（290）。
+   - intel 抽樣 15 條：`supply_chain` 762 條裡多數是 EC 會議的料號變更 / EOL / LTB（工程供應鏈事實，不是市場情報）；真情報是 `opinion / capacity`（INX 產能推測）、`fact / capacity`（光罩只有兩套）、`fact / demand`（allocation 數量）、VD 不接受 SMIC 等 → **intel 候選也交 LLM 判**（1,085）。
+   - event 裡可能該算 intel 的大宗：`fact / cost` 100、`fact / allocation` 100、`fact / price` 74、`opinion / product_plan` 51、`opinion / engineering` 49；其餘 event 都是 schedule / quality / engineering / spec 的 plan / issue / request / decision，可直接寫 event。
+   - 重複：同一段紀要在連續幾週的信裡逐字重出現（System matching、DDI 選料宣導、TSMC F2/F5 EOL 各出現 2 次以上）→ `dup_of` 先用 SQL 做「quote 正規化後相同 → 指向最早的 item_key」，不靠 LLM。
+   - 探索 SQL（之後每週可重跑看分布）：
+
+```sql
+-- (1) 先驗分布：category_rule × rule_basis × 段類型（LLM 要判多少、紀要段占多少）
+SELECT category_rule, rule_basis, weight_hint, count(*) AS n,
+       round(count(*) / sum(count(*)) OVER (), 3) AS share
+FROM micenter.mi3_datahub_prod.v_meeting_items_sem_cand
+GROUP BY 1, 2, 3 ORDER BY 1, 2, 3;
+
+-- (2) 先驗 × statement_type × topic_tag_primary（看 event 裡有沒有該算 intel 的大宗）
+SELECT category_rule, statement_type, topic_tag_primary, count(*) AS n
+FROM micenter.mi3_datahub_prod.v_meeting_items_sem_cand
+GROUP BY 1, 2, 3 ORDER BY n DESC LIMIT 40;
+
+-- (3) 每週量（Stage A 一週一批的規模；目前全在同幾週，之後才是週量）
+SELECT week, category_rule, count(*) AS n
+FROM micenter.mi3_datahub_prod.v_meeting_items_sem_cand
+GROUP BY 1, 2 ORDER BY 1, 2;
+
+-- (4) semantic 候選抽 15 條看品質（quote 已 token 化；貼之前掃一眼）
+SELECT item_key, rule_basis, app, customer, terms_str, summary, quote, source
+FROM micenter.mi3_datahub_prod.v_meeting_items_sem_cand
+WHERE category_rule = 'semantic' ORDER BY rand(7) LIMIT 15;
+
+-- (5) intel 候選抽 15 條
+SELECT item_key, statement_type, topic_tag_primary, app, customer, weight_hint, summary, source
+FROM micenter.mi3_datahub_prod.v_meeting_items_sem_cand
+WHERE category_rule = 'intel' ORDER BY rand(7) LIMIT 15;
+```
+
+3. ✅ **Stage A job 已建（2026-10-19，D30）**：`jobs/meeting_record/meeting_extracted_sem_stage_a/notebook.ipynb`，週跑，讀 `v_meeting_items_sem_cand` 裡未判的列（`already_classified = false` 或 `sem_active = false`；`reclassify = true` 再加版本不同的）。設計如下：
+   - (a) `rule_basis = default` → **不呼叫 LLM**，直接寫 `category = event`、`extract_note = 'rule:default'`（89%，第一輪 11,399 條，零費用）。
+   - (b) `definition` / `term_hint` / `intel_tag` → **LLM 判** category（三選一）/ term / route_hint / extract_note；quote 逐字抄 view 的 `quote`，不改寫。第一輪 1,375 條、每次 20 條一批約 70 次呼叫，估 < USD 5（claude-sonnet-5）；之後每週幾十條。
+   - (c) `weight_hint` 只寫進 `content_type` 欄，不當門檻（79% 都是紀要段）。
+   - (d) `dup_of`：SQL 正規化 quote（去空白 / 標點、小寫）相同 → 指向最早 `segment_date` 的 item_key；`semantic_record.md` 定案清單對照先不做（sem_id 留 NULL，PM 審核時填）。
+   - (e) MERGE on `item_key`：不覆蓋 `verified` / `review_note`；候選 view 已不存在的 key → `active = false`。
+   - (f) ✅ INTEL_TAGS 加 `price` / `cost` / `allocation`（003 [c02]）；PM 直接在表上填 `verified` / `review_note`。
+   - **第一次 dry_run（2026-10-19，max_items 40）**：pending 12,774 = rule 5,571 ＋ llm 923 ＋ **dup 6,280（49%）**——一半條目是同文重複（紀要信逐週重貼），LLM 候選只剩 923 條（約 47 次呼叫、USD 2）。LLM 40 條：semantic 4 / intel 3 / event 33，與先驗不一致 88%（intel_tag → event 32 條：claim 金額確認、需求數字更新、單次決議，LLM 判 event 合理）；抽樣是依 key 排序的前 40 條、集中在兩場會議，改成 dry_run 隨機抽。**踩到**：`batch_rows` 11,712 ≠ 5,571 ＋ 40 ＋ 5,863——候選 view 同一 `item_key` 有多列（中立層同段同一句 quote 萃出兩條，item_key 相同），join 變平方、MERGE 會報多源列 → [c07] `select_pending` 以 item_key 去重（留 item_id 最小）。prompt 補兩條：「已完成但持續有效的狀態（產地、產線）→ intel」、「extract_note 不引用 n 編號」。
+   - **第二次 dry_run（去重後，隨機 40 條）**：pending 12,686 = rule 5,522 ＋ llm 915 ＋ dup 6,249；batch_rows 11,155 = 5,522 ＋ 40 ＋ 5,593 對上。LLM semantic 6 / intel 7 / event 27，不一致 72%（intel_tag 命中率約 2 成，是先驗寬不是 LLM 錯；數字類一律 event 符合規格）。使用者同意全量。
+   - **全量（2026-10-19）**：✅ 12,686 列寫入；LLM 915 條 → semantic 95 / intel 212 / event 608（先驗 intel_tag 命中 210/787 = 27%、definition 69/128 = 54%）；加上 dup 複製後表的 active 分布 event 12,048 / intel 448 / semantic 190。費用 USD 1.36（cache 讀 104k token）。
+   - **現在要做**：(0) ✅ DROP ＋ 重跑 003；(1) ✅ dry_run 兩次；(2) ✅ 全量；(3) PM 審核：`v_meeting_items_sem_q` 看 semantic 190 ＋ intel 448，`UPDATE g_meeting_items_sem_bu SET verified = 'y'|'n', review_note = … WHERE item_key = …`；抽審先看 `rule_disagree = true`；(4) 之後 Stage B。(2) 匯入 `meeting_extracted_sem_stage_a` → `dry_run = true`、`max_items = 40` 看 [c12] 的樣本與 `llm_rule_vs_category`；(3) `max_items = 0`、`dry_run = false` 全量（規則列 11k 零費用 ＋ LLM 約 1,650 條）→ 貼 [c12] log 與 [c30] 輸出。
+   原規劃：哪些 `rule_basis` 直接寫表不呼叫 LLM、哪些交 LLM 判 category / term / route_hint / dup_of；quote 逐字抄 `v_meeting_items_sem_cand.quote`；`weight_hint = low` 的紀要段怎麼降權；MERGE on `item_key` 不覆蓋 `verified` / `review_note`；`dup_of` 要對照 `semantic_record.md` 定案清單（內嵌進 notebook 或先不做）。
+4. Stage A 之後：PM 審核介面（`v_meeting_items_sem_q` 匯出 md 或直接在 Genie 看）、Stage B 彙整（regenerate `semantic_record.md` / `background_intel.md` 的 diff，仍走 Genie Code）。
 
 ## 7. 待使用者回覆
 

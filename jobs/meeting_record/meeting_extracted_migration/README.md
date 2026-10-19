@@ -10,6 +10,7 @@
 |---|---|---|
 | `001_semantic_entity` | 建 `s_semantic_entity`、`s_semantic_entity_alias`；從 [c05] 內嵌種子 MERGE | 改 [c05] 後重跑（預設 `dry_run = true` 先看差異） |
 | `002_meeting_neutral_tables` | 建中立層四張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`）與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS`（例外：items 表 `s3_masked` 一欄由 task 3 [c10] 缺欄時自動補，D26；spec 已同步） |
+| `003_meeting_semantic_lens` | 建語意鏡頭表 `g_meeting_items_sem_bu`（方向 C，§8.3）與兩個 View：`v_meeting_items_sem_cand`（候選規則 SQL 先算、Stage A 輸入）、`v_meeting_items_sem_q`（消費介面）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
 
 ## 001_semantic_entity
 
@@ -38,3 +39,17 @@
 - 負責人 / 更新日期：（填）/ 2026-10-15
 
 純函式測試：`tests/test_meeting_extracted_migration_002.py`（[c02]～[c05]；View SQL 在本機 Spark 以假資料實跑）。
+
+## 003_meeting_semantic_lens
+
+- 輸入：[c04] `table_specs`（`g_meeting_items_sem_bu`）、[c05] `view_specs`（兩個 View）。正本。前置：002 的表要存在（View 引用 `g_meeting_items_bu`、`s_meeting_record_clean_bu`）。
+- 輸出：規格 §8.3 草案的鏡頭表（`_prompt_weekly_extract.md` v1.1 YAML items 區轉 Delta ＋ 回溯 / lineage 欄）＋ `v_meeting_items_sem_cand` ＋ `v_meeting_items_sem_q`；`b_meeting_migration_log` IF NOT EXISTS。
+- 參數（widgets）：`catalog`、`schema`、`dry_run`。
+- 鏡頭表**一列一個 `item_key`**：中立層重萃後 `item_id` 變、`item_key` 不變，PM 的 `verified` / `review_note` 跟著 `item_key`；Stage A MERGE 時不覆蓋這兩欄。`active = false` 表示中立層已沒有這個 key 的有效條目（quote 變了），不刪。
+- 候選規則（§8.3，Stage A 的先驗）在 [c02] 常數 ＋ [c05] `category_rule` / `rule_basis`：`definition` → semantic；`terms_mentioned` 非空且 quote 含「指 / 定義 / 算法 / 口徑」→ semantic（`term_hint`）；`statement_type ∈ {opinion, fact}` 且主標籤 ∈ {demand, commercial_relation, supply_chain, capacity, **price, cost, allocation**（D30）} → intel（`intel_tag`）；其餘 event（`default`）。`weight_hint = low` 是紀要段（§8.3 紀律調整；實測 79%，只當欄位）。
+- 同文重複（D30）：view 的 `dup_key` = quote 只留中英數字、小寫、≥ 20 字後相同 → 同 unit 最早（段日期、item_key）那條的 item_key；自己最早或無重複 NULL。表也有 `dup_key` 欄（Stage A 寫入）。view 另有 `sem_active` / `sem_stage_a_version` 給 Stage A 判「待判」。
+- `week` = `extracted_at` 的 ISO 週（`YEAROFWEEK-Www`）；`source` = `subject_clean segment_date — speaker_side`；`tags` = topic_tags ∪ free_tags ∪ customer；`app` NULL → ALL。
+- 跑完先用 STATUS §6.5 的探索 SQL 看分布，再決定 Stage A job 的 LLM 只判哪些（例：`default` 全部直接寫 event 不呼叫 LLM）。
+- 負責人 / 更新日期：（填）/ 2026-10-19
+
+純函式測試：`tests/test_meeting_extracted_migration_003.py`（[c02]～[c05]；兩個 View 在本機 Spark 以 002 / 003 spec 建的假表實跑，驗四條候選規則與派生欄）。
