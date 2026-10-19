@@ -10,6 +10,7 @@
 |---|---|---|
 | `001_semantic_entity` | 建 `s_semantic_entity`、`s_semantic_entity_alias`；從 [c05] 內嵌種子 MERGE | 改 [c05] 後重跑（預設 `dry_run = true` 先看差異） |
 | `002_meeting_neutral_tables` | 建中立層四張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`）與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS`（例外：items 表 `s3_masked` 一欄由 task 3 [c10] 缺欄時自動補，D26；spec 已同步） |
+| `005_semantic_ledgers` | 建方向 C Stage B 的台帳：`g_semantic_record`（SEM id）、`g_semantic_record_evidence`、`g_background_intel`（INT id）＋ `v_semantic_record_q`、`v_background_intel_q`（退場候選旗標）；只建結構。004 留給 Sales Brief 鏡頭 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
 | `003_meeting_semantic_lens` | 建語意鏡頭表 `g_meeting_items_sem_bu`（方向 C，§8.3）與兩個 View：`v_meeting_items_sem_cand`（候選規則 SQL 先算、Stage A 輸入）、`v_meeting_items_sem_q`（消費介面）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
 
 ## 001_semantic_entity
@@ -53,3 +54,13 @@
 - 負責人 / 更新日期：（填）/ 2026-10-19
 
 純函式測試：`tests/test_meeting_extracted_migration_003.py`（[c02]～[c05]；兩個 View 在本機 Spark 以 002 / 003 spec 建的假表實跑，驗四條候選規則與派生欄）。
+
+## 005_semantic_ledgers
+
+- 輸入：[c04] `table_specs`（三張台帳表 ＋ log）、[c05] `view_specs`（兩個 View）。正本。不依賴其他表。
+- 為什麼是表不是 md（D31）：規格的兩份 md 在 PM_Head git，Databricks 寫不進去；表當正本，md 由 Stage B 產生。
+- `g_semantic_record` 一列一 SEM id（`status` / `synced_to` / `pm_note` 由 PM 維護）；`g_semantic_record_evidence` 鍵 `(sem_id, item_key)`；`g_background_intel` 一列一主題（`app` ＋ `term_norm`），`status` / `pm_note` 由 PM 維護。
+- `v_background_intel_q.retire_candidate` = active 且 `as_of` 距今超過 `RETIRE_QUARTERS`（2）季；`as_of` 格式不符 → NULL 不算。
+- 負責人 / 更新日期：（填）/ 2026-10-19
+
+純函式測試：`tests/test_meeting_extracted_migration_005.py`（[c02]～[c05]；View 在本機 Spark 以假表實跑，退場判斷用相對今天的季）。

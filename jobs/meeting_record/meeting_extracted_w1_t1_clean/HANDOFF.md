@@ -17,7 +17,7 @@
 
 ## 2. 下一步（照順序）
 
-0a. **方向 C 開工（2026-10-19）**：`003_meeting_semantic_lens` 在 repo（鏡頭表 ＋ 候選 View ＋ 消費 View、tests 9 passed），**Databricks 已執行（2026-10-19）**，探索 SQL 已跑、分布記在 STATUS §6.5，**Stage A job `meeting_extracted_sem_stage_a` 已建並全量寫表（D30；12,686 列、event 12,048 / intel 448 / semantic 190、USD 1.36）**。接手要做：PM 審核（直接 UPDATE 表的 verified / review_note）→ Stage B（STATUS §6.5 第 4 點）。
+0a. **方向 C 開工（2026-10-19）**：`003_meeting_semantic_lens` 在 repo（鏡頭表 ＋ 候選 View ＋ 消費 View、tests 9 passed），**Databricks 已執行（2026-10-19）**，探索 SQL 已跑、分布記在 STATUS §6.5，**Stage A job `meeting_extracted_sem_stage_a` 已建並全量寫表（D30；12,686 列、event 12,048 / intel 448 / semantic 190、USD 1.36）**。**Stage B 也建好並在 Databricks 驗過（D31）**：005 三張台帳表、`meeting_extracted_sem_stage_b` 兩輪寫入（新 SEM / INT、補證據）全過。方向 C 流程完整。接手：PM 逐週標 verified → 跑 Stage B；待決是否讓 intel 免逐條審。另有 `meeting_extracted_digest_preview`（月報版面預覽，跟 user 討論版面用）與 `jobs/meeting_record/SENDER_GUIDE.md`（寄信注意事項）；版面討論結果決定 W2 T3–T5。
 0. **D28 / D29 同步 ＋ 三個 task 各跑一輪 incremental**（STATUS §6.1 第 0 點）。✅ task 1 dry_run 跑過三次（D28 版、D29 版、CSS 400 字上限版——第三次誤救 42 封 CSS 垃圾、`dup_of_pk` 11%，`HTML_DROP_RE` 已修，見 STATUS §6.1 第 0b 點的處置）：**只救回 4 封**，其餘 142 封四個欄位都沒正文（`mail_body_html` 只有 `<head>`）→ **ETL 截斷，找 ETL owner**（STATUS §7、證據 SQL §6.1 第 0c 點）。D28 / D29 版照樣 `dry_run = false` 寫表（這些信變 `none`、task 2 跳過，不再有 27 字假段），再 task 2 → task 3 各一輪 incremental。✅ **2026-10-19 三個 task 都跑完寫表**（task 2 1,817 段；task 3 90 段 / 545 列 / 約 5 美元；[c30] 都一致）。剩：STATUS §6.1 第 0c 點 ETL 證據 SQL → 找 ETL owner；commit。
 1. ✅ Databricks 已同步（task 3 14 cell、001 v3、002 [c04]），001 v3 與 task 3 incremental 一輪都跑完（2026-10-16）。
 2. ✅ 001 v3 推測對應使用者沒改；[c21] 更新 502 列。
