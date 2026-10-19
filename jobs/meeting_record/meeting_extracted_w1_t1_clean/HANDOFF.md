@@ -1,6 +1,33 @@
-# HANDOFF — 2026-10-19 更新（下次 session 先讀這份；下一階段看 §6）
+# HANDOFF — 2026-10-19 晚收工（下次 session 先讀這份）
 
-總覽與決定（D1–D28）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
+總覽與決定（D1–D32）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
+
+## 0. 接續點（2026-10-19 收工版，最新；底下 §1–§6 是歷史脈絡）
+
+**git**：最後 commit `28c72d9`（已 push）＝ 方向 C Stage B（D31 / D32）＋ 月報預覽 ＋ 寄信指南。再往前：`12aaaf8`（003 ＋ Stage A）、`16e5635`（task 1 cleaner 0.2）。讀的順序：這份 §0 → `STATUS.md` §5（進度表）→ §6.5（方向 C）→ §7（待使用者）。
+
+**Databricks 上現在有的**（`micenter.mi3_datahub_prod`）：
+
+| 物件 | 狀態 |
+|---|---|
+| W1 三支（mail / clean / extract） | ✅ cleaner 0.2 / prompt 0.2 寫表：495 封、1,817 段、items 有效 ok 12,774 |
+| 003 鏡頭表 `g_meeting_items_sem_bu` ＋ 2 View | ✅ 最新版（dup_key、INTEL_TAGS 加 price / cost / allocation） |
+| Stage A `meeting_extracted_sem_stage_a` | ✅ 全量寫過：12,686 列（event 12,048 / intel 448 / semantic 190），LLM USD 1.36 |
+| 005 台帳三表 ＋ 2 View | ✅ 建好；**`v_background_intel_q` 要重跑 005 [c21]**（D32 改了 retire_candidate） |
+| Stage B `meeting_extracted_sem_stage_b` | ✅ 0.1 在 Databricks 驗過（SEM-001、INT-001 / 002、補證據）；**repo 已是 0.2（D32），Databricks 要重新整支匯入** |
+| 月報預覽 `meeting_extracted_digest_preview` | repo 有，**Databricks 未匯入** |
+
+**下次開工第一件事（照順序）**：
+1. 重新整支匯入 `meeting_extracted_sem_stage_b/notebook.ipynb`（0.2）；005 整支重跑 `dry_run = false`（只會 replace View）。
+2. Stage B `dry_run = true`：預期 intel 約 448 條（扣同文重複）以 `intel_auto` 併入 unreviewed、semantic 0；看 [c12] 的 md diff。再 `false`，貼 [c20] [c21] [c30]。
+3. 匯入 `meeting_extracted_digest_preview`，跑 `customer = acer, app = MNT`，拿去跟 user 談版面（README 列了要問的五題）；版面定了才開 W2（004 ＋ T3–T5）。
+4. `jobs/meeting_record/SENDER_GUIDE.md` 填負責人後發給寄信的同仁。
+
+**使用者的待決（不擋，但要問）**：ETL 截斷 142 封（STATUS §7，找 ETL owner）；撿回 583 條（USD 35–40）；prompt 0.3 全量重萃（USD 70，customer 48% 空值的解法）；PM 什麼時候開始審 semantic 190 條。
+
+**之後的路線**（使用者 2026-10-19 確認）：Stage B → 方向 C 收尾（會議系列表、prompt 編譯）→ **W2 Sales Brief 對照**（最大塊）→ 資料品質修補 → W1 ＋ Stage A ＋ Stage B 串 Job 週跑。Genie Space 隨時可掛當 demo。
+
+---
 
 > **2026-10-19 插入的緊急項（D28 ＋ D29）**：段 0 抽查發現 task 1 來源選擇丟了 156 封信的正文。追到底：ETL 對這些信三個文字欄都只剩 Word 屬性殘渣，正文只在 `mail_body_html` → 加 HTML 備援（偏離規格 §4.0）。task 1 cleaner 0.2 已在 repo（[c01] [c02] [c03] [c12]、tests 19 passed、README），**Databricks 待同步**；同步後 task 1 → 2 → 3 各跑一輪 incremental（task 3 那輪要錢，估 20 美元）。順序與要看的數字在 STATUS §6.1 第 0 點。這件事排在補跑 583 條與 prompt 0.3 之前，因為它改變全量重跑的段數與費用。
 
