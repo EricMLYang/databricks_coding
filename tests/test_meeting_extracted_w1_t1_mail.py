@@ -91,6 +91,7 @@ def _src(**kw):
         "mail_body_md": None,
         "mail_without_fw": None,
         "mail_body": None,
+        "mail_body_html": None,
         "is_fw": True,
         "has_attach": 0,
         "is_test": False,
@@ -117,6 +118,10 @@ def test_clean_display_rules(mod):
     )
     assert "Hi & hello there" in out
     assert "cid:" not in out and "the link" in out and "https://" not in out
+    # 0.2：CSS 殘渣整行刪只限 400 字內；長的正文行含 mso- 要留（整封併成一行時不能整封陪葬）
+    long_line = "real content with mso-list mention " * 15
+    assert mod.clean_display(long_line, "mail_body").startswith("real content")
+    assert mod.clean_display("short junk {mso-style-priority:99;}", "mail_body") == ""
     assert "CONFIDENTIALITY" not in out and "------" not in out
     assert out.endswith("real content M270QAN06.A")
 
@@ -131,11 +136,139 @@ def test_choose_body_order(mod):
     long_md = "x " * 100
     f, raw, disp = mod.choose_body(_src(mail_body_md=long_md, mail_without_fw="short"))
     assert f == "mail_body_md" and raw == long_md and len(disp) >= 150
-    f, _, disp = mod.choose_body(_src(mail_body_md="too short", mail_without_fw="wofw text"))
-    assert (f, disp) == ("mail_without_fw", "wofw text")
+    f, _, disp = mod.choose_body(_src(mail_body_md="too short", mail_without_fw="wofw text longer"))
+    assert (f, disp) == ("mail_without_fw", "wofw text longer")  # 都 < 150：取初洗後最長的（D28）
     f, _, disp = mod.choose_body(_src(mail_body="body only"))
     assert (f, disp) == ("mail_body", "body only")
     assert mod.choose_body(_src()) == ("none", None, "")
+
+
+def test_choose_body_skips_junk_without_fw(mod):
+    """D28：ETL 的 mail_without_fw 只剩 Word 文件屬性殘渣（九成空行）時，正文在 mail_body，
+    不能因為它非空就選。"""
+    junk = (
+        "\n" * 8 + "Normal\n130\nDocumentEmail\nfalse\n\n\nfalse\nfalse\n\nEN-US\nZH-TW\nX-NONE\n"
+        + "\n" * 6 + "MicrosoftInternetExplorer4\n" + "\n" * 300
+        + "<!--\n/* Font Definitions */\n" + "\n" * 60
+    )
+    assert len(junk) > 300
+    assert mod.clean_display(junk, "mail_without_fw") == ""  # 0.2 連 <!-- 那兩行也清掉
+    body = (
+        "From: Amy Wang 王小美\nSent: Tuesday, October 6, 2026 3:26 PM\n"
+        "Subject: RE: AUO Monthly Meeting\n\n"
+        + "M270QAN06.A 客戶要求 Q4 增加 10K 片，PM 回覆看產能。" * 6
+    )
+    f, raw, disp = mod.choose_body(_src(mail_body_md="", mail_without_fw=junk, mail_body=body))
+    assert f == "mail_body" and raw == body and len(disp) >= 150
+    # 三欄都不到 150 字：取初洗後最長的，不是順序在前的
+    longer = "a bit longer body text here"
+    f, _, disp = mod.choose_body(_src(mail_without_fw="Normal\n\nhi", mail_body=longer))
+    assert (f, disp) == ("mail_body", longer)
+    # 只有殘渣 → none
+    assert mod.choose_body(_src(mail_without_fw=junk)) == ("none", None, "")
+
+
+# Outlook / Word HTML 的形狀（假名、example 網域）：<head> 有 xml 條件註解與 <style>；
+# 正文段落 <p class=MsoNormal>、空行是 <p><o:p>&nbsp;</o:p></p>；標頭 <b>From:</b> … <br>；
+# 原始碼有軟換行；表格；cid 圖；連結；免責段。
+OUTLOOK_HTML = """<html><head><meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<!--[if gte mso 9]><xml>
+<w:WordDocument><w:View>Normal</w:View><w:Zoom>90</w:Zoom><w:DocumentKind>DocumentEmail</w:DocumentKind>
+<w:TrackMoves>false</w:TrackMoves><w:LidThemeOther>EN-US</w:LidThemeOther></w:WordDocument></xml><![endif]-->
+<style><!--
+/* Font Definitions */
+@font-face
+\t{font-family:"Cambria Math";
+\tpanose-1:2 4 5 3 5 4 6 3 2 4;}
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+\t{margin:0cm;
+\tfont-size:11.0pt;
+\tfont-family:"Calibri",sans-serif;}
+--></style></head>
+<body lang=ZH-TW link="#0563C1" vlink="#954F72" style='word-wrap:break-word'>
+<div class=WordSection1>
+<p class=MsoNormal>Dear all,<o:p></o:p></p>
+<p class=MsoNormal><o:p>&nbsp;</o:p></p>
+<p class=MsoNormal>see below<o:p></o:p></p>
+<p class=MsoNormal><o:p>&nbsp;</o:p></p>
+<div style='border:none;border-top:solid #E1E1E1 1.0pt;padding:3.0pt 0cm 0cm 0cm'>
+<p class=MsoNormal><b><span lang=EN-US>From:</span></b><span lang=EN-US> Amy Wang 王小美
+&lt;Amy.Wang@auo.com&gt;<br>
+<b>Sent:</b> Tuesday, October 6, 2026 3:26 PM<br>
+<b>To:</b> CustA, P01 &lt;P01.CustA@acer.example&gt;<br>
+<b>Subject:</b> RE: AUO Monthly Meeting<o:p></o:p></span></p>
+</div>
+<p class=MsoNormal><o:p>&nbsp;</o:p></p>
+<p class=MsoNormal>Hi P01,<o:p></o:p></p>
+<p class=MsoNormal>M270QAN06.A 客戶要求 Q4 增加
+10K 片，PM 回覆看產能。<o:p></o:p></p>
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0>
+ <tr><td width=120 valign=top style='border:solid windowtext 1.0pt'>
+  <p class=MsoNormal>Model<o:p></o:p></p></td>
+  <td><p class=MsoNormal>Qty<o:p></o:p></p></td></tr>
+ <tr><td><p class=MsoNormal>M270QAN06.A<o:p></o:p></p></td>
+  <td><p class=MsoNormal>10K<o:p></o:p></p></td></tr>
+</table>
+<p class=MsoNormal><img width=200 height=50 id="Picture_x0020_1"
+src="cid:image001.png@01DD55A6.F34EE930"><o:p></o:p></p>
+<p class=MsoNormal><a href="https://example.com/x">the link</a><o:p></o:p></p>
+<p class=MsoNormal>CONFIDENTIALITY REMINDER: This email may include
+confidential information.<o:p></o:p></p>
+</div></body></html>"""
+
+
+def test_html_to_text_outlook(mod):
+    """D29：head / style / 條件註解全刪；段落與 <br> 換行；軟換行併回；表格成 md 列；cid 圖刪；
+    連結留文字。"""
+    txt = mod.html_to_text(OUTLOOK_HTML)
+    assert "Font Definitions" not in txt and "DocumentEmail" not in txt
+    assert "<" not in txt.replace("<Amy", "").replace("<P01", "")
+    assert "Dear all,\n\nsee below" in txt  # 空段落 → 空白行
+    assert "From: Amy Wang 王小美 <Amy.Wang@auo.com>\nSent: Tuesday, October 6, 2026 3:26 PM" in txt
+    assert "增加 10K 片" in txt  # 原始碼軟換行併成空白
+    assert "| Model | Qty |" in txt and "| M270QAN06.A | 10K |" in txt
+    assert "cid:" not in txt and "the link" in txt and "https://" not in txt
+    assert mod.html_to_text(None) == "" and mod.html_to_text("") == ""
+    # ETL 截斷：只有 <head>、停在 <style><!-- 中間（沒有 --> / </style> / </head> / <body>）
+    # → 整封視為無內容，不能把幾萬字 CSS 當正文（第三次 dry_run 42 封被誤救、dup_of_pk 跳到 11%）
+    cut = OUTLOOK_HTML.split("p.MsoNormal, li.MsoNormal")[0]
+    assert "<body" not in cut and "</style>" not in cut and "</head>" not in cut
+    assert mod.html_to_text(cut) == ""
+    assert mod.choose_body(_src(mail_body_html=cut)) == ("none", None, "")
+    # 沒關閉的 <!--[if 也吃到結尾
+    assert mod.html_to_text("<p>ok</p><!--[if gte vml 1]><v:shape>junk mso-wrap") == "ok"
+    # 整條管線：初洗後免責行刪掉、標頭區塊抓得到
+    disp = mod.clean_display(txt, "mail_body_html")
+    assert "CONFIDENTIAL" not in disp and "the link" in disp
+    blocks = mod.find_header_blocks(disp)
+    assert len(blocks) == 1 and blocks[0]["fields"]["Subject"] == "RE: AUO Monthly Meeting"
+    assert blocks[0]["fields"]["To"] == "CustA, P01 <P01.CustA@acer.example>"
+
+
+def test_choose_body_html_fallback(mod):
+    """D29：三個文字欄都只剩殘渣才讀 HTML；文字欄夠長時不碰 HTML。"""
+    junk = "\n" * 8 + "Normal\n130\nDocumentEmail\nfalse\n\nEN-US\n" + "\n" * 300
+    junk += "<!--\n/* Font Definitions */\n"
+    src = _src(mail_without_fw=junk, mail_body=junk, mail_body_html=OUTLOOK_HTML)
+    f, raw, disp = mod.choose_body(src)
+    assert f == "mail_body_html" and raw == OUTLOOK_HTML
+    assert len(disp) >= 150 and "Dear all," in disp
+    f, _, disp = mod.choose_body(_src(mail_body=PLAIN_THREAD, mail_body_html=OUTLOOK_HTML))
+    assert f == "mail_body" and "Dear all," in disp and "Model" not in disp
+    # HTML 也不到 150 字：四者取最長
+    tiny = "<p>tiny html paragraph here</p>"
+    f, _, disp = mod.choose_body(_src(mail_body="short body", mail_body_html=tiny))
+    assert (f, disp) == ("mail_body_html", "tiny html paragraph here")
+    row = mod.build_mail_row(_src(mail_without_fw=junk, mail_body_html=OUTLOOK_HTML), "bu", "0.2")
+    assert row["body_source_field"] == "mail_body_html" and row["has_headers"] is True
+    assert row["raw_len"] == len(OUTLOOK_HTML) and row["display_len"] == len(row["body_display"])
+
+
+def test_disclaimer_keeps_lines_before_hit(mod):
+    """0.2：免責只刪命中行起到段尾，之前的行保留（HTML 轉文字後段落間常沒空行）。"""
+    t = "real line one\nreal line two\nCONFIDENTIAL: do not forward\nmore legal text"
+    assert mod.drop_disclaimer_paragraphs(t) == "real line one\nreal line two"
+    assert mod.drop_disclaimer_paragraphs("CONFIDENTIAL only\nlegal") == ""
 
 
 def test_normalize_and_body_hash(mod):
@@ -400,6 +533,7 @@ def test_spark_pipeline(mod, spark, schemas, ref_tables):
                     "string",
                     "string",
                     "string",
+                    "string",  # mail_body_html（D29）
                     "boolean",
                     "int",
                     "boolean",

@@ -1,24 +1,27 @@
-# HANDOFF — 2026-10-16 收尾（下次 session 先讀這份；下一階段看 §6）
+# HANDOFF — 2026-10-19 更新（下次 session 先讀這份；下一階段看 §6）
 
-總覽與決定（D1–D25）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
+總覽與決定（D1–D28）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
+
+> **2026-10-19 插入的緊急項（D28 ＋ D29）**：段 0 抽查發現 task 1 來源選擇丟了 156 封信的正文。追到底：ETL 對這些信三個文字欄都只剩 Word 屬性殘渣，正文只在 `mail_body_html` → 加 HTML 備援（偏離規格 §4.0）。task 1 cleaner 0.2 已在 repo（[c01] [c02] [c03] [c12]、tests 19 passed、README），**Databricks 待同步**；同步後 task 1 → 2 → 3 各跑一輪 incremental（task 3 那輪要錢，估 20 美元）。順序與要看的數字在 STATUS §6.1 第 0 點。這件事排在補跑 583 條與 prompt 0.3 之前，因為它改變全量重跑的段數與費用。
 
 ## 1. 現在的狀態
 
 | 項目 | 狀態 |
 |---|---|
-| W1 task 1 `meeting_extracted_w1_t1_mail` | ✅ Databricks 已正式寫表（493 封）。STATUS §6.1 三段診斷 SQL 使用者還沒跑（去重落差 17 vs 112 未解，不擋） |
-| W1 task 2 `meeting_extracted_w1_t1_clean`（本資料夾） | ✅ 2026-10-16 Databricks `dry_run = false` 寫表完成，[c30]：1,865 段 / stale 0 / dup_keys 0 / email_left 0 / dangling 0。段 0 抽查 SQL（STATUS §6.2 第 6 點）還沒跑 |
+| W1 task 1 `meeting_extracted_w1_t1_mail` | ✅ **cleaner 0.2（D28 ＋ D29）2026-10-19 已同步、backfill 寫表**：495 封、html 4 / none 164、dup 0.034。142 封正文不在任何欄位 → ETL（STATUS §7）。STATUS §6.1 三段診斷 SQL 使用者還沒跑（去重落差 17 vs 112 未解，不擋；D28 重洗後 `body_hash` 會變，數字要重看） |
+| W1 task 2 `meeting_extracted_w1_t1_clean`（本資料夾） | ✅ 2026-10-16 Databricks `dry_run = false` 寫表完成，[c30]：1,865 段 / stale 0 / dup_keys 0 / email_left 0 / dangling 0。✅ 2026-10-19 跟著 task 1 0.2 重切：314 封 / 1,817 段 / 段 0 剩 51。🟡 [c11] 本批 pk 改釘 driver（[c30] lazy view 空跑的修正）在 repo、Databricks 待同步 |
 | W1 task 3 `meeting_extracted_w1_t2_extract`（T2 L1，LLM） | ✅ **2026-10-16 全量 backfill 已寫表**（prompt 0.2、1,181 段、約 3 小時、69 美元；13,185 列 / ok 12,248 / [c30] 一致）。🟡 **D26 S3 改遮罩**（舊版命中即作廢，誤殺 583 條 = 4.5%）＋ D27 [c21] 別名補對 ＋ [c11] 進度 log：✅ 2026-10-16 已同步到 Databricks 並跑過一輪 incremental（撿回 408 那段 1 條、[c21] 更新 502 列）。**補跑（撿回 583 條，289 段、35–40 美元）使用者決定測試期先不做**。[c31a] 診斷已跑、已刪。D22–D27 |
 | `001_semantic_entity` v3 | ✅ 2026-10-16 Databricks 跑完（29 公司 / 93 別名，全部推測，README 001 有對應表；使用者未提出更正）。task 3 [c21] 套用：更新 502 列 customer，剩 36 個長尾原名對不上 |
 | 本機測試 | `py -3.10 -m pytest tests/test_meeting_extracted_w1_t2_extract.py tests/test_meeting_extracted_migration_001.py tests/test_meeting_extracted_migration_002.py` 31 passed、ruff clean；task 1 / task 2 的 tests 沒動 |
-| git | 上一個 commit `3c9db27`（全量跑中時）。**之後的改動未 commit**：task 3 [c02] [c05] [c06] [c07] [c10] [c11] [c12] [c21] [c30]、README；002 [c04] spec 加 `s3_masked`；001 [c02] [c05] v3；tests ×3；STATUS；migration README；本檔 |
+| git | 上一個 commit `8b8e2b8`（2026-10-16，已 push）。**之後未 commit**：task 1 D28 / D29（notebook [c01] [c02] [c03] [c12]、README、tests）、002 [c04] `body_source_field` COMMENT 加 `mail_body_html`（Databricks 上的 COMMENT 不用改，003 再對齊）、STATUS D28 / D29、本檔 |
 
 ## 2. 下一步（照順序）
 
+0. **D28 / D29 同步 ＋ 三個 task 各跑一輪 incremental**（STATUS §6.1 第 0 點）。✅ task 1 dry_run 跑過三次（D28 版、D29 版、CSS 400 字上限版——第三次誤救 42 封 CSS 垃圾、`dup_of_pk` 11%，`HTML_DROP_RE` 已修，見 STATUS §6.1 第 0b 點的處置）：**只救回 4 封**，其餘 142 封四個欄位都沒正文（`mail_body_html` 只有 `<head>`）→ **ETL 截斷，找 ETL owner**（STATUS §7、證據 SQL §6.1 第 0c 點）。D28 / D29 版照樣 `dry_run = false` 寫表（這些信變 `none`、task 2 跳過，不再有 27 字假段），再 task 2 → task 3 各一輪 incremental。✅ **2026-10-19 三個 task 都跑完寫表**（task 2 1,817 段；task 3 90 段 / 545 列 / 約 5 美元；[c30] 都一致）。剩：STATUS §6.1 第 0c 點 ETL 證據 SQL → 找 ETL owner；commit。
 1. ✅ Databricks 已同步（task 3 14 cell、001 v3、002 [c04]），001 v3 與 task 3 incremental 一輪都跑完（2026-10-16）。
 2. ✅ 001 v3 推測對應使用者沒改；[c21] 更新 502 列。
 3. ✅ **summary 人名抽查**（2026-10-16）：高頻 80 字＋低頻 120 字（1–2 封、2–30 次）都掃過，使用者確認**沒有人名**（像名字的 Leo / Gina / Yang / Will / Mizu / Riku 都是代號或術語）。prompt 0.2 的人名規則對非參與者也有效；之後 prompt 0.3 仍加一句「非參與者的人名一律改寫為角色」當保險。
-4. **補跑撿回 583 條**（使用者決定時機）：`run_mode = backfill`、`retry_failed = true`、`dry_run = false`、`max_segments = 0`、`concurrency = 8`；289 段、35–40 美元、約 1 小時。
+4. **補跑撿回 583 條**（使用者決定時機；**先做第 0 點**，因為重洗後 `retry_failed` 的段數可能變）：`run_mode = backfill`、`retry_failed = true`、`dry_run = false`、`max_segments = 0`、`concurrency = 8`；289 段、35–40 美元、約 1 小時。
 5. **prompt 0.3 ＋ cleaner 0.2 一起出**：prompt 0.3 加「條目所在章節 / 標題指明客戶，或整段是單一客戶會議，每條都填 customer_raw」；cleaner 0.2 去 `**` 殘渣、只有名單的段歸 `attachment_only`。兩者都會讓全量重萃（約 70 美元），所以一起做一次。做之前先做段 0 抽查（STATUS §6.2 第 6 點）。
 6. W1 三個 task 串成一個 Job 週跑（`run_mode = incremental`）；加規格 §2.4 設定一致性檢查。
 7. 之後：golden set 模板（有了才做 llama 比較、§9.2 指標）、003 migration（Sales Brief 鏡頭表、column mask、分應用 View；`s3_masked` 已由 task 3 [c10] ALTER 補，003 只需列入 spec）、W2 T3–T5（STATUS §6.4）。
@@ -37,22 +40,22 @@
 
 ## 4. Commit 提醒
 
-`3c9db27` 之後的 D26 改動未 commit，要先問使用者。流程：
+`8b8e2b8` 之後的 D28 改動未 commit，要先問使用者。流程：
 
 ```
-py -3.10 tools/nb.py strip jobs/meeting_record/meeting_extracted_w1_t2_extract/notebook.ipynb
-py -3.10 tools/nb.py strip jobs/meeting_record/meeting_extracted_migration/002_meeting_neutral_tables.ipynb
-py -3.10 tools/nb.py strip jobs/meeting_record/meeting_extracted_migration/001_semantic_entity.ipynb
-py -3.10 -m ruff check tests/test_meeting_extracted_w1_t2_extract.py tests/test_meeting_extracted_migration_001.py
-py -3.10 -m pytest tests/test_meeting_extracted_w1_t2_extract.py tests/test_meeting_extracted_migration_001.py tests/test_meeting_extracted_migration_002.py -q
+py -3.10 tools/nb.py strip jobs/meeting_record/meeting_extracted_w1_t1_mail/notebook.ipynb
+py -3.10 -m ruff check tests/test_meeting_extracted_w1_t1_mail.py
+py -3.10 -m pytest tests/test_meeting_extracted_w1_t1_mail.py -q
 ```
 
-建議 commit 訊息：`meeting_extracted: task 3 S3 mask instead of discard (D26), customer renormalize cell (D27), progress log, 408 retry; 001 seed v3; full backfill results`
+建議 commit 訊息：`meeting_extracted: task 1 cleaner 0.2 — choose_body by cleaned length (D28) + mail_body_html fallback (D29); 146 mails had body only in HTML`
 
 不 commit / push，除非使用者要求。
 
 ## 5. 使用者的固定要求（別忘）
 
+- **ETL 截斷待處理**（2026-10-19）：142 封信四個正文欄都沒內容，程式救不回；等 ETL 修好要用 `run_mode = backfill` 重跑該日期窗（水位是 `create_date`，原地更新撿不到）。
+- **清洗不得丟資訊**（2026-10-19，D28 之後明講）：任何「選來源 / 丟段 / 刪行」的規則都要以清洗後還剩多少內容為準；新規則上線前先用 SQL 量受影響筆數。D29 之後也包括：來源欄全空時要去看還有哪個欄位有內容（這次是 `mail_body_html`），不能只在規格列的欄位裡打轉。
 - 使用者只能**複製貼上**到 Databricks；每次改 notebook 後回覆最後附「Databricks 同步清單」（哪個檔、哪個 cell 替換 / 新增於哪之後 / 刪除 / 整支匯入），不解釋工具指令。
 - 跑在 serverless：不 `cache` / `persist`。
 - 本機測試用 `py -3.10`，Windows console 要 `PYTHONIOENCODING=utf-8`。`tests/` 整包 ruff 有 ir_calendar 舊檔的 E501，與本案無關。

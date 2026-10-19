@@ -29,7 +29,7 @@ W1（中立層週跑）的第二支 task：**T1-b 分段 → token 化 → 分�
 
 ## 關卡（[c12]）
 
-會停：本批 0 段；**`clean_text` 殘留參與者姓名**（S3 硬規則；email 已在 [c05] 全數換 token 或遮掉，[c30] 寫入後再用 SQL 查一次）；`dup_of` > 80%。只印：`emails_masked`、跳過的信（none / 整封重複 / oversize）、每封段數、`content_type` 分布、可萃取段數、壓縮率、`clean_len` P50 / P95、超長段、`date_inferred` 比例、hint 覆蓋率。
+會停：本批 0 段；**`clean_text` 殘留參與者姓名**（S3 硬規則；email 已在 [c05] 全數換 token 或遮掉，[c30] 寫入後再用 SQL 查一次）；`dup_of` > 80%。[c11] 把本批 pk 先 collect 到 driver 釘住（2026-10-19：原本 `_w1_clean_batch_pks` 是 lazy view，寫表後 [c30] 再求值變 0 筆，關卡在空集合上通過）。只印：`emails_masked`、跳過的信（none / 整封重複 / oversize）、每封段數、`content_type` 分布、可萃取段數、壓縮率、`clean_len` P50 / P95、超長段、`date_inferred` 比例、hint 覆蓋率。
 
 ## 測試
 

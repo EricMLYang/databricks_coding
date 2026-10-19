@@ -1,6 +1,6 @@
 # 會議紀錄萃取（meeting_extracted）現況與接手說明
 
-> 最後更新：2026-10-15。給下一個接手的人或 Agent：**先讀完本檔再動手**。每完成一步就回來更新「進度」與「下一步」。
+> 最後更新：2026-10-19。給下一個接手的人或 Agent：**先讀完本檔再動手**。每完成一步就回來更新「進度」與「下一步」。
 
 ## 1. 這是什麼
 
@@ -56,6 +56,8 @@
 | D25 | S3 關卡拆兩層：**寫進表的內容 S3 = 0** 由程式保證（[c05] 處理後 [c30] 用 SQL 再查）；LLM 輸出命中率只 WARN / 高到離譜才停，避免一個誤判擋掉整批。S3 掃描除了參與者全名，再加參與者**英文名首字整字比對**（D17 讓 clean_text 留著 Luke 這種稱呼，50 段 dry_run 看到被抄進 summary）。prompt 0.2 同步加「summary 不得帶人名、quote 挑不含人名的片段」。（命中的處置方式被 D26 取代） | §4.2 關卡「S3 命中 = 0」 |
 | D26 | **S3 命中改遮罩修復、不作廢**（使用者 2026-10-16 決定：給高階主管看，不能因名字丟資訊）。[c05] `s3_mask`：summary / quote / segment_note / free_tags 裡的參與者姓名換成該人的 `<Pnn>`、email 換成 `<email>`，條目保留，新欄 `s3_masked` 記換了幾處；quote 驗證用換前或換後任一版本，`item_key` 用換後。比對規則收緊：ASCII 姓名寫法**整字**不分大小寫（舊版「不分大小寫子字串」讓 3 字母英文名落在一般單字裡，全量誤殺 583 條 = 4.5%）、英文名首字整字區分大小寫、含中文寫法子字串、長的先換。關卡：遮罩條目 > 5% WARN、> 20% 停。`s3_masked INT` 加進 002 spec，Databricks 上由 task 3 [c10] 缺欄時 `ALTER TABLE ADD COLUMNS` 補（一欄、冪等，不另開 migration 流水號；下個 003 一併列入）。`retry_failed = true` 語意改成「有效列含任一 `failed_*` 的段整段重打」，用來把被清掉的 583 條撿回（289 段、約 35–40 美元；**使用者 2026-10-16 決定測試期先不補跑**）。[c06] 加 HTTP 408 重試 | §4.2 (9)、§3.3 |
 | D27 | **別名表更新後由 task 3 [c21] 補對，不重萃**：每次跑（非 dry_run）把有效 ok 列中 `customer` NULL、`customer_raw` 有值的原名重算一次，對得上的 MERGE 回 `customer`（`customer_raw` 不動）。本批 0 段也會做。001 v3（29 公司 / 93 別名，全部「推測」）新增 `entity_type = competitor`（HKC / BOE / Innolux，side = third_party；`customer` 刻意對不到）。LLM 沒填 `customer_raw` 的 5,676 條（多客戶週會紀要）不用程式補值（段的 `customer_hint` 是「命中最多者」，在多客戶紀要裡最容易錯），等 prompt 0.3「章節客戶帶到每一條」與 cleaner 0.2 一起全量重跑 | §6.3 |
+| D28 | **task 1 來源選擇改看初洗後長度（task 1 cleaner 0.2）**。2026-10-19 段 0 抽查（§6.2 第 6 點）發現 199 個段 0 裡 177 個是同一個 27 字殘渣（Word 樣式區塊開頭 `<!--` / `/* Font Definitions */`），追到 mail 表：**146 封 `mail_without_fw` 來源 ＋ 10 封 `mail_body` 來源初洗後 < 150 字**（原始中位數 1,209 字 → 27 字）。原因不是初洗誤刪：ETL 的 `mail_without_fw` 對這些信只剩 Word 文件屬性殘渣（九成空行、Normal / DocumentEmail / EN-US…，無正文、無 HTML 標籤），0.1 的 `choose_body`「md 不到 150 字就用非空的 `mail_without_fw`」把它選走，**從不回頭看 `mail_body`**（Phase 0：`mail_body` 95% 非空、中位數約 2,000 字）。結果約 32% 的信整封只有一段 noise，task 3 全量 1,181 段完全沒有它們。修法：[c03] `choose_body` 依 md → `mail_without_fw` → `mail_body` 取**第一個初洗後 ≥ 150 字**的欄，都不到就取初洗後最長的非空欄；[c02] CSS 殘渣加 `<!--` / `-->` / `/* … */` 獨立行；[c12] log 加 `short_body_rate`（> 10% WARN）；widget `cleaner_version` 預設 0.2。連鎖：task 1 incremental 會重洗全部 493 封（`cleaner_version != 0.2`）→ task 2 依 D19（mail `cleaned_at` 變新）重切同一批 → task 3 只萃「items 表沒有的段」（新出現的可萃取段，估 300–400 段、約 20 美元，使用者決定時機）。原則：**清洗不得丟資訊**——任何「選一個來源」的規則都要以清洗後還剩多少內容為準，不以欄位非空為準。（光改這條不夠，見 D29） | §4.1 (a) 1–3 |
+| D29 | **讀 `mail_body_html` 當最後備援**（偏離 §4.0「不讀 html」）。D28 dry_run 結果：`none` 從 22 封變 164 封、`short_body_rate` 36.8%——這 146 封的 `mail_body` 與 `mail_without_fw` 是同一份殘渣（中位數 1,209 字、0 空行、無 HTML 標籤；ETL 把 `<!--[if gte mso 9]>` 裡的 Word XML 當文字、到 `<style>` 就截斷），md 空，**正文只在 `mail_body_html`（中位數 34k 字）**。修法（task 1 cleaner 0.2）：[c02] `SOURCE_COLS` 加 `mail_body_html`；[c03] `html_to_text`（stdlib regex：刪 head / style / 條件註解、軟換行併回、區塊標籤換行、表格成 md 列、cid 圖刪、`<a>` 留文字、entity 還原）；`choose_body` 三個文字欄初洗後都 < 150 字才轉 HTML，≥ 150 字就用（`body_source_field = mail_body_html`）；免責規則改成只刪命中行起到段尾（HTML 轉出的段落間常沒空行，整段刪會連坐正文）。HTML 裡的轉寄標頭是 `<b>From:</b> … <br>`，轉成純文字 `From:` 行，[c04] 標頭規則與 task 2 分段接得上（本機以合成 Outlook HTML 驗過）。預期：`source_dist` 多一類 `mail_body_html` 約 146 封、`short_body_rate` 掉到 5% 以下。費用：無 LLM；HTML 34k 字轉文字後通常幾 k。**結果（2026-10-19 第二次 dry_run）：只救回 4 封**——pk 332 / 190 的 `mail_body_html` 34k 字裡 `<p>` `<br>` `<div>` `<body` `</head>` 全是 0，**整欄只有 Word `<head>`（XML 條件註解 ＋ LatentStyles ＋ style），沒有正文**。四個欄位都沒內容 = **來源在進 Databricks 前就被截斷，ETL 問題**（D10 預留的「需要再去向 ETL owner 說明」現在要做，§7）。程式端 D28 / D29 仍保留：正確、無害（這些信變 `none`、task 2 直接跳過，不再製造 27 字假 noise 段），HTML 有 body 的信能救。另加：CSS 殘渣整行刪只限 400 字內的行（整封併成一行時不能整封陪葬）。**第三次 dry_run（加了 400 字上限後）踩到反作用**：`mail_body_html` 46 封、`dup_of_pk` 跳到 10.9%——head-only 的 HTML 停在 `<style><!--` 中間、`-->` 不存在，註解規則抓不到，幾萬字 CSS 併成一行、不再被整行刪，被當正文選走且各封相同互判重複（本機重現：5,247 字 CSS 當正文）。修：`HTML_DROP_RE` 沒關閉的 `<!--[if` / `<!--` / `<head>` `<style>` 一律吃到字串結尾（截斷的 HTML 整封視為無內容）。預期回到 `mail_body_html` 4、`none` 164、`dup_of_pk` 3.4% | §4.0 |
 
 ## 4. Phase 0 結論（決定 T1 規則）
 
@@ -84,9 +86,9 @@
 | `001_semantic_entity` v2（公司 21、別名 72；D9 的種子） | ✅ 2026-10-15 已在 Databricks 正式執行（entity insert 1 / update 8、alias insert 4 / update 4；無重複、無孤兒） |
 | `001_semantic_entity` v3（公司 29、別名 93；D27，全部推測） | ✅ 2026-10-16 已在 Databricks 正式執行（entity insert 8、alias insert 21；active 29 / 93，無重複、無孤兒）。task 3 [c21] 同日套用：對不上的原名 53 個 → 對上 17 個，更新 502 列；剩 36 個長尾原名（CN客戶、代理商、Z1S、SDIC、CSD…）不處理 |
 | `002_meeting_neutral_tables` | ✅ 2026-10-15 已在 Databricks 正式執行：4 表（33 / 34 / 19 / 35 欄）＋ 3 View（38 / 7 / 28 欄）建立，[c30] 無 PROBLEM |
-| W1 task 1 `meeting_extracted_w1_t1_mail`（T1-a / T1-m / T1-c） | ✅ 2026-10-15 Databricks 正式寫表（incremental 首跑 = 全窗 493 封）。dry_run 關卡全過：conflict 0、from_ok 0.998、md 0.586、has_headers 0.544、oversize 0、side_unknown 0、participants 40,321 列 / 9,364 token。使用者未貼 [c30] 輸出與 §6.1 診斷結果。**待查**（不擋）：`dup_of_pk` 3.4%（17 封）遠低於 Phase 0 的 112 封；1 封 `mail_from` 解析失敗；1 個 `auo.comhi` 網域 |
-| W1 task 2 `meeting_extracted_w1_t1_clean`（T1-b） | ✅ 2026-10-16 Databricks 正式寫表（backfill 2026-06-01 起、`dry_run = false`）。[c30]：`batch_segments_in_table 1865 / stale 0 / dup_keys 0 / email_left 0 / dangling_dup_of 0 / table_total 1865`。dry_run 第 3 輪數字：493 封 → 454 封分段、1,865 段；thread_reply 981 / inline_minutes 583 / noise 228 / attachment_only 49 / appointment 24；可萃取 1,564 段（扣 dup_of 後約 1,180 段會送 T2）；dup_of 24.4%；段 0 留 199（**還沒抽查**，SQL 在 §6.2 第 6 點） |
-| W1 task 3 `meeting_extracted_w1_t2_extract`（T2 L1） | 🟡 2026-10-16 建好並貼到 Databricks（13 個 cell、README、tests 15 passed）。dry_run 四輪（10 / 10 / 10 / 50 段）調完：quote 失敗 1%、S3 0、customer NULL 0、費用 3 美元 / 50 段。**2026-10-16 全量 backfill 已寫表**（`prompt_version 0.2`、1,181 段、11:43 開跑約 3 小時、69 美元）：13,185 列 / ok 12,248 / empty 119 / 截斷 46 / quote 失敗 1.5% / 端點錯 1（408）/ [c30] 一致。兩個問題：S3 誤殺 583 條（4.5%）→ D26 改遮罩，待 `retry_failed = true` 重打；`customer` NULL 52% → [c31a] 診斷待跑。D22–D26 |
+| W1 task 1 `meeting_extracted_w1_t1_mail`（T1-a / T1-m / T1-c） | ✅ **2026-10-19 cleaner 0.2（D28 ＋ D29）Databricks 已同步、backfill 2026-06-01 起寫表**：495 封、`source_dist` md 305 / without_fw 22 / **html 4** / none 164、`short_body_rate` 0.368（ETL 截斷，§7）、`dup_of_pk` 0.034。中間第三次 dry_run 誤救 42 封 CSS 垃圾並寫過表，修 `HTML_DROP_RE` 後用 backfill 洗回。以下是 0.1 的紀錄：✅ 2026-10-15 Databricks 正式寫表（incremental 首跑 = 全窗 493 封）。dry_run 關卡全過：conflict 0、from_ok 0.998、md 0.586、has_headers 0.544、oversize 0、side_unknown 0、participants 40,321 列 / 9,364 token。使用者未貼 [c30] 輸出與 §6.1 診斷結果。**待查**（不擋）：`dup_of_pk` 3.4%（17 封）遠低於 Phase 0 的 112 封；1 封 `mail_from` 解析失敗；1 個 `auo.comhi` 網域 |
+| W1 task 2 `meeting_extracted_w1_t1_clean`（T1-b） | ✅ **2026-10-19 跟著 task 1 0.2 重切（incremental，495 封全批）**：分段 314 封、**1,817 段**、段 0 剩 51（177 個 27 字假段 0 消失）、thread_reply 1,067 / inline_minutes 591 / noise 97 / attachment_only 46 / appointment 16、可萃取 1,658、dup_of 24.2%、residual 0；[c30] table_total 1,817。[c30] 的 batch 計數因 lazy view 變 0（關卡空跑）→ [c11] 改成 pk 釘在 driver，repo 已改、Databricks 待同步（不影響這次資料，用 §6.2 第 8 點的 SQL 補驗）。0.1 的紀錄：✅ 2026-10-16 Databricks 正式寫表（backfill 2026-06-01 起、`dry_run = false`）。[c30]：`batch_segments_in_table 1865 / stale 0 / dup_keys 0 / email_left 0 / dangling_dup_of 0 / table_total 1865`。dry_run 第 3 輪數字：493 封 → 454 封分段、1,865 段；thread_reply 981 / inline_minutes 583 / noise 228 / attachment_only 49 / appointment 24；可萃取 1,564 段（扣 dup_of 後約 1,180 段會送 T2）；dup_of 24.4%；段 0 留 199（**還沒抽查**，SQL 在 §6.2 第 6 點） |
+| W1 task 3 `meeting_extracted_w1_t2_extract`（T2 L1） | ✅ **2026-10-19 跟著 task 1 / 2 的 0.2 重切跑一輪 incremental**：本批 90 段 / 21 封、545 列、s3_masked 26 列、端點錯 0、約 5 美元；[c30] 一致，table_total 13,731 / active ok 12,774（原 12,249）。同日清洗表補驗：1,817 段、email_left 0、seg0 < 150 字剩 14（整封本來就短的 noise）。之前的紀錄：🟡 2026-10-16 建好並貼到 Databricks（13 個 cell、README、tests 15 passed）。dry_run 四輪（10 / 10 / 10 / 50 段）調完：quote 失敗 1%、S3 0、customer NULL 0、費用 3 美元 / 50 段。**2026-10-16 全量 backfill 已寫表**（`prompt_version 0.2`、1,181 段、11:43 開跑約 3 小時、69 美元）：13,185 列 / ok 12,248 / empty 119 / 截斷 46 / quote 失敗 1.5% / 端點錯 1（408）/ [c30] 一致。兩個問題：S3 誤殺 583 條（4.5%）→ D26 改遮罩，待 `retry_failed = true` 重打；`customer` NULL 52% → [c31a] 診斷待跑。D22–D26 |
 | L1 prompt | 🟡 v0.2 內嵌在 task 3 [c04]（0.2：人名規則，D25）（§5.1 十個構件、§6 規則、詞彙表壓縮版、附錄 A 5 條 few-shot）；50 段 dry_run 樣本品質可接受（事實 / 要求分開、S2 判定合理、thread 段 speaker 正確） |
 | golden set | ⬜（需 PM 標註） |
 | W2（T3～T5） | ⬜ |
@@ -95,6 +97,33 @@
 
 ### 6.1 使用者端（Databricks）
 
+0. **D28 同步與重跑（2026-10-19，不花 LLM 錢的部分先做）**：
+   - task 1 貼 [c01] [c02] [c03] [c12]（[c02] [c03] 是 D29 版）→ `run_mode = incremental`、`dry_run = true` 看 [c12]：`source_dist` 應多一類 `mail_body_html` 約 146 封、`none` 回到約 22 封、`short_body_rate` 低於 0.05 → 再跑 §6.1 第 0b 點的抽查 SQL 看 HTML 轉出來的形狀 → `dry_run = false`。
+   - 0b. dry_run 不寫表，形狀要從 `df_mail` 看：在 [c12] 之後臨時加一個 cell（跑完刪）：
+     `df_mail.where(F.col('body_source_field') == 'mail_body_html').select('pk_seq', 'display_len', 'has_headers', F.substring('body_display', 1, 600).alias('head')).orderBy(F.rand(7)).limit(3).show(truncate=False)`
+     貼之前把人名 / email 塗掉。要看的是：標頭 `From:` / `Sent:` 有沒有成行、表格有沒有變 `| a | b |`、有沒有整行 CSS 殘渣。
+     ✅ 2026-10-19 跑過：`mail_body_html` 只有 4 封、`none` 164 → 查出四欄都沒正文（D29 結果、§7）。
+     ⚠️ 第三次 dry_run（CSS 400 字上限版）`mail_body_html` 46 / `dup_of_pk` 0.109 = 42 封 CSS 垃圾被當正文（D29 末段）；`HTML_DROP_RE` 已修。**若那版已 `dry_run = false` 寫表**：貼修正版 [c02] 後用 `run_mode = backfill`、`date_from = 2026-06-01`、`dry_run = true` 看 `mail_body_html` 回到 4、`dup_of_pk_rate` 回到 0.034，再 `false`（backfill 對窗內全部 pk 重算 MERGE，不靠 `cleaner_version`）。沒寫表就照常 incremental。
+   - 0c. **給 ETL owner 的量化證據**（寫表後跑；輸出只有 pk / 長度 / 計數，無人名）：
+     ```sql
+     SELECT m.body_source_field, count(*) AS mails,
+            percentile_approx(length(b.mail_body), 0.5) AS body_len_p50,
+            percentile_approx(length(b.mail_body_html), 0.5) AS html_len_p50,
+            sum(CASE WHEN b.mail_body_html RLIKE '(?i)<body' THEN 1 ELSE 0 END) AS html_has_body,
+            sum(CASE WHEN b.mail_body RLIKE 'Font Definitions' THEN 1 ELSE 0 END) AS body_is_word_junk,
+            min(b.mail_date) AS mail_date_min, max(b.mail_date) AS mail_date_max
+     FROM micenter.mi3_datahub_prod.s_meeting_record_mail_bu m
+     JOIN micenter.mi3_datahub_prod.b_internal_meeting_record b USING (pk_seq)
+     GROUP BY 1 ORDER BY 1;
+     -- 受影響 pk 清單（給 ETL owner 對 Drupal 原件）
+     SELECT pk_seq, drupal_id, mail_date, length(mail_body) AS body_len, length(mail_body_html) AS html_len
+     FROM micenter.mi3_datahub_prod.b_internal_meeting_record
+     WHERE pk_seq IN (SELECT pk_seq FROM micenter.mi3_datahub_prod.s_meeting_record_mail_bu WHERE body_source_field = 'none')
+     ORDER BY mail_date;
+     ```
+   - task 2 不改 code，`run_mode = incremental`、`dry_run = true` 看 [c12]（本批應是全部 493 封重切，段數會比 1,865 多）→ `dry_run = false`。
+   - task 3 `run_mode = incremental`、`dry_run = true`、`max_segments = 20` 看樣本與本批段數（估 300–400 段、約 20 美元）→ 使用者決定何時 `dry_run = false`、`max_segments = 0`。
+   - ✅ 2026-10-19 全部跑完（task 1 backfill 寫表 → task 2 incremental 1,817 段 → task 3 incremental 90 段）。段 0 殘渣歸零（剩 14 個是真的短信）。**剩 0c 的 ETL 證據 SQL 還沒跑。**
 1. ✅ 2026-10-15 `dry_run = true` 跑過，關卡全過（結果見第 5 節）。
 2. 改 `dry_run = false` 跑 → 貼 [c30] 輸出。
 3. 寫表後跑下面三段診斷 SQL（輸出只有 pk / 筆數 / 長度 / 遮罩後形狀，無人名），貼回來：
@@ -140,7 +169,7 @@ WHERE email_domain = 'auo.comhi';
 
 4. ✅ notebook 已在 Databricks，dry_run 三輪調完（D20、D21）。
 5. ✅ 2026-10-16 `dry_run = false` 寫表，[c30] 全過（數字見第 5 節）。
-6. **待做**：抽查段 0（199 段留下來，不確定是轉寄人附註還是殘渣）：
+6. ✅ 2026-10-19 段 0 抽查跑過：noise 168 / attachment_only 9 都是 27 字的 Word 樣式殘渣、inline_minutes 22（中位數 3,480 字，整封未分段的紀要，正常）。根因在 task 1 來源選擇 → **D28**（task 1 cleaner 0.2）。cleaner 0.2（task 2）不用為段 0 加規則；task 1 修好後這些信會重新分段。當時用的 SQL：
 
 ```sql
 -- 段 0 的分布
@@ -151,6 +180,17 @@ SELECT pk_seq, content_type, clean_len, substring(clean_text, 1, 160) AS head
 FROM micenter.mi3_datahub_prod.s_meeting_record_clean_bu WHERE segment_no = 0 ORDER BY rand(7) LIMIT 8;
 ```
 7. 規則細節見該資料夾 `README.md`；之後要改規則就升 `cleaner_version`（下一版 0.2），incremental 會自動重洗舊版本的 pk。
+8. **2026-10-19 寫表後補驗**（[c30] 那次在空集合上跑）：
+```sql
+SELECT count(*) AS total,
+       sum(CASE WHEN cleaner_version <> '0.1' THEN 1 ELSE 0 END) AS stale_version,
+       sum(CASE WHEN clean_text RLIKE '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z]{2,}' THEN 1 ELSE 0 END) AS email_left,
+       sum(CASE WHEN segment_no = 0 AND clean_len < 150 THEN 1 ELSE 0 END) AS seg0_junk
+FROM micenter.mi3_datahub_prod.s_meeting_record_clean_bu;
+SELECT count(*) AS dup_keys FROM (
+  SELECT pk_seq, segment_no, sub_no FROM micenter.mi3_datahub_prod.s_meeting_record_clean_bu
+  GROUP BY 1, 2, 3 HAVING count(*) > 1);
+```
 
 ### 6.3 W1 task 3：`meeting_extracted_w1_t2_extract`（T2 L1）— 已在 Databricks，全量跑中
 
@@ -177,6 +217,7 @@ FROM micenter.mi3_datahub_prod.s_meeting_record_clean_bu WHERE segment_no = 0 OR
 
 ## 7. 待使用者回覆
 
+- **ETL 截斷（2026-10-19，D29 查到）**：約 142 封（`body_source_field = none`、Phase 0 口徑 29%）在 `b_internal_meeting_record` 的 `mail_body` / `mail_without_fw` / `mail_body_md` / `mail_body_html` **四欄都沒有正文**：文字欄只剩 Word 文件屬性殘渣（`<!--[if gte mso 9]>` 裡的 XML 被當文字、到 `<style>` 截斷，約 1.2k 字），`mail_body_html` 只有 `<head>`（約 34k 字、無 `<body`）。正文在來源系統（Drupal）還在不在、ETL 哪一步截斷，**要找 ETL owner**。給 ETL owner 的證據 SQL 在 §6.1 第 0c 點；pk 332 / 190 可當樣本。修好後 task 1 跑一輪 incremental 就會重洗（`cleaner_version` 不用升，但 mail 表要能偵測來源變了——目前水位是 `create_date`，ETL 若原地更新舊列不會被撿到，**到時要用 backfill 重跑該日期窗**）。
 - **部門代碼名稱**（待決 #13）：使用者 2026-10-15 決定**先不提供**（名稱可能變動），`dept_name` 一律 NULL，不擋流程。Phase 0 轉寄人部門代碼 14 種，依封數：`DTDBB0` 183、`DTDAB0` 93、`DTDDC0` 71、`DTDBA0` 69、`DTDDB0` 28、`DTDAA0` 18、`DNB000` 11、`ABSBA0` 7、`DITA00` 4、`DNBAC0` 2、`DNBBF0` 1、`DTDCA0` 1、`DGMA0A` 1、`DTVAB0` 1。之後要填再開 003 建 `s_meeting_dept_code`（種子內嵌，形式同 001）。
 - （已答）Samsung 拆 VD / 非 VD、BenQ 與 Qisda 分開、auodplus 為集團子公司 → D9；其餘推測值先用。
 - （已答）信件品質問題先在我們這邊防呆 → D10；需要再去向 ETL owner 說明。
