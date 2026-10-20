@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{公司名稱}}（{{股票代碼}}）財務體質韌性分析 — 模板</title>
+<!--
+供應鏈供應商財務體質報告 — 模板
+用途：採購視角的單一供應商財務韌性 / 法說會展望彙整報告
+產出對象：採購主管 / QBR 會議
+填寫說明：所有 {{...}} 為待填欄位（畫面上以黃底標示，填完即消失）；燈號用 🟢 / 🟡 / 🔴
+資料基準請務必註明季度與公開資訊來源
+版型沿用 doc/20260825_參考_詳細彙整資訊_達運精密_財務體質韌性分析_WarRoom_V5.html，
+填好後直接改檔名存成該供應商的報告；趨勢圖不在模板內，需要時從參考檔複製 script 段。
+-->
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(26px,4vw,42px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(4,1fr);margin-top:-44px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.label{font-size:13px;color:var(--muted)}
+.value{font-size:28px;font-weight:800;margin:4px 0}
+.note,.small{font-size:12px;color:var(--muted)}
+.red{color:var(--red)}
+.green{color:var(--green)}
+.amber{color:var(--amber)}
+h2{font-size:22px;margin:6px 0 14px}
+h3{font-size:16px;margin:0 0 8px}
+.two{grid-template-columns:1.2fr .8fr;margin-top:16px}
+.mt{margin-top:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;background:#f8fafc}
+.matrix th,.matrix td{text-align:left}
+.matrix th:last-child,.matrix td:last-child{text-align:center;white-space:nowrap}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:14px 16px;border-radius:8px;margin-top:14px}
+ul,ol{padding-left:20px;margin:8px 0}
+li{margin:5px 0}
+.score{display:flex;align-items:center;gap:18px}
+.ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--amber) 0 50%,#e8eef5 50%);position:relative;flex:0 0 auto}
+.ring:after{content:"";position:absolute;inset:12px;border-radius:50%;background:#fff}
+.ring b{position:relative;z-index:1;font-size:25px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+a{color:var(--blue)}
+/* 待填欄位：{{…}} 以黃底標示，填完請連同 <mark> 一起拿掉 */
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+@media(max-width:850px){.kpis,.two{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.kpis,.two{grid-template-columns:1fr}.kpis{margin-top:0}}
+@media print{body{background:#fff}.hero{padding:24px}.wrap{padding:12px}.card{box-shadow:none;break-inside:avoid}mark{background:none}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="badge">Supplier Financial Health｜Phase <mark>{{階段}}</mark>｜採購視角</div>
+  <h1><mark>{{公司名稱}}</mark>（<mark>{{股票代碼}}</mark>）財務體質韌性分析</h1>
+  <p>資料基準：<mark>{{YYYY}} {{Qn}}</mark> 公開資訊｜產出日期：<mark>{{YYYY-MM-DD}}</mark>｜版本：<mark>{{vN}}</mark></p>
+</header>
+
+<main class="wrap">
+
+<!-- 一、關鍵指標總覽（KPI） -->
+<section class="grid kpis">
+  <div class="card"><div class="label"><mark>{{期間}}</mark> 營收</div><div class="value">NT$ <mark>{{xx.xx}}</mark> 億</div><div class="note red">🔴 YoY <mark>{{±x.xx%}}</mark></div></div>
+  <div class="card"><div class="label"><mark>{{期間}}</mark> 毛利率</div><div class="value"><mark>{{x.xx%}}</mark></div><div class="note">去年同期：<mark>{{x.xx%}}</mark></div></div>
+  <div class="card"><div class="label"><mark>{{期間}}</mark> 營業利益率</div><div class="value"><mark>{{±x.xx%}}</mark></div><div class="note"><mark>{{本業損益註記}}</mark></div></div>
+  <div class="card"><div class="label"><mark>{{期間}}</mark> 流動比率</div><div class="value"><mark>{{x.xx}}</mark>x</div><div class="note green">🟢 短期償債緩衝</div></div>
+</section>
+
+<!-- 二、管理層重點結論 -->
+<section class="grid two">
+  <article class="card">
+    <h2>管理層重點結論</h2>
+    <div class="score">
+      <div class="ring"><b><mark>{{xx}}</mark></b></div>
+      <div>
+        <h3>暫定燈號：<mark>{{🟢/🟡/🔴}} {{綠燈／黃燈／紅燈}}</mark>（<mark>{{維持往來／加強監控／降載}}</mark>）</h3>
+        <div class="small">分數 <mark>{{xx}}</mark> / 100 ※ 採購管理用示範分數，非信用評等或投資建議。</div>
+        <div class="small">（分數環的填色在 .ring 的 conic-gradient 改成對應百分比，顏色依燈號換 --green / --amber / --red）</div>
+      </div>
+    </div>
+    <h3 class="mt">一句話判讀</h3>
+    <div class="callout" style="margin-top:6px"><mark>{{2–4 句：營收與獲利趨勢、資產負債結構緩衝、本業獲利與現金流狀態、主要風險（例如獲利是否仰賴業外收入、一次性與現金實現程度）。}}</mark></div>
+  </article>
+  <article class="card">
+    <h2>採購決策提示</h2>
+    <ul>
+      <li><b>不以單季淨利放寬風險：</b><mark>{{先核對業外收益來源}}</mark></li>
+      <li><b>供貨安全優先：</b><mark>{{追蹤 OCF、短借、供應商付款與安全庫存}}</mark></li>
+      <li><b>維持備援：</b><mark>{{關鍵料號保留 2nd source 與可轉單清單}}</mark></li>
+      <li><b>升級條件：</b><mark>{{若營收、OCF、交期或品質連續惡化，升級 QBR}}</mark></li>
+    </ul>
+  </article>
+</section>
+
+<!-- 三、近五年年度重點財務指標 -->
+<section class="card mt">
+  <h2>近五年年度重點財務指標</h2>
+  <table>
+    <thead><tr><th>年度</th><th>營收（億）</th><th>稅前損益（億）</th><th>稅後淨利（億）</th><th>淨利率</th><th>EPS（元）</th><th style="text-align:center">採購判讀</th></tr></thead>
+    <tbody>
+      <tr><td><mark>{{YYYY}}</mark></td><td><mark>{{xx.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td><mark>{{±x.xx}}</mark></td><td style="text-align:center">🔴 虧損</td></tr>
+      <tr><td><mark>{{YYYY}}</mark></td><td><mark>{{xx.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td><mark>{{±x.xx}}</mark></td><td style="text-align:center">🟢 獲利</td></tr>
+      <tr><td><mark>{{YYYY}}</mark></td><td><mark>{{xx.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td><mark>{{±x.xx}}</mark></td><td style="text-align:center">🟢 獲利</td></tr>
+      <tr><td><mark>{{YYYY}}</mark></td><td><mark>{{xx.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td><mark>{{±x.xx}}</mark></td><td style="text-align:center">🟢 獲利</td></tr>
+      <tr><td><mark>{{YYYY}}</mark></td><td><mark>{{xx.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td><mark>{{±x.xx}}</mark></td><td style="text-align:center">🔴 虧損</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 四、本年度季度指標 -->
+<section class="card mt">
+  <h2><mark>{{YYYY}}</mark> 季度指標</h2>
+  <table>
+    <thead><tr><th>季度</th><th>營收（億）</th><th>毛利率</th><th>營業利益率</th><th>稅後淨利（億）</th><th>稅後淨利率</th><th style="text-align:left">重點</th></tr></thead>
+    <tbody>
+      <tr><td><mark>{{YYYY Q1}}</mark></td><td><mark>{{xx.xx}}</mark></td><td><mark>{{x.xx%}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td style="text-align:left"><mark>{{本業虧損／淨損}}</mark></td></tr>
+      <tr><td><mark>{{YYYY Q2}}</mark></td><td><mark>{{xx.xx}}</mark></td><td><mark>{{x.xx%}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td><mark>{{±x.xx}}</mark></td><td><mark>{{±x.xx%}}</mark></td><td style="text-align:left"><mark>{{業外帶動淨利}}</mark></td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><b>閱讀方式：</b>完整年度與單季資料口徑不同，季度數值不可直接與全年比較。</div>
+</section>
+
+<!-- 五、現金流與資產負債 ＋ 八、下次 QBR 必問 -->
+<section class="grid two">
+  <article class="card">
+    <h2>現金流與資產負債（<mark>{{期間}}</mark>）</h2>
+    <table>
+      <tbody>
+        <tr><td>營業現金流（OCF）</td><td class="red">🔴 <mark>{{±x.xx}}</mark> 億</td></tr>
+        <tr><td>取得不動產、廠房及設備</td><td><mark>{{±x.xx}}</mark> 億</td></tr>
+        <tr><td>總資產</td><td><mark>{{xxx.xx}}</mark> 億</td></tr>
+        <tr><td>總負債</td><td><mark>{{xx.xx}}</mark> 億</td></tr>
+        <tr><td>負債比</td><td><mark>{{xx.x%}}</mark></td></tr>
+        <tr><td>流動比率</td><td class="green">🟢 <mark>{{x.xx}}</mark>x</td></tr>
+      </tbody>
+    </table>
+  </article>
+  <article class="card">
+    <h2>下次 QBR 必問</h2>
+    <ol>
+      <li><mark>{{業外收入組成、是否一次性及現金入帳時點}}</mark></li>
+      <li><mark>{{OCF 轉負原因與下半年改善計畫}}</mark></li>
+      <li><mark>{{設備支出對應產品、產能、客戶與量產時程}}</mark></li>
+      <li><mark>{{關鍵原料付款條件、供應商帳期及安全庫存是否改變}}</mark></li>
+      <li><mark>{{本業毛利率與營益率恢復的可量化里程碑}}</mark></li>
+    </ol>
+  </article>
+</section>
+
+<!-- 六、Executive War Room -->
+<section class="card mt">
+  <h2>Executive War Room｜法說會展望 × 財務驗證 × 採購風險矩陣</h2>
+  <table class="matrix">
+    <thead><tr><th>評估項目</th><th>管理層觀點</th><th>財務驗證</th><th>AUO 判讀</th></tr></thead>
+    <tbody>
+      <tr><td><mark>{{新事業成長}}</mark></td><td><mark>{{管理層訊息}}</mark></td><td><mark>{{財務驗證}}</mark></td><td>🟢 Positive</td></tr>
+      <tr><td><mark>{{本業}}</mark></td><td><mark>{{管理層訊息}}</mark></td><td><mark>{{財務驗證}}</mark></td><td>🟡 Watch</td></tr>
+      <tr><td><mark>{{現金流}}</mark></td><td><mark>{{管理層訊息}}</mark></td><td><mark>{{財務驗證}}</mark></td><td>🔴 Risk</td></tr>
+      <tr><td><mark>{{財務結構}}</mark></td><td><mark>{{管理層訊息}}</mark></td><td><mark>{{財務驗證}}</mark></td><td>🟢 Stable</td></tr>
+      <tr><td><mark>{{關鍵零件供應}}</mark></td><td><mark>{{管理層訊息}}</mark></td><td><mark>{{財務驗證}}</mark></td><td>🟡 Watch</td></tr>
+      <tr><td><mark>{{供貨能力}}</mark></td><td><mark>{{管理層訊息}}</mark></td><td><mark>{{財務驗證}}</mark></td><td>🟢 Positive</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 七、Supplier Watchlist -->
+<section class="card mt">
+  <h2>Supplier Watchlist｜採購主管版</h2>
+  <h3>🟢 Positive Signals</h3>
+  <ul><li><mark>{{正向訊號 1}}</mark></li><li><mark>{{正向訊號 2}}</mark></li><li><mark>{{正向訊號 3}}</mark></li></ul>
+  <h3>🟡 Watch Items</h3>
+  <ul><li><mark>{{觀察項 1}}</mark></li><li><mark>{{觀察項 2}}</mark></li><li><mark>{{觀察項 3}}</mark></li></ul>
+  <h3>🎯 建議採購策略</h3>
+  <ul>
+    <li><mark>{{維持 / 調整 Allocation 的具體建議}}</mark></li>
+    <li><mark>{{Backup Source 定位}}</mark></li>
+    <li><mark>{{新事業觀察層級}}</mark></li>
+    <li><mark>{{每季追蹤指標：OCF、營益率、產能利用率 等}}</mark></li>
+  </ul>
+</section>
+
+<!-- 九、資料來源與限制 -->
+<section class="card mt">
+  <h2>資料來源與限制</h2>
+  <h3>資料來源</h3>
+  <ul>
+    <li><a href="{{URL}}"><mark>{{來源名稱 1}}</mark></a> — <mark>{{用於哪些欄位}}</mark></li>
+    <li><a href="{{URL}}"><mark>{{來源名稱 2}}</mark></a> — <mark>{{用於哪些欄位}}</mark></li>
+    <li><a href="{{URL}}"><mark>{{來源名稱 3}}</mark></a> — <mark>{{用於哪些欄位}}</mark></li>
+  </ul>
+  <h3>限制</h3>
+  <div class="callout" style="margin-top:6px"><mark>{{說明口徑限制：例如年度圖使用可直接核驗的年度欄位，未加入缺乏同口徑完整數列的指標；正式決策前仍應以公開資訊觀測站及公司合併財報附註為準。}}</mark></div>
+</section>
+
+<footer>Generated for procurement review｜<mark>{{YYYY-MM-DD}}</mark>｜Version <mark>{{vN}}</mark></footer>
+
+</main>
+</body>
+</html>

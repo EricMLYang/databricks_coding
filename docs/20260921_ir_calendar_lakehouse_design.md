@@ -97,7 +97,11 @@ DBR 17.3（Spark 4.0）有 `VARIANT`，查詢與儲存效率較好。這裡選 S
 
 ## 7. 下一層（gold）什麼時候建
 
-目前沒有 gold。當出現「月份 × 分類的場次數」、「某公司歷年法說清單」這種固定報表或 Genie Space 需求時，從 silver 建 `g_ir_calendar_*`；不從 bronze 直接建，也不回頭改 silver 的鍵。
+當出現「月份 × 分類的場次數」、「某公司歷年法說清單」這種固定報表或 Genie Space 需求時，從 silver 建 `g_ir_calendar_*`；不從 bronze 直接建，也不回頭改 silver 的鍵。
+
+2026-10-20 第一張 gold：`g_ir_calendar_supplier_report`（`jobs/ir_calendar/build_supplier_report/`）。一家公司一期一列，
+由 `s_document_text`（LLM 讀文件寫文字）+ `s_financials`（程式算表格、畫 SVG 圖）產出完整 HTML，MERGE；
+LLM 呼叫原文另記 bronze `b_ir_calendar_supplier_report_llm`（append-only，它記的是這一層的產出過程，同 batch_log 的理由）。
 
 ## 8. 財報檔案解析層（`parse_documents`）
 
