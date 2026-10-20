@@ -2,11 +2,11 @@
 
 月報版面草稿（會議紀錄 × Sales Brief）的**預覽工具**，拿去跟 user 討論版面用；不是正式產出、不寫表。
 
-- 輸入：`g_meeting_items_sem_bu`（003 建、`meeting_extracted_sem_stage_a` 寫；已 token 化，無人名）
+- 輸入：`g_meeting_items_sem_bu`（003 建、`meeting_extracted_sem_stage_a` 寫；已 token 化，無人名）、`s_meeting_participants_bu`（只取 token / side / company，不取姓名；把 summary 裡的 `<P07>` 顯示成「客戶方（acer）」「AUO 方」「第三方（inx）」，D33）
 - 輸出：`displayHTML` 預覽 ＋ 印出 markdown 全文（可貼到文件）
 - 參數（widgets）：`catalog`、`schema`、`unit`、`customer`（entity_id；空 = 不限）、`app`（TV / NB / MNT；空 = 不限，`ALL` 條目一律納入）、`month`（yyyy-MM；空 = 條目最多的月）、`max_per_topic`、`include_dups`
 - 排程：無，手動。
-- 負責人 / 更新日期：（填）/ 2026-10-19
+- 負責人 / 更新日期：（填）/ 2026-10-20
 
 ## 版面（[c03] `build_sections`）
 
@@ -18,7 +18,7 @@
 | 4 事件時間軸 | 日期、類型、內容、發言方、場合 | 鏡頭表 |
 | 5 背景情報與口徑 | 同客戶 / 應用跨月的 intel / semantic 候選 ＋ PM 審核狀態 | 鏡頭表 |
 | 6 待確認 | 分類與先驗不同、信心 < 0.6、S2 | 鏡頭表 |
-| 7 資料缺口 | 固定文字：ETL 截斷、客戶欄空值、附件不讀、同文合併、人名代號 | — |
+| 7 資料缺口 | 固定文字：ETL 截斷、客戶欄空值、附件不讀、同文合併、人名以陣營顯示 | — |
 
 主題中文名與順序在 [c02] `TOPIC_ZH`（商務在前、工程在後）。改版面只動 [c03]。
 

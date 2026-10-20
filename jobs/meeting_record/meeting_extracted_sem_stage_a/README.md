@@ -6,7 +6,7 @@
 - 輸出：`g_meeting_items_sem_{unit}`（003）。MERGE on `item_key`；**不碰** `verified` / `review_note` / `sem_id` / `dup_of`。
 - 參數（widgets）：`catalog`、`schema`、`unit`、`week`（空 = 所有未判）、`stage_a_version`（= [c04] `STAGE_A_VERSION_IN_CELL`）、`model`、`max_items`（LLM 費用閘門；0 = 不限）、`batch_size`、`concurrency`、`reclassify`、`prompt_cache`、`dry_run`
 - 排程：每週一次，接在 W1 三支之後。
-- 負責人 / 更新日期：（填）/ 2026-10-19
+- 負責人 / 更新日期：（填）/ 2026-10-20
 
 ## 三路分工（D30）
 
@@ -25,8 +25,8 @@
 3. 每週：預設值（`max_items` 可留 0；週量幾十條）。
 4. 改 [c04] prompt → 升 `STAGE_A_VERSION_IN_CELL` 與 widget；要重判舊列用 `reclassify = true`（PM 欄不動）。
 
-## 維護（[c21]，每次跑）
+## 維護（[c21] / [c22]，每次跑）
 
-候選 view 已沒有的 key → `active = false`（不刪；view 0 列時跳過）；中立層 item_id 變了 → 刷新。PM 在表上填 `verified` / `review_note`，`v_meeting_items_sem_q` 的 `rule_disagree` 給抽審排序。
+候選 view 已沒有的 key → `active = false`（不刪；view 0 列時跳過）；中立層 item_id 變了 → 刷新。[c22]（D33）：中立層事後被程式改的 `customer` / `sensitivity` / `tags`（task 3 [c22] 補客戶、[c23] 重算敏感度，item_key 不變）同步回鏡頭表，否則 digest / Genie 看鏡頭表還是舊值；只動這三欄。PM 在表上填 `verified` / `review_note`，`v_meeting_items_sem_q` 的 `rule_disagree` 給抽審排序。
 
 純函式測試：`tests/test_meeting_extracted_sem_stage_a.py`（[c02]～[c05]、[c07]；不打 LLM）。

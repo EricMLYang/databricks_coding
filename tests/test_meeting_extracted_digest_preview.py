@@ -61,7 +61,13 @@ def test_helpers(mod):
 def built(mod):
     rows = [
         _row("a1", pk_seq=1, date=date(2026, 9, 3)),
-        _row("a2", pk_seq=1, date=date(2026, 9, 10), statement_type="request"),
+        _row(
+            "a2",
+            pk_seq=1,
+            date=date(2026, 9, 10),
+            statement_type="request",
+            summary="<P07> 要求分享 SPEC，cc <G01>、<P99>",
+        ),
         _row("a3", pk_seq=2, date=date(2026, 9, 12), dup_key="a1"),  # 同文重複，預設略去
         _row(
             "b1",
@@ -80,8 +86,36 @@ def built(mod):
         _row("s1", category="semantic", term="分貨 code", summary="定義", verified=None),
     ]
     cfg = {"customer": "acer", "app": "MNT", "max_per_topic": 1, "include_dups": False}
-    sections = mod.build_sections(rows, intel, cfg, "2026-09")
+    labels = mod.token_labels(
+        [
+            {"pk_seq": 1, "token": "P07", "side": "customer", "company": "acer"},
+            {"pk_seq": 1, "token": "G01", "side": "customer", "company": "acer"},
+            {"pk_seq": 2, "token": "P07", "side": "auo", "company": "auo"},  # 別封信的 P07，不混
+        ]
+    )
+    sections = mod.build_sections(rows, intel, cfg, "2026-09", labels)
     return sections, mod.render_md(sections), mod.render_html(sections)
+
+
+def test_token_labels_and_resolve(mod):
+    parts = [
+        {"pk_seq": 1, "token": "P01", "side": "auo", "company": "auo"},
+        {"pk_seq": 1, "token": "P02", "side": "customer", "company": "acer"},
+        {"pk_seq": 1, "token": "P02", "side": None, "company": None},  # 同 token 第二列不覆蓋
+        {"pk_seq": 1, "token": "P03", "side": "third_party", "company": "inx"},
+        {"pk_seq": 1, "token": "P04", "side": "unknown", "company": None},
+        {"pk_seq": 1, "token": "G01", "side": "customer", "company": "acer"},
+    ]
+    labels = mod.token_labels(parts)
+    assert labels[(1, "P01")] == "AUO 方" and labels[(1, "P02")] == "客戶方（acer）"
+    assert labels[(1, "P03")] == "第三方（inx）" and labels[(1, "P04")] == "與會者"
+    assert labels[(1, "G01")] == "群組（acer）"
+    assert mod.resolve_tokens("<P02> 要求 <P01> 回覆，cc <G01> 與 <P99>", 1, labels) == (
+        "客戶方（acer） 要求 AUO 方 回覆，cc 群組（acer） 與 與會者"
+    )
+    assert mod.resolve_tokens("<P02> x", 2, labels) == "與會者 x"  # 別封信的 token 不混用
+    assert mod.resolve_tokens("<P02> x", 1, None) == "<P02> x"
+    assert mod.resolve_tokens(None, 1, labels) == ""
 
 
 def test_sections_layout(mod, built):
@@ -112,7 +146,9 @@ def test_sections_layout(mod, built):
     assert topic["rows"][0][2].startswith("（示意）")
     timeline = sections[4]["data"]
     assert timeline["rows"][0][:2] == ["09/03", "事實"]
-    assert [r[:2] for r in timeline["rows"] if r[0] == "09/10"] == [["09/10", "要求"]]
+    assert [r[:3] for r in timeline["rows"] if r[0] == "09/10"] == [
+        ["09/10", "要求", "客戶方（acer） 要求分享 SPEC，cc 群組（acer）、與會者"]
+    ]  # D33：<Pnn> 顯示成陣營
     intel = sections[5]["data"]
     assert intel["rows"][0][0] == "口徑 / 定義" and intel["rows"][0][4] == "未審"  # semantic 排前
     assert intel["rows"][1][1:3] == ["2026-Q3", "INX 轉產能"] and intel["rows"][1][4] == "通過"

@@ -139,12 +139,14 @@ def test_plan_semantic(mod):
             "sem_id": "SEM-001",
             "n_evidence": 3,
             "last_evidence_date": date(2026, 9, 12),
+            "status": "confirmed",  # 台帳列沒 status → 視為 confirmed，不動
             "updated_at": NOW,
         },
         {
             "sem_id": "SEM-003",
             "n_evidence": 3,
             "last_evidence_date": date(2026, 9, 3),
+            "status": "confirmed",
             "updated_at": NOW,
         },
     ]
@@ -174,6 +176,28 @@ def test_plan_semantic(mod):
         and ("m1", "dup_of_missing") in acts
         and ("m1", "new_sem") in acts
     )
+
+
+def test_plan_semantic_auto_status(mod):
+    """D33 semantic_auto：verified 空白的 semantic 先併成 unreviewed；
+    之後 y 的條目補證據時轉 confirmed；confirmed / retired 不動。"""
+    records = {
+        "SEM-001": {"sem_id": "SEM-001", "term": "舊未審", "n_evidence": 1, "status": "unreviewed"},
+        "SEM-002": {"sem_id": "SEM-002", "term": "退場", "n_evidence": 1, "status": "retired"},
+    }
+    items = [
+        _item("u1", verified=None, date=date(2026, 9, 1)),  # semantic_auto → 新 SEM unreviewed
+        _item("u2", verified=None, dup_key="u1", date=date(2026, 9, 2)),  # 跟著正本，仍 unreviewed
+        _item("y1", dup_of="SEM-001", date=date(2026, 9, 3)),  # y 補證據 → SEM-001 轉 confirmed
+        _item("n1", verified=None, dup_of="SEM-002", date=date(2026, 9, 4)),  # retired 不動
+    ]
+    p = mod.plan_semantic(items, records, set(), "0.3", NOW)
+    new = {r["sem_id"]: r for r in p["new_records"]}
+    assert list(new) == ["SEM-003"] and new["SEM-003"]["status"] == "unreviewed"
+    assert new["SEM-003"]["n_evidence"] == 2  # u2 跟著
+    upd = {u["sem_id"]: u for u in p["updates"]}
+    assert upd["SEM-001"]["status"] == "confirmed" and upd["SEM-002"]["status"] == "retired"
+    assert dict(p["lens"]) == {"u1": "SEM-003", "u2": "SEM-003", "y1": "SEM-001", "n1": "SEM-002"}
 
 
 # ---------- intel 計畫 ----------
@@ -254,6 +278,21 @@ def test_plan_intel(mod):
         "new_intel",
         "update_intel",
     ]
+    # D33：同文重複（dup_key）更新內容但 n_updates 不計次
+    p2 = mod.plan_intel(
+        [
+            _item("p", "intel", term="主題", date=date(2026, 9, 1)),
+            _item(
+                "q", "intel", term="主題", dup_key="p", date=date(2026, 9, 8), summary="轉寄副本"
+            ),
+            _item("r", "intel", term="主題", date=date(2026, 9, 9), summary="新信"),
+        ],
+        [],
+        "0.3",
+        NOW,
+    )
+    row = p2["new"][0]
+    assert (row["n_updates"], row["summary"], row["item_key"]) == (2, "新信", "r")
 
 
 # ---------- md 與 diff ----------
@@ -287,6 +326,8 @@ def test_render_and_diff(mod):
     assert "| SEM-002 | MNT | b\\|b | d | pa:semantics | 1 | 2026-09-01 | 未投影 |" in md
     assert "- **SEM-002** b\\|b\n  - 2026-09-01｜s｜「q」" in md
     assert "## 退場區\n\n- SEM-001 a（併入 SEM-002）" in md and "| SEM-001 |" not in md
+    md_u = mod.render_semantic_md([{**records[0], "status": "unreviewed"}], evi)
+    assert "| SEM-002 | MNT | 〔未審〕b\\|b | d |" in md_u  # D33 semantic_auto 併入的標〔未審〕
     intel = [
         {
             "intel_id": "INT-001",
@@ -350,10 +391,12 @@ def test_select_pending_and_unreviewed(mod, spark):
         {
             "item_key": "d",
             "category": "intel",
+            "category_rule": "event",
+            "confidence": 0.5,
             "verified": None,
             "active": True,
             "date": date(2026, 9, 1),
-        },  # 未審
+        },  # 未審；與先驗不同 ＋ 低信心 → 關鍵
         {"item_key": "e", "category": "semantic", "verified": "n", "active": True},  # n 不算未審
         {"item_key": "f", "category": "intel", "verified": "y", "active": False},  # 停用
         {
@@ -401,4 +444,14 @@ def test_select_pending_and_unreviewed(mod, spark):
     assert (
         auto["d"].eff_verified is None and auto["h"].pending_reason == "dup_of_primary"
     )  # dup 優先於 intel_auto
-    assert sorted(r.item_key for r in mod.unreviewed(df).collect()) == ["d", "g", "h", "i"]
+    # D33 semantic_auto：i（正本 n，不能跟）改走 semantic_auto 併成 unreviewed；
+    # g 仍是 dup_of_primary
+    auto2 = {r.item_key: r for r in mod.select_pending(df, True, True).collect()}
+    assert set(auto2) == {"a", "g", "h", "d", "i"}
+    assert auto2["i"].pending_reason == "semantic_auto"
+    assert auto2["g"].pending_reason == "dup_of_primary"
+    unrev = {r.item_key: r.key_reason for r in mod.unreviewed(df).collect()}
+    assert sorted(unrev) == ["d", "g", "h", "i"]
+    assert unrev["d"] == "與先驗不同（event→intel）；信心 0.5"
+    assert unrev["h"] == ""  # intel 先驗一致 → 不用看
+    assert unrev["g"] == "口徑候選" and unrev["i"] == "口徑候選"

@@ -2,7 +2,45 @@
 
 總覽與決定（D1–D32）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
 
-## 0. 接續點（2026-10-20 更新，最新；底下 §1–§6 是歷史脈絡）
+## 0. 接續點（2026-10-20 傍晚更新，最新；底下 §1–§6 是歷史脈絡）
+
+### 0.0 現在停在哪（下次 session 從這裡接）
+
+**Databricks 上正在跑 / 剛跑完**：task 3 `meeting_extracted_w1_t2_extract`（prompt 0.3）`reextract = customer_null`、`dry_run = false`、`max_segments = 0`、`concurrency = 4`——只重萃「有 customer NULL 有效條目」的 409 段（5,695 條），估 USD 13、約 30 分鐘。10 段 dry_run 已看過：70 條全 ok、customer_raw 有名字就填、發言方 auo 正確、費用 0.31。使用者下班前啟動全量。
+
+**D33 批次同步狀態**（repo 全部 commit 在本次 commit；Databricks）：
+
+| notebook | Databricks |
+|---|---|
+| task 3 w1_t2_extract | ✅ 全支同步（[c01] [c04] [c07] [c10] [c22] v2 [c23]）。第一版 [c22] 補錯 4,646 條已由 v2 自動退回；現況規則補 523 條（segment_hint 143 / mail_party 380）、敏感度降級 458 列 |
+| Stage A sem_stage_a | ✅ [c22] 同步、跑過一次（952 列同步到鏡頭表） |
+| Stage B sem_stage_b 0.3 | 🟡 使用者說已複製，**還沒跑** |
+| digest_preview | 🟡 使用者說已複製，**還沒重跑** |
+| 002 spec | 不用跑（`customer_basis` 由 task 3 [c10] ALTER 補了） |
+
+**下次開工第一件事（照順序）**：
+
+1. **驗證全量重萃結果**：請使用者貼 task 3 [c12] log（看 `segments` ≈ 409、`segments_endpoint_error`、`schema_fail_rate` ≤ 0.05、`quote_fail_rate` ≤ 0.10、`customer_null_rate`、`est_cost_usd`）與 [c30]（`batch_active_rows = expected_rows`、`dup_item_id 0`、`customer_without_basis 0`、`customer_basis_dist`）。端點失敗的段用 `reextract = customer_null` 再跑一次會自動撿（它們仍有 NULL）。
+   然後跑：
+   ```sql
+   SELECT prompt_version, customer_basis, count(*) n FROM micenter.mi3_datahub_prod.g_meeting_items_bu
+   WHERE NOT superseded AND extract_status = 'ok' GROUP BY ALL ORDER BY ALL;
+   ```
+   預期 0.3 的列約 4–5 千、其中 customer NULL 比第一版 dry_run 的 47% 低或相當（剩下的是 AUO 內部事項、只有型號沒客戶）。
+2. **Stage A 再跑一次**（`dry_run = false`）：新 item_key 進鏡頭表、舊 key [c21] 停用、[c22] 同步。看 [c12] 的 LLM 候選數（先驗命中的才打 LLM，幾百條、幾美元）與 [c30]。
+3. **Stage B 0.3**：`dbutils.widgets.removeAll()` → [c01] 看到 `semantic_auto: True, stage_b_version: 0.3` → `dry_run = true`：預期 semantic 約 188 條（扣重萃後停用的）併成 unreviewed SEM、[c12]「關鍵審核清單」列口徑候選 / 與先驗不同 / 低信心 → `dry_run = false` → 貼 [c20] [c21] [c30]（`unreviewed_with_y 0`）。
+4. **digest** 重跑 `customer = acer, app = MNT`：看 `<P07>` 變「客戶方（acer）」、S2 條目數下降、AUO roadmap 條目發言方變 AUO（8 月那兩封若在 409 段內才會改）。
+5. 跑完更新本檔 §0 與 STATUS §5。
+
+**之後要決定的（不擋）**：
+- 重萃後仍 NULL 的 customer：要不要加「型號 → 客戶」規則（同型號在其他條目的客戶占 ≥ 90% 且 ≥ 3 條才補，成本 0；風險是 open cell 一型號多客戶）。看 `customer_basis_dist` 再決定。
+- `model_nos` 收了口語型號（65吋12.6、43U04.5），型號橋表會髒；下個 prompt 版本限制只收完整料號、口語放 free_tags。[c12] 的「別名表要補」WARN 文字已不準。
+- PM_Head `background_intel.md` 現有 16 條不在台帳，Stage B md 貼回會蓋掉（見下方）。
+- 月報版面五題（`DIGEST_ISSUES.md` §4）；PM 何時開始審關鍵清單；ETL 截斷 142 封找 owner；撿回 583 條（USD 35–40）。
+- 下一個要建的 notebook：by 客戶 × 應用（週 / 月）抓條目請 LLM 彙整（使用者的第一個應用）。
+
+### 0.1 2026-10-20 日間脈絡
+
 
 **git**：最後 commit `28c72d9`（已 push）＝ 方向 C Stage B（D31 / D32）＋ 月報預覽 ＋ 寄信指南。再往前：`12aaaf8`（003 ＋ Stage A）、`16e5635`（task 1 cleaner 0.2）。讀的順序：這份 §0 → `STATUS.md` §5（進度表）→ §6.5（方向 C）→ §7（待使用者）。
 
@@ -16,6 +54,8 @@
 | 005 台帳三表 ＋ 2 View | ✅ 2026-10-20 [c05] 同步、整支重跑（retire_candidate 改非 retired 都算） |
 | Stage B `meeting_extracted_sem_stage_b` | ✅ **0.2 已同步並於 2026-10-20 寫表**：intel_auto 併入 446 條 → 199 個新 INT（INT-003..201）、247 次同主題更新、鏡頭表 sem_id 回填 446；[c30] 全過（dup_intel_topic 0、unreviewed_with_y 0）；台帳現況 SEM 1 / evidence 2 / INT 201（全 unreviewed，除 INT-001 / 002）。觀察：同 term 跨 app 各發 id（RT8250GSP ×3）、近義主題未合併（TSMC F2/F5 EOL 一家 ≥ 7 個 id），留給 PM 標 n 退場或之後加 term 歸一 |
 | 月報預覽 `meeting_extracted_digest_preview` | repo 有，**Databricks 未匯入** |
+
+**2026-10-20 下午 D33 批次（repo 完成、tests 57 passed、未 commit、Databricks 未同步）**：使用者定的優先序——資訊缺失 / 誤會優先（customer 空值、發言方歸屬、`<P07>` 露在報表、S2 誤標 AUO roadmap）→ PM 審核再減 → 其他低負擔。改了五支：task 3（prompt 0.3、`reextract`、[c22] 補客戶、[c23] 重算敏感度、`customer_basis` 欄）、Stage A（[c22] 同步中立欄）、Stage B 0.3（`semantic_auto`、關鍵審核清單）、digest（token → 陣營）、002 spec。task 3 第一版已在 Databricks 跑過（補欄、補客戶 4,789 + 327、敏感度改 458），抽查發現段層 hint 在內部 EC meeting 補錯（TPV 是 ODM）→ [c22] 收緊成要佐證並自動退回，**Databricks 要再貼一次 [c22] 重跑**。**同步順序**：task 3 整支匯入 → `dry_run = false`、`max_segments = 0`、`reextract = none` 跑一輪（0 段 LLM；[c10] ALTER 補欄、[c22] 補客戶、[c23] 重算敏感度，看三行數字）→ Stage A 整支匯入、`dry_run = false` 跑（[c22] 同步）→ Stage B 整支匯入、removeAll、`dry_run = true` 看關鍵審核清單（預期 semantic 188 條併成 unreviewed SEM）→ `false` → digest 整支匯入重跑 acer × MNT 看發言方 / `<P07>`。prompt 0.3 全量重萃（USD 70）另外決定，開 `reextract = all`。
 
 **下次開工第一件事（照順序）**：
 1. ✅ 2026-10-20 Stage B 0.2 ＋ 005 已同步、寫表（見上表）。**先不要把 `md_int_after` 貼回 PM_Head**：`PM_Head/projects/ForwardDeployedEngineer/15_experiments/MI/mi_datahub_table/business_semantics/semantics_task/background_intel.md` 現有 16 條（MNT 11 / TV 5）來自 Sales Brief YAML 週萃取（W31 / W33），不在 `g_background_intel` 裡；Stage B md 是台帳投影，貼上會蓋掉它們。待決：(a) 一次性把這 16 條種進台帳（INT id 接著發、status 照「待審」標 unreviewed）再貼；或 (b) 兩段各自維護。另外 201 個主題全 unreviewed，PM 沒審前貼進 prompt 來源檔意義不大。

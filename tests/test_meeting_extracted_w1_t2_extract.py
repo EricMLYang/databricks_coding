@@ -145,9 +145,13 @@ def test_shared_functions_match_clean_notebook(mod, clean_mod):
 
 # ---------- [c04] prompt ----------
 def test_prompt_constants(mod):
-    assert mod.PROMPT_VERSION_IN_CELL == "0.2"
+    assert mod.PROMPT_VERSION_IN_CELL == "0.3"
     assert "【人名（嚴格）】" in mod.SYSTEM_PROMPT_L1
     sp = mod.SYSTEM_PROMPT_L1
+    # 0.3（D33）：發言方以主張歸屬為準、章節客戶帶到每條、同型號同主張一條；
+    # few-shot 有 AUO roadmap 例
+    assert "這個主張是誰的" in sp and "每條都要填" in sp and "同一型號的同一主張只收一條" in sp
+    assert '"summary": "AUO 說明三模機種 M270QAN11.5' in sp
     assert 6_000 < len(sp) < 20_000
     for t in mod.TOPIC_TAGS:
         assert t in sp
@@ -214,6 +218,15 @@ def test_item_key_stable_and_sensitivity(mod):
     assert mod.sensitivity_of("2026 BP 方向未定") == "S1"
     assert mod.sensitivity_of("改用 SMK AG25 偏光板") == "S0"
     assert mod.sensitivity_of("OK 可以") == "S0"  # 單獨的 K 不算
+    # D33：解析度 4K / 5K / 2.8K / 3K2K 不是數量；兩位數以上或 Kpc 才算
+    assert mod.sensitivity_of("三模機種 M270QAN11.5 規格 4K 160Hz / QHD 320Hz, MP 9/E") == "S0"
+    assert mod.sensitivity_of("5K 180Hz/4K 240/Q480Hz") == "S0"
+    assert mod.sensitivity_of("2.8K 與 3K2K") == "S0"
+    assert mod.sensitivity_of("備料 5Kpc") == "S2" and mod.sensitivity_of("出貨量 800K~1M") == "S2"
+    assert mod.sensitivity_of("Q1 FCST 100K") == "S2" and mod.sensitivity_of("Q1 FCST 下修") == "S1"
+    # [c23] 用同一組 pattern 走 Java regex：pattern 字串要存在且和編譯後的一致
+    assert mod.S2_RE.pattern == mod.S2_PATTERN and mod.S1_RE.pattern == mod.S1_PATTERN
+    assert set(mod.CUSTOMER_BASIS) == {"llm", "alias_fix", "segment_hint", "mail_party"}
 
 
 def test_normalize_customer(mod):
@@ -336,6 +349,7 @@ def test_build_item_rows_ok_and_normalization(mod):
         and r0["speaker_side"] == "customer"
     )
     assert r0["customer"] == "acer" and r0["app"] == "MNT" and r0["event_month"] == "2026-08"
+    assert r0["customer_basis"] == "llm"  # D33：LLM 給的原名對上別名表
     assert r0["item_key"] == mod.item_key_of(7, 2, r0["quote"]) and r0["sensitivity"] == "S0"
     assert r0["time_refs"] == '[{"when": "2027-01", "what": "MP"}]' and r0["confidence"] == 0.9
     assert (
@@ -544,6 +558,24 @@ def test_select_batch_segments(mod, spark, clean_schema, items_schema):
         for r in mod.select_batch_segments(clean, items, "0.1", True).collect()
     )
     assert got == [(1, 2), (3, 1), (4, 1), (6, 1), (7, 1)]
+    # D33 reextract_old = False：舊 prompt 版本萃過的段（1, 2）算已萃過；清洗版本變了仍重萃
+    got = sorted(
+        (r.pk_seq, r.segment_no)
+        for r in mod.select_batch_segments(clean, items, "0.1", False, False).collect()
+    )
+    assert got == [(3, 1), (6, 1)]
+    got = sorted(
+        (r.pk_seq, r.segment_no)
+        for r in mod.select_batch_segments(clean, items, "0.1", True, False).collect()
+    )
+    assert got == [(3, 1), (4, 1), (6, 1), (7, 1)]
+    # reextract = customer_null：force_keys 指定的段一律重萃（這裡指定 (1, 1)）
+    force = spark.createDataFrame([(1, 1, 0)], "pk_seq long, segment_no int, sub_no int")
+    got = sorted(
+        (r.pk_seq, r.segment_no)
+        for r in mod.select_batch_segments(clean, items, "0.1", False, False, force).collect()
+    )
+    assert got == [(1, 1), (3, 1), (6, 1)]
 
 
 def test_segment_offsets_and_supersedes(mod, spark, items_schema):
