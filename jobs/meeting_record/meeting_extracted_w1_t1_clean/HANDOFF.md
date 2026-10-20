@@ -6,7 +6,7 @@
 
 ### 0.0 現在停在哪（下次 session 從這裡接）
 
-**Databricks 上正在跑 / 剛跑完**：task 3 `meeting_extracted_w1_t2_extract`（prompt 0.3）`reextract = customer_null`、`dry_run = false`、`max_segments = 0`、`concurrency = 4`——只重萃「有 customer NULL 有效條目」的 409 段（5,695 條），估 USD 13、約 30 分鐘。10 段 dry_run 已看過：70 條全 ok、customer_raw 有名字就填、發言方 auo 正確、費用 0.31。使用者下班前啟動全量。
+**Databricks 上正在跑 / 剛跑完**：task 3 `meeting_extracted_w1_t2_extract`（prompt 0.3）`reextract = customer_null`、`dry_run = false`、`max_segments = 0`、`concurrency = 4`——只重萃「有 customer NULL 有效條目」的 409 段（5,695 條），估 USD 13、約 30 分鐘。10 段 dry_run 已看過：70 條全 ok、customer_raw 有名字就填、發言方 auo 正確、費用 0.31。使用者下班前啟動全量，**跑到一半中斷，沒寫表**（[c11] 全部跑完才到 [c20]）。改成分批：`max_segments = 100` 重複跑到 [c10] 印 `segments 0`（[c10] 的 customer_null 範圍已改成排除本版已萃過的段，否則合理 NULL 的段每輪會再被選）。用 `SELECT count(*) ... WHERE prompt_version = '0.3' AND NOT superseded` 看進度。
 
 **D33 批次同步狀態**（repo 全部 commit 在本次 commit；Databricks）：
 
