@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>長興材料工業（1717）財務體質韌性分析</title>
+<!--
+由 build_report.py 依 doc/20261010_供應鏈供應商財務體質報告模板.html 產出；資料來源：範例財報/長興材料工業.md（JSON）。
+黃底 <mark> 為資料集給不出的欄位，對照 模板覆蓋度評估.md。
+-->
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(26px,4vw,42px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(4,1fr);margin-top:-44px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.label{font-size:13px;color:var(--muted)}
+.value{font-size:28px;font-weight:800;margin:4px 0}
+.note,.small{font-size:12px;color:var(--muted)}
+.red{color:var(--red)}
+.green{color:var(--green)}
+.amber{color:var(--amber)}
+h2{font-size:22px;margin:6px 0 14px}
+h3{font-size:16px;margin:0 0 8px}
+.two{grid-template-columns:1.2fr .8fr;margin-top:16px}
+.mt{margin-top:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;background:#f8fafc}
+.matrix th,.matrix td{text-align:left}
+.matrix th:last-child,.matrix td:last-child{text-align:center;white-space:nowrap}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:14px 16px;border-radius:8px;margin-top:14px}
+ul,ol{padding-left:20px;margin:8px 0}
+li{margin:5px 0}
+.score{display:flex;align-items:center;gap:18px}
+.ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--amber) 0 50%,#e8eef5 50%);position:relative;flex:0 0 auto}
+.ring:after{content:"";position:absolute;inset:12px;border-radius:50%;background:#fff}
+.ring b{position:relative;z-index:1;font-size:25px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+a{color:var(--blue)}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.rubric{font-size:12px;color:var(--muted);margin-top:10px}
+.rubric td,.rubric th{padding:4px 6px;font-size:12px}
+@media(max-width:850px){.kpis,.two{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.kpis,.two{grid-template-columns:1fr}.kpis{margin-top:0}}
+@media print{body{background:#fff}.hero{padding:24px}.wrap{padding:12px}.card{box-shadow:none;break-inside:avoid}mark{background:none}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="badge">Supplier Financial Health｜Phase 示範（Pilot）｜採購視角</div>
+  <h1>長興材料工業（TPE:1717）財務體質韌性分析</h1>
+  <p>資料基準：2026 Q2 財報 公開資訊｜產業：化學工業｜產出日期：2026-10-20｜版本：v1</p>
+</header>
+
+<main class="wrap">
+
+<!-- 一、關鍵指標總覽（KPI） -->
+<section class="grid kpis">
+  <div class="card"><div class="label">2026 Q2 營收</div><div class="value">NT$ 119.26 億</div><div class="note green">🟢 YoY +14.62%（2025 Q2：NT$ 104.05 億）</div></div>
+  <div class="card"><div class="label">2026 Q2 毛利率</div><div class="value">24.81%</div><div class="note">去年同期：20.84%</div></div>
+  <div class="card"><div class="label">2026 Q2 營業利益率</div><div class="value">8.59%</div><div class="note">🟢 本業獲利 10.24 億，業外 1.45 億</div></div>
+  <div class="card"><div class="label">2026 Q2 流動比率</div><div class="value">1.74x</div><div class="note green">🟢 短期償債緩衝充足</div></div>
+</section>
+
+<!-- 二、管理層重點結論 -->
+<section class="grid two">
+  <article class="card">
+    <h2>管理層重點結論</h2>
+    <div class="score">
+      <div class="ring" style="background:conic-gradient(var(--green) 0 80%,#e8eef5 80%)"><b>80</b></div>
+      <div>
+        <h3>暫定燈號：🟢 綠燈（維持往來）</h3>
+        <div class="small">分數 80 / 100 ※ 採購管理用示範分數，非信用評等或投資建議。規則見本頁末「資料來源與限制」。</div>
+        <div class="small">管理層觀點來源：2026-08-13 法說會摘要（summary，來源為財經媒體報導）</div>
+      </div>
+    </div>
+    <h3 class="mt">一句話判讀</h3>
+    <div class="callout" style="margin-top:6px">2026 Q2 營收 NT$ 119.26 億（YoY +14.6%），毛利率 24.81%（去年同期 20.84%）、營益率 8.59%，合併稅後淨利 NT$ 8.70 億（歸屬母公司 8.47 億）為近四年單季新高；2021–2025 營收逐年下滑後，2026 上半年三大事業群（合成樹脂、電子材料、特用材料）同步回升。上半年營業現金流 NT$ 23.69 億高於淨利 NT$ 13.00 億。負債比 51.77% 在台廠中偏高（五年由 59.25% 降至 51.77%），流動比 1.74x；董事會核准近 NT$ 20 億新資本支出（蘆竹、湖北、泰國），2027 年後開出，資金需求上升要留意。</div>
+  </article>
+  <article class="card">
+    <h2>採購決策提示</h2>
+    <ul>
+<li><b>不以單季淨利放寬風險：</b>Q2 稅前 NT$ 11.69 億中業外約 NT$ 1.45 億，比重不高，獲利以本業為主；但媒體報導的「上半年營業利益率 24%」與財報營益率 8.59% 不符（24% 接近毛利率），引用以財報為準。</li>
+<li><b>供貨安全優先：</b>追蹤近 NT$ 20 億擴產的資金來源（負債比已 51.77%）與泰國、湖北新廠進度；歐洲需求疲弱對合成樹脂的影響。</li>
+<li><b>維持備援：</b>乾膜光阻、光學膜／特用材料關鍵料號保留 2nd source，新廠量產前不集中轉單。</li>
+<li><b>升級條件：</b>若負債比回升至 55% 以上且 OCF 轉負、或毛利率回落至 20% 以下，升級 QBR。</li>
+    </ul>
+  </article>
+</section>
+
+<!-- 三、近五年年度重點財務指標 -->
+<section class="card mt">
+  <h2>近五年年度重點財務指標（NT$ 億）</h2>
+  <table>
+    <thead><tr><th>年度</th><th>營收（億）</th><th>稅前損益（億）</th><th>稅後淨利（億）</th><th>淨利率</th><th>EPS（TWD）</th><th style="text-align:center">採購判讀</th></tr></thead>
+    <tbody>
+<tr><td>2021</td><td>504.71</td><td>44.32</td><td>34.86</td><td>6.91%</td><td>2.86</td><td style="text-align:center">🟢 獲利</td></tr>
+<tr><td>2022</td><td>490.14</td><td>35.15</td><td>26.19</td><td>5.34%</td><td>2.15</td><td style="text-align:center">🟢 獲利</td></tr>
+<tr><td>2023</td><td>424.52</td><td>21.82</td><td>14.92</td><td>3.51%</td><td>1.28</td><td style="text-align:center">🟢 獲利</td></tr>
+<tr><td>2024</td><td>441.91</td><td>27.44</td><td>18.74</td><td>4.24%</td><td>1.56</td><td style="text-align:center">🟢 獲利</td></tr>
+<tr><td>2025</td><td>406.85</td><td>23.89</td><td>17.13</td><td>4.21%</td><td>1.41</td><td style="text-align:center">🟢 獲利</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 四、本年度季度指標 -->
+<section class="card mt">
+  <h2>2026 季度指標（NT$ 億）</h2>
+  <table>
+    <thead><tr><th>季度</th><th>營收（億）</th><th>毛利率</th><th>營業利益率</th><th>稅後淨利（億）</th><th>稅後淨利率</th><th style="text-align:left">重點</th></tr></thead>
+    <tbody>
+<tr><td>2026 Q1</td><td>102.43</td><td>22.16%</td><td>5.22%</td><td>4.30</td><td>4.20%</td><td style="text-align:left">本業獲利</td></tr>
+<tr><td>2026 Q2</td><td>119.26</td><td>24.81%</td><td>8.59%</td><td>8.70</td><td>7.30%</td><td style="text-align:left">本業獲利</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><b>閱讀方式：</b>完整年度與單季資料口徑不同，季度數值不可直接與全年比較。</div>
+</section>
+
+<!-- 五、現金流與資產負債 ＋ 八、下次 QBR 必問 -->
+<section class="grid two">
+  <article class="card">
+    <h2>現金流與資產負債（2026 Q2，NT$ 億）</h2>
+    <table>
+      <tbody>
+<tr><td>營業現金流（OCF，2026 年初累計）</td><td><span class="green">🟢 23.69</span> 億（OCF／淨利 1.82x）</td></tr><tr><td>取得不動產、廠房及設備（2026 年初累計）</td><td>-11.71 億</td></tr><tr><td>總資產</td><td>670.06 億</td></tr><tr><td>總負債</td><td>346.92 億</td></tr><tr><td>負債比</td><td>51.8%</td></tr><tr><td>流動比率</td><td class="green">🟢 1.74x</td></tr>
+      </tbody>
+    </table>
+  </article>
+  <article class="card">
+    <h2>下次 QBR 必問</h2>
+    <ol>
+<li>近 NT$ 20 億資本支出的分項（蘆竹特用材料、湖北合資、泰國電子材料廠）、時程與資金來源（自有／舉債）。</li>
+<li>Q2 毛利率「明顯增長」中，產品組合與原料轉嫁各占多少；原料回跌時能否守住。</li>
+<li>顯示相關料號（光學膜、特用材料）在三大事業群中的歸屬、營收占比與產能利用率。</li>
+<li>歐洲需求疲弱與人民幣波動對 2026 下半年的量化影響；避險部位。</li>
+<li>媒體引述「上半年營業利益率 24%」的口徑（疑為毛利率），請公司提供正式數字。</li>
+    </ol>
+  </article>
+</section>
+
+<!-- 六、Executive War Room -->
+<section class="card mt">
+  <h2>Executive War Room｜法說會展望 × 財務驗證 × 採購風險矩陣</h2>
+  <table class="matrix">
+    <thead><tr><th>評估項目</th><th>管理層觀點</th><th>財務驗證</th><th>AUO 判讀</th></tr></thead>
+    <tbody>
+<tr><td>新事業成長（特用材料）</td><td>對特用材料長期成長正面，持續投入產能與技術；董事會核准近 NT$ 20 億擴產（蘆竹、湖北、泰國）</td><td>上半年資本支出 NT$ -11.71 億；擴產 2027 年後才開出，尚未反映在財報</td><td>🟢 Positive</td></tr>
+<tr><td>本業</td><td>Q2 毛利率較 Q1 明顯增長，來自產品組合優化與原料漲價即時轉嫁；三大事業群營收獲利同步年增</td><td>毛利率 2026 Q1 22.16% → Q2 24.81%，營益率 5.22% → 8.59%，與管理層說法一致</td><td>🟢 Positive</td></tr>
+<tr><td>現金流</td><td>現金部位約 NT$ 103 億</td><td>上半年 OCF NT$ 23.69 億 ＞ 淨利 NT$ 13.00 億；資本支出 NT$ -11.71 億，自由現金流為正</td><td>🟢 Positive</td></tr>
+<tr><td>財務結構</td><td>資產負債表規模約 NT$ 670 億；「負債比率由 180 降至 174」口徑不明（媒體轉述）</td><td>總資產 NT$ 670.06 億與管理層一致；負債比 51.77%（2021 為 59.25%），流動比 1.74x</td><td>🟡 Watch</td></tr>
+<tr><td>關鍵零件供應</td><td>原物料漲價可即時轉嫁</td><td>毛利率擴張支持轉嫁說法；無部門別資料</td><td>🟢 Stable</td></tr>
+<tr><td>供貨能力</td><td>新產能（泰國、湖北、蘆竹）2027 年後陸續開出，稼動時程有不確定性</td><td>Q1→Q2 營收 NT$ 102.43 → 119.26 億，季增 +16.4%；現有產能仍有成長空間</td><td>🟡 Watch</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 七、Supplier Watchlist -->
+<section class="card mt">
+  <h2>Supplier Watchlist｜採購主管版</h2>
+  <h3>🟢 Positive Signals</h3>
+  <ul><li>毛利率與營益率連兩季擴張，Q2 淨利創近四年新高。</li><li>上半年 OCF NT$ 23.69 億高於淨利，獲利有現金支撐。</li><li>負債比五年由 59.25% 降至 51.77%，趨勢向好。</li></ul>
+  <h3>🟡 Watch Items</h3>
+  <ul><li>負債比仍 51.77%，近 NT$ 20 億擴產若舉債會回升。</li><li>歐洲需求疲弱、人民幣波動；2021–2025 營收年年下滑，2026 回升需確認持續性。</li><li>法說摘要來自財經媒體（非公司簡報），其中「營業利益率 24%」與「負債比率 180→174」與財報不符。</li></ul>
+  <h3>🎯 建議採購策略</h3>
+  <ul><li>維持 allocation；特用材料類可評估隨其擴產增加配額，但以 2027 新產能驗證後為準。</li><li>Backup source：乾膜光阻、光學膜保留第二供應商。</li><li>新事業（泰國電子材料廠）列為觀察層級，追蹤量產時程。</li><li>每季追蹤：毛利率、負債比、OCF、資本支出執行率。</li></ul>
+</section>
+
+<!-- 九、資料來源與限制 -->
+<section class="card mt">
+  <h2>資料來源與限制</h2>
+  <h3>資料來源</h3>
+  <ul>
+<li><a href="https://mopsov.twse.com.tw/mops/web/index">公開資訊觀測站財務報表 API（MOPS t164sb03/04/05）</a> — KPI、近五年年度指標、季度指標、現金流與資產負債、示範分數（fin_rows）</li>
+<li><a href="https://doc.twse.com.tw/pdf/202602_1717_AI1_20261015_184039.pdf">Eternal_Q2CY26_Financial_Statements.pdf（Financial_Statements，70 頁）</a> — 原始財報（僅供核對；文字匯出截斷，未用於欄位）</li>
+<li><a href="https://finance.biggo.com/news/TW_1717.TW_2026-08-13">[Eternal Materials FY2026 Q2 Earnings Call] First-Half Operating Margin Hits 24%, a Five-Year High; Q2 Revenue Reaches NT$11.93 Billion, Up 14.6% YoY｜BigGo Finance</a> — 法說摘要：管理層觀點、風險、QBR 必問</li>
+<li><a href="https://udn.com/news/story/7252/9677739">長興財報／第2季獲利8.47億元年增逾倍 每股賺0.72元｜聯合新聞網</a> — 法說摘要：管理層觀點、風險、QBR 必問</li>
+<li><a href="https://money.udn.com/money/story/5710/9649232">長興獲利／上半年稅前盈餘17.91億元、年增71.76％ 創近四年同期新高｜經濟日報</a> — 法說摘要：管理層觀點、風險、QBR 必問</li>
+<li><a href="https://www.eternal-group.com/Investor_Conference">公司投資人關係網站</a> — 法說會資料入口</li>
+  </ul>
+  <h3>限制</h3>
+  <div class="callout" style="margin-top:6px">法說摘要取自 BigGo Finance、聯合新聞網、經濟日報三則報導（法說簡報與逐字稿未取得），部分指標口徑與財報不符，已在 War Room 標註。fin_rows 來自 MOPS（千元換算億元）；季度 OCF 與資本支出為年初累計口徑；2025 Q4 列為推算。財報 PDF 文字匯出截斷在 20,006 字。 通用限制：稅後淨利為合併淨利（含非控制權益），EPS 則以歸屬母公司淨利計算，兩者可能不一致；季度現金流與資本支出為年初累計（YTD）口徑，非單季；金額由原始單位（千元）換算為億，小數第二位四捨五入；比率欄直接取資料表值。正式決策前仍應以公開資訊觀測站／SEC 及公司合併財報附註為準。</div>
+  <h3 class="mt">示範分數規則（本頁）</h3>
+  <table class="rubric"><thead><tr><th>項目</th><th>分</th><th>依據</th></tr></thead><tbody><tr><td>最新季稅後淨利率</td><td>+10</td><td>7.30%</td></tr><tr><td>最新季營業利益率</td><td>+10</td><td>8.59%</td></tr><tr><td>營收 YoY</td><td>+10</td><td>+14.6%</td></tr><tr><td>負債比</td><td>+10</td><td>51.77%</td></tr><tr><td>流動比率</td><td>+10</td><td>1.74x</td></tr><tr><td>營業現金流（YTD）</td><td>+10</td><td>正，OCF/淨利 1.82x</td></tr><tr><td>近五年虧損年</td><td>+10</td><td>無</td></tr><tr><td>毛利率較去年同期</td><td>+10</td><td>20.84% → 24.81%</td></tr><tr><td>業外依賴（業外＞本業扣 5）</td><td>+0</td><td>業外 1.45 vs 本業 10.24</td></tr><tr><td><b>合計</b></td><td><b>80</b></td><td>≥70 綠燈／40–69 黃燈／&lt;40 紅燈</td></tr></tbody></table>
+</section>
+
+<footer>Generated for procurement review｜2026-10-20｜Version v1｜依 doc/20261010_供應鏈供應商財務體質報告模板.html 產出</footer>
+
+</main>
+</body>
+</html>
