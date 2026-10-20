@@ -1,8 +1,8 @@
-# HANDOFF — 2026-10-19 晚收工（下次 session 先讀這份）
+# HANDOFF — 2026-10-20 更新（下次 session 先讀這份）
 
 總覽與決定（D1–D32）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
 
-## 0. 接續點（2026-10-19 收工版，最新；底下 §1–§6 是歷史脈絡）
+## 0. 接續點（2026-10-20 更新，最新；底下 §1–§6 是歷史脈絡）
 
 **git**：最後 commit `28c72d9`（已 push）＝ 方向 C Stage B（D31 / D32）＋ 月報預覽 ＋ 寄信指南。再往前：`12aaaf8`（003 ＋ Stage A）、`16e5635`（task 1 cleaner 0.2）。讀的順序：這份 §0 → `STATUS.md` §5（進度表）→ §6.5（方向 C）→ §7（待使用者）。
 
@@ -13,13 +13,13 @@
 | W1 三支（mail / clean / extract） | ✅ cleaner 0.2 / prompt 0.2 寫表：495 封、1,817 段、items 有效 ok 12,774 |
 | 003 鏡頭表 `g_meeting_items_sem_bu` ＋ 2 View | ✅ 最新版（dup_key、INTEL_TAGS 加 price / cost / allocation） |
 | Stage A `meeting_extracted_sem_stage_a` | ✅ 全量寫過：12,686 列（event 12,048 / intel 448 / semantic 190），LLM USD 1.36 |
-| 005 台帳三表 ＋ 2 View | ✅ 建好；**`v_background_intel_q` 要重跑 005 [c21]**（D32 改了 retire_candidate） |
-| Stage B `meeting_extracted_sem_stage_b` | ✅ 0.1 在 Databricks 驗過（SEM-001、INT-001 / 002、補證據）；**repo 已是 0.2（D32），Databricks 要重新整支匯入** |
+| 005 台帳三表 ＋ 2 View | ✅ 2026-10-20 [c05] 同步、整支重跑（retire_candidate 改非 retired 都算） |
+| Stage B `meeting_extracted_sem_stage_b` | ✅ **0.2 已同步並於 2026-10-20 寫表**：intel_auto 併入 446 條 → 199 個新 INT（INT-003..201）、247 次同主題更新、鏡頭表 sem_id 回填 446；[c30] 全過（dup_intel_topic 0、unreviewed_with_y 0）；台帳現況 SEM 1 / evidence 2 / INT 201（全 unreviewed，除 INT-001 / 002）。觀察：同 term 跨 app 各發 id（RT8250GSP ×3）、近義主題未合併（TSMC F2/F5 EOL 一家 ≥ 7 個 id），留給 PM 標 n 退場或之後加 term 歸一 |
 | 月報預覽 `meeting_extracted_digest_preview` | repo 有，**Databricks 未匯入** |
 
 **下次開工第一件事（照順序）**：
-1. 重新整支匯入 `meeting_extracted_sem_stage_b/notebook.ipynb`（0.2）；005 整支重跑 `dry_run = false`（只會 replace View）。
-2. Stage B `dry_run = true`：預期 intel 約 448 條（扣同文重複）以 `intel_auto` 併入 unreviewed、semantic 0；看 [c12] 的 md diff。再 `false`，貼 [c20] [c21] [c30]。
+1. ✅ 2026-10-20 Stage B 0.2 ＋ 005 已同步、寫表（見上表）。**先不要把 `md_int_after` 貼回 PM_Head**：`PM_Head/projects/ForwardDeployedEngineer/15_experiments/MI/mi_datahub_table/business_semantics/semantics_task/background_intel.md` 現有 16 條（MNT 11 / TV 5）來自 Sales Brief YAML 週萃取（W31 / W33），不在 `g_background_intel` 裡；Stage B md 是台帳投影，貼上會蓋掉它們。待決：(a) 一次性把這 16 條種進台帳（INT id 接著發、status 照「待審」標 unreviewed）再貼；或 (b) 兩段各自維護。另外 201 個主題全 unreviewed，PM 沒審前貼進 prompt 來源檔意義不大。
+2. ✅ 同上。
 3. 匯入 `meeting_extracted_digest_preview`，跑 `customer = acer, app = MNT`，拿去跟 user 談版面（README 列了要問的五題）；版面定了才開 W2（004 ＋ T3–T5）。
 4. `jobs/meeting_record/SENDER_GUIDE.md` 填負責人後發給寄信的同仁。
 
