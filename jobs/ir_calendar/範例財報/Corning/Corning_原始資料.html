@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corning｜原始資料（silver bundle）</title>
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(22px,3.5vw,36px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.mt{margin-top:16px}
+.note,.small{font-size:12px;color:var(--muted)}
+h2{font-size:20px;margin:6px 0 14px}
+h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.kv td:first-child{color:var(--muted);white-space:nowrap;width:220px}
+.kv{table-layout:fixed}.kv td{overflow-wrap:anywhere}.kv td table{table-layout:fixed;width:100%}.kv td table td:first-child{white-space:normal;width:auto;color:inherit}
+.null{color:#b0b8c4;font-style:italic}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.t-ir_conference{background:#1f5aa6}.t-ir_summary{background:#16835d}.t-ir_document{background:#bd7300}.t-ir_document_file{background:#8a6d3b}.t-ir_financials{background:#20a4b7}.t-app_company{background:#65738a}
+pre{background:#0b1f3a;color:#e6eefc;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;max-height:520px}
+details summary{cursor:pointer;color:var(--blue);font-size:13px;margin:6px 0}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:12px 16px;border-radius:8px;margin-top:12px;font-size:13px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--blue);word-break:break-all}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.toc a{margin-right:14px;font-size:13px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}pre{max-height:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="badge">ir_calendar｜來源檢視｜silver bundle</div>
+  <h1>Corning｜原始資料（silver bundle）</h1>
+  <p>來源檔：Corning.md｜company_key NYSE:GLW｜period 2026Q2｜產出日期：2026-10-21</p>
+</header>
+<main class="wrap">
+
+<section class="card">
+  <h2>這是什麼</h2>
+  <p>把 Databricks silver 各表以 <code>company_key</code>（＋ <code>period</code>）join 後包成一個 JSON，
+  形狀 = <code>build_supplier_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>Corning.md</code> 就是這個 JSON，
+  <code>build_report.py</code> 讀它產出財務體質報告。period = <b>2026Q2</b>。</p>
+  <table><thead><tr><th>鍵</th><th>來源 silver 表</th><th>內容</th></tr></thead><tbody>
+  <tr><td><a href='#company'><code>company</code></a></td><td><code>s_ir_calendar_company</code></td><td>公司主檔一列</td></tr><tr><td><a href='#fin_rows'><code>fin_rows</code></a></td><td><code>s_ir_calendar_financials</code></td><td>12 列（年度 5、季別 7）</td></tr><tr><td><a href='#summary'><code>summary</code></a></td><td><code>s_ir_calendar_summary</code></td><td>null（無法說彙整）</td></tr><tr><td><a href='#conference'><code>conference</code></a></td><td><code>s_ir_calendar_conference</code></td><td>null（無法說場次）</td></tr><tr><td><a href='#docs'><code>docs</code></a></td><td><code>s_ir_calendar_document_text</code></td><td>2 份（Presentation、Financial_Statements）</td></tr>
+  </tbody></table>
+  <div class="callout">silver 是從 bronze payload 轉出來的（<code>consume_batches</code> [c06]），欄位已攤平、型別已轉；
+  要看爬蟲原文請看同資料夾的 <code>Corning_爬蟲資料.html</code>。</div>
+</section><section class="card mt" id="company"><h2>company（公司主檔）</h2><table class="kv"><tbody><tr><td>company_key</td><td>NYSE:GLW</td></tr><tr><td>company_name</td><td>Corning Incorporated</td></tr><tr><td>english_name</td><td>Corning</td></tr><tr><td>stock_code</td><td>GLW</td></tr><tr><td>market</td><td>NYSE</td></tr><tr><td>market_type</td><td>LISTED</td></tr><tr><td>category_name</td><td>SUPPLIER</td></tr><tr><td>industry</td><td>玻璃基板/光通訊</td></tr><tr><td>website_url</td><td><a href="https://www.corning.com">https://www.corning.com</a></td></tr><tr><td>ir_url</td><td><a href="https://investor.corning.com/news-and-events/events-and-presentations/default.aspx">https://investor.corning.com/news-and-events/events-and-presentations/default.aspx</a></td></tr><tr><td>aliases</td><td><pre style="max-height:240px;margin:0">[
+  &quot;Corning&quot;,
+  &quot;康寧&quot;
+]</pre></td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>remark</td><td><span class="null">null</span></td></tr><tr><td>is_active</td><td>true</td></tr><tr><td>profile_source</td><td>人工整理（公司官網）</td></tr><tr><td>file_slug</td><td>Corning</td></tr><tr><td>master_generated_at</td><td>2026-10-15 02:44:50</td></tr><tr><td>batch_id</td><td>000026_20261015T104450</td></tr><tr><td>seq</td><td>26</td></tr><tr><td>batch_path</td><td>master/company.json</td></tr><tr><td>updated_at</td><td>2026-10-20 08:57:38.454146</td></tr></tbody></table></section><section class="card mt" id="fin_rows"><h2>fin_rows（財報數據，12 列）</h2><div style="overflow:auto"><table><thead><tr><th class="num">類型</th><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num">annual</td><td class="num">2021FY</td><td class="num">2021</td><td class="num">2021-12-31</td><td class="num">14,082,000,000</td><td class="num">9,019,000,000</td><td class="num">5,063,000,000</td><td class="num">2,112,000,000</td><td class="num">2,426,000,000</td><td class="num">1,906,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1.28</td><td class="num">3,412,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">30,154,000,000</td><td class="num">17,609,000,000</td><td class="num"><span class="null">—</span></td><td class="num">35.95</td><td class="num">15.00</td><td class="num"><span class="null">—</span></td><td class="num">13.54</td><td class="num"><span class="null">—</span></td><td class="num">58.40</td><td class="num">1.59</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2022FY</td><td class="num">2022</td><td class="num">2022-12-31</td><td class="num">14,189,000,000</td><td class="num">9,683,000,000</td><td class="num">4,506,000,000</td><td class="num">1,438,000,000</td><td class="num">1,797,000,000</td><td class="num">1,316,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1.54</td><td class="num">2,615,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">29,499,000,000</td><td class="num">17,224,000,000</td><td class="num"><span class="null">—</span></td><td class="num">31.76</td><td class="num">10.13</td><td class="num"><span class="null">—</span></td><td class="num">9.27</td><td class="num"><span class="null">—</span></td><td class="num">58.39</td><td class="num">1.44</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2023FY</td><td class="num">2023</td><td class="num">2023-12-31</td><td class="num">12,588,000,000</td><td class="num">8,657,000,000</td><td class="num">3,931,000,000</td><td class="num">890,000,000</td><td class="num">816,000,000</td><td class="num">581,000,000</td><td class="num"><span class="null">—</span></td><td class="num">0.68</td><td class="num">2,005,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">28,500,000,000</td><td class="num">16,632,000,000</td><td class="num"><span class="null">—</span></td><td class="num">31.23</td><td class="num">7.07</td><td class="num"><span class="null">—</span></td><td class="num">4.62</td><td class="num"><span class="null">—</span></td><td class="num">58.36</td><td class="num">1.67</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2024FY</td><td class="num">2024</td><td class="num">2024-12-31</td><td class="num">13,118,000,000</td><td class="num">8,842,000,000</td><td class="num">4,276,000,000</td><td class="num">1,135,000,000</td><td class="num">813,000,000</td><td class="num">506,000,000</td><td class="num"><span class="null">—</span></td><td class="num">0.58</td><td class="num">1,939,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">27,735,000,000</td><td class="num">16,665,000,000</td><td class="num"><span class="null">—</span></td><td class="num">32.60</td><td class="num">8.65</td><td class="num"><span class="null">—</span></td><td class="num">3.86</td><td class="num"><span class="null">—</span></td><td class="num">60.09</td><td class="num">1.62</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2025FY</td><td class="num">2025</td><td class="num">2025-12-31</td><td class="num">15,629,000,000</td><td class="num">10,008,000,000</td><td class="num">5,621,000,000</td><td class="num">2,279,000,000</td><td class="num">2,052,000,000</td><td class="num">1,596,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1.83</td><td class="num">2,695,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">30,976,000,000</td><td class="num">18,669,000,000</td><td class="num"><span class="null">—</span></td><td class="num">35.97</td><td class="num">14.58</td><td class="num"><span class="null">—</span></td><td class="num">10.21</td><td class="num"><span class="null">—</span></td><td class="num">60.27</td><td class="num">1.59</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2024Q4</td><td class="num"></td><td class="num">2024-12-31</td><td class="num">3,501,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,197,000,000</td><td class="num">393,000,000</td><td class="num">437,000,000</td><td class="num">310,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">27,735,000,000</td><td class="num">16,665,000,000</td><td class="num"><span class="null">—</span></td><td class="num">34.19</td><td class="num">11.23</td><td class="num"><span class="null">—</span></td><td class="num">8.85</td><td class="num"><span class="null">—</span></td><td class="num">60.09</td><td class="num">1.62</td><td class="num">revenue、gross_profit、operating_income、pretax_income、net_income</td></tr><tr><td class="num">quarterly</td><td class="num">2025Q1</td><td class="num"></td><td class="num">2025-03-31</td><td class="num">3,452,000,000</td><td class="num">2,238,000,000</td><td class="num">1,214,000,000</td><td class="num">445,000,000</td><td class="num">240,000,000</td><td class="num">157,000,000</td><td class="num"><span class="null">—</span></td><td class="num">0.18</td><td class="num">151,000,000</td><td class="num">151,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">27,394,000,000</td><td class="num">16,266,000,000</td><td class="num"><span class="null">—</span></td><td class="num">35.17</td><td class="num">12.89</td><td class="num"><span class="null">—</span></td><td class="num">4.55</td><td class="num"><span class="null">—</span></td><td class="num">59.38</td><td class="num">1.69</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q2</td><td class="num"></td><td class="num">2025-06-30</td><td class="num">3,862,000,000</td><td class="num">2,470,000,000</td><td class="num">1,392,000,000</td><td class="num">573,000,000</td><td class="num">584,000,000</td><td class="num">469,000,000</td><td class="num"><span class="null">—</span></td><td class="num">0.54</td><td class="num"><span class="null">—</span></td><td class="num">859,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">28,745,000,000</td><td class="num">17,200,000,000</td><td class="num"><span class="null">—</span></td><td class="num">36.04</td><td class="num">14.84</td><td class="num"><span class="null">—</span></td><td class="num">12.14</td><td class="num"><span class="null">—</span></td><td class="num">59.84</td><td class="num">1.50</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q3</td><td class="num"></td><td class="num">2025-09-30</td><td class="num">4,100,000,000</td><td class="num">2,580,000,000</td><td class="num">1,520,000,000</td><td class="num">589,000,000</td><td class="num">550,000,000</td><td class="num">430,000,000</td><td class="num"><span class="null">—</span></td><td class="num">0.50</td><td class="num"><span class="null">—</span></td><td class="num">1,643,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">29,916,000,000</td><td class="num">17,911,000,000</td><td class="num"><span class="null">—</span></td><td class="num">37.07</td><td class="num">14.37</td><td class="num"><span class="null">—</span></td><td class="num">10.49</td><td class="num"><span class="null">—</span></td><td class="num">59.87</td><td class="num">1.56</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q4</td><td class="num"></td><td class="num">2025-12-31</td><td class="num">4,215,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,495,000,000</td><td class="num">672,000,000</td><td class="num">678,000,000</td><td class="num">540,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">30,976,000,000</td><td class="num">18,669,000,000</td><td class="num"><span class="null">—</span></td><td class="num">35.47</td><td class="num">15.94</td><td class="num"><span class="null">—</span></td><td class="num">12.81</td><td class="num"><span class="null">—</span></td><td class="num">60.27</td><td class="num">1.59</td><td class="num">revenue、gross_profit、operating_income、pretax_income、net_income</td></tr><tr><td class="num">quarterly</td><td class="num">2026Q1</td><td class="num"></td><td class="num">2026-03-31</td><td class="num">4,144,000,000</td><td class="num">2,616,000,000</td><td class="num">1,528,000,000</td><td class="num">639,000,000</td><td class="num">529,000,000</td><td class="num">371,000,000</td><td class="num"><span class="null">—</span></td><td class="num">0.43</td><td class="num">362,000,000</td><td class="num">362,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">31,253,000,000</td><td class="num">18,904,000,000</td><td class="num"><span class="null">—</span></td><td class="num">36.87</td><td class="num">15.42</td><td class="num"><span class="null">—</span></td><td class="num">8.95</td><td class="num"><span class="null">—</span></td><td class="num">60.49</td><td class="num">1.61</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2026Q2</td><td class="num"></td><td class="num">2026-06-30</td><td class="num">4,505,000,000</td><td class="num">2,877,000,000</td><td class="num">1,628,000,000</td><td class="num">698,000,000</td><td class="num">649,000,000</td><td class="num">559,000,000</td><td class="num"><span class="null">—</span></td><td class="num">0.64</td><td class="num"><span class="null">—</span></td><td class="num">2,079,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">32,956,000,000</td><td class="num">19,829,000,000</td><td class="num"><span class="null">—</span></td><td class="num">36.14</td><td class="num">15.49</td><td class="num"><span class="null">—</span></td><td class="num">12.41</td><td class="num"><span class="null">—</span></td><td class="num">60.17</td><td class="num">1.81</td><td class="num"></td></tr></tbody></table></div><div class="note">金額為原始單位（currency / unit 見第一列：台股 TWD 仟元、美股 USD 元）。</div></section><section class="card mt" id="summary"><h2>summary（法說彙整）</h2><p class="null">null — 這家在 s_ir_calendar_summary 沒有對應期別的列</p></section><section class="card mt" id="conference"><h2>conference（法說場次）</h2><p class=null>null — s_ir_calendar_conference 無對應期別的列</p></section><section class="card mt" id="docs"><h2>docs（解析後文件，2 份）</h2><h3>docs[0]：Corning_Q2CY26_Presentation.htm（Presentation）</h3><table class="kv"><tbody><tr><td>volume_path</td><td>/Volumes/micenter/mi3_datahub_prod/micenterfile_ext/unstructured_data_file/supplier/Corning/Corning_Q2CY26_Presentation.htm</td></tr><tr><td>file_name</td><td>Corning_Q2CY26_Presentation.htm</td></tr><tr><td>doc_kind</td><td>Presentation</td></tr><tr><td>sha256</td><td>a2c7d546b7a4e47e985c95c3431ac49ccf94c1c5ee44115cff1a53d8e3b1ef0e</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>text_chars</td><td>52918</td></tr><tr><td>page_count</td><td>20</td></tr><tr><td>parse_status</td><td>success</td></tr><tr><td>source_url</td><td><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm">https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm</a></td></tr><tr><td>truncated_for_export</td><td>true</td></tr></tbody></table><details><summary>text_md 全文（13,867 字，匯出時截斷）</summary><pre style="white-space:pre-wrap;max-height:720px">Exhibit 99
+
+News Release
+
+FOR RELEASE – July 28, 2026
+
+Corning’s Strong Second-Quarter 2026 Financial Results(1)
+
+Demonstrate Progress on Recently Upgraded
+
+Springboard Plan
+
+CORNING, N.Y. — Corning Incorporated (NYSE: GLW) today announced its second-quarter 2026 results and provided its outlook for third-quarter 2026.
+
+News Summary:
+
+•Year over year, Q2 core sales grew 17% to $4.74 billion. Core EPS grew 30% to $0.78.
+
+•Optical Communications grew sales 32% to $2.07 billion, including a 65% increase in Enterprise Networks, with Gen AI product sales growing significantly faster.
+
+•Solar grew sales 90% and completed an extended maintenance shutdown and equipment upgrade at Corning’s solar wafer facility. Management expects profitability to improve in Q3.
+
+•Results demonstrate progress on upgraded Springboard Plan outlined at May 2026 investor day.
+
+•The company’s internal Springboard Plan is to grow sales to an annualized run rate of $20 billion by the end of 2026, $30 billion by the end of 2028, and $40 billion by the end of 2030.
+
+•Corning is entering a new phase of accelerating growth. The company expects to deliver a sales CAGR of 19% from Q4 2026 to Q4 2030 – while growing earnings faster than sales, with significantly higher returns on invested capital and substantially more free cash flow.
+
+•Deep customer partnerships support Springboard growth opportunity. In Q2:
+
+•Amazon announced a multiyear, multibillion-dollar agreement under which Corning will supply the optical fiber, cable, and connectivity solutions that power Amazon&#x27;s expanding data center infrastructure across the United States.
+
+•NVIDIA and Corning announced a long-term partnership in which Corning will expand its U.S.-based optical connectivity manufacturing capacity by 10x and expand its U.S. fiber production capacity by more than 50% to meet the accelerating demand driven by AI factory buildouts.
+
+•In the third quarter, management expects core sales to grow approximately 16% year over year to a range of $4.9 billion to $5 billion and core EPS to grow approximately 28% year over year to a range of $0.85 to $0.89.
+
+(1) Second-quarter GAAP results: Sales were $4.51 billion, gross margin was 36.1%, operating margin was 15.5%, EPS was $0.64, and operating cash flow was $1.72 billion.
+
+1
+
+Corning Reports Second-Quarter 2026 Financial Results
+
+Page 2
+
+Wendell P. Weeks, chairman, chief executive officer, and president, said, “In the second quarter, we delivered outstanding results, and we upgraded our Springboard Plan to grow sales to an annualized run rate of $20 billion by the end of 2026, $30 billion by the end of 2028, and $40 billion by the end of 2030. We’re entering a new phase of accelerating growth, and we expect to deliver a sales CAGR of 19% from Q4 2026 to Q4 2030 – while growing earnings faster than sales, with significantly higher returns on invested capital and substantially more free cash flow.”
+
+Weeks continued, “We continue to deepen our long-term customer partnerships with industry leaders, most recently with Amazon and NVIDIA. These partnerships provide strong proof points supporting our exciting Springboard Plan.”
+
+Ed Schlesinger, executive vice president and chief financial officer, said, “In the second quarter, we delivered our ninth consecutive quarter of year-over-year growth and continued to enhance our financial profile. We grew core sales 17% to $4.74 billion and core EPS 30% to $0.78. We expanded core gross margin 120 basis points to 39.6% and core operating margin 190 basis points to 20.9%. We also grew core ROIC 180 basis points to 14.9% and delivered strong adjusted free cash flow of $1.42 billion.”
+
+Schlesinger continued, “In the third quarter, we expect core sales to grow approximately 16% year over year to a range of $4.9 billion to $5 billion and core EPS to grow about 28% year over year to a range of $0.85 to $0.89. We also expect an improving impact on earnings from Solar starting in Q3 as our ramp continues, building toward a revenue stream of more than $3 billion with strong profit and cash flow. Overall, we are off to a great start on our upgraded Springboard plan to capture a new phase of accelerating growth.”
+
+Second-Quarter 2026 Financial Highlights:
+
+•GAAP sales were $4.51 billion, up 17% year over year. Core sales were $4.74 billion, up 17% year over year.
+
+•GAAP EPS was $0.64, up 19% year over year. Core EPS was $0.78, up 30% year over year. The difference between GAAP and core EPS principally reflects adjustments for hedged exposures, along with largely non-cash discrete tax items and restructuring and impairment charges. A complete quantitative reconciliation of these and other reconciling items appears in the tables accompanying this release.
+
+•GAAP gross margin was 36.1%. Core gross margin expanded 120 basis points to 39.6%.
+
+•GAAP operating margin was 15.5%. Core operating margin expanded 190 basis points to 20.9%.
+
+•GAAP operating cash flow was $1.72 billion, and adjusted free cash flow was $1.42 billion.
+
+Third-Quarter 2026 Outlook:
+
+•In the third quarter, management expects core sales to grow approximately 16% year over year to a range of $4.9 billion to $5 billion and core EPS to grow approximately 28% year over year to a range of $0.85 to $0.89.
+
+2
+
+Corning Reports Second-Quarter 2026 Financial Results
+
+Page 3
+
+Second-Quarter 2026 Results and Comparisons
+
+(In millions, except per-share amounts)
+
+| Results (GAAP) |  |  |  |  |  |
+|---|---|---|---|---|---|
+|  | Q2 2026 | Q1 2026 | Q2 2025 | Q/Q | Y/Y |
+| Net Sales | $4,505 | $4,144 | $3,862 | 9% | 17% |
+| Net Income (1) | $559 | $371 | $469 | 51% | 19% |
+| Diluted EPS | $0.64 | $0.43 | $0.54 | 49% | 19% |
+
+(1)Represents GAAP net income attributable to Corning Incorporated.
+
+| Core Results (Non-GAAP)(1) |  |  |  |  |  |
+|---|---|---|---|---|---|
+|  | Q2 2026 | Q1 2026 | Q2 2025 | Q/Q | Y/Y |
+| Core Sales | $4,738 | $4,345 | $4,045 | 9% | 17% |
+| Core Net Income | $680 | $612 | $523 | 11% | 30% |
+| Core EPS | $0.78 | $0.70 | $0.60 | 11% | 30% |
+
+(1)Core performance measures are non-GAAP financial measures. The reconciliation between GAAP and non-GAAP measures is provided in the tables following this news release as well as on the company’s website.
+
+3
+
+Corning Reports Second-Quarter 2026 Financial Results
+
+Page 4
+
+Second-Quarter 2026 Segment Results
+
+(In millions)
+
+The second-quarter results below are prepared on a basis consistent with Corning’s segment reporting as presented in the company’s consolidated financial statements.
+
+Effective in the first quarter of 2026, Corning revised its segment reporting structure to align with its current operating and management structure. As a result, the company created a Glass Innovations segment, combining its former Display and Specialty Materials segments. Corning also created a Solar segment, which includes Hemlock Semiconductor Group and the company’s solar wafer and module manufacturing businesses. Optical Communications and Automotive remain unchanged. All other results will be grouped as Life Sciences and Emerging Growth Businesses. Prior-period results have been recast to conform to the current presentation.
+
+| Optical Communications |  |  |  |  |  |
+|---|---|---|---|---|---|
+|  | Q2 2026 | Q1 2026 | Q2 2025 | Q/Q | Y/Y |
+| Net Sales | $2,072 | $1,846 | $1,566 | 12% | 32% |
+| Net Income | $438 | $387 | $247 | 13% | 77% |
+
+| Glass Innovations |  |  |  |  |  |
+|---|---|---|---|---|---|
+|  | Q2 2026 | Q1 2026 | Q2 2025 | Q/Q | Y/Y |
+| Net Sales | $1,463 | $1,420 | $1,443 | 3% | 1% |
+| Net Income | $354 | $324 | $324 | 9% | 9% |
+
+| Automotive |  |  |  |  |  |
+|---|---|---|---|---|---|
+|  | Q2 2026 | Q1 2026 | Q2 2025 | Q/Q | Y/Y |
+| Net Sales | $471 | $437 | $460 | 8% | 2% |
+| Net Income | $82 | $70 | $79 | 17% | 4% |
+
+| Solar |  |  |  |  |  |
+|---|---|---|---|---|---|
+|  | Q2 2026 | Q1 2026 | Q2 2025 | Q/Q | Y/Y |
+| Net Sales | $438 | $370 | $231 | 18% | 90% |
+| Net (Loss) Income | ($7) | $7 | $2 | * | * |
+
+| Life Sciences and Emerging Growth Businesses |  |  |  |  |  |
+|---|---|---|---|---|---|
+|  | Q2 2026 | Q1 2026 | Q2 2025 | Q/Q | Y/Y |
+| Net Sales | $294 | $272 | $345 | 8% | (15%) |
+| Net (Loss) Income | ($21) | ($24) | $6 | 13% | * |
+
+*Not meaningful
+
+4
+
+Corning Reports Second-Quarter 2026 Financial Results
+
+Page 5
+
+Upcoming Investor Events
+
+On Sept. 9, Corning Incorporated will attend the Citi 2026 Global TMT Conference in New York. In addition, the company will schedule management visits to investor offices in select cities. Visit the company’s Investor Relations website for up-to-date information.
+
+Second-Quarter Conference Call Information
+
+The company will host its second-quarter conference call on Tuesday, July 28, at 8:30 a.m. ET. To participate, individuals may preregister here prior to the start of the call. Once the required fields are completed, click “Register.” A telephone number and PIN will be auto generated and will pop up on screen. Participants will have the choice to “Dial In” or have the system “Call Me.” A confirmation email will also be sent with specific dial-in information. To listen to a live audio webcast of the call, go to the company’s Investor Relations events page and follow the instructions
+
+... [*** WARNING: max output size exceeded, skipping output. ***] ...
+
+nel; customer ability to maintain profitable operations and obtain financing to fund ongoing operations and manufacturing expansions and pay receivables when due; loss of significant customers; changes in tax laws, regulations and international tax standards; the impacts of audits by taxing authorities; the potential impact of legislation, government regulations, and other government action and investigations; and other risks detailed in Corning’s SEC filings.
+
+For a complete listing of risks and other factors, please reference the risk factors and forward-looking statements described in our annual reports on Form 10-K and quarterly reports on Form 10-Q.
+
+Web Disclosure
+
+In accordance with guidance provided by the SEC regarding the use of company websites and social media channels to disclose material information, Corning Incorporated (“Corning”) wishes to notify investors, media, and other interested parties that it uses its website (https://www.corning.com/worldwide/en/about-us/news-events.html) to publish important information about the company, including information that may be deemed material to investors, or supplemental to information contained in this or other press releases. The list of websites and social media channels that the company uses may be updated on Corning’s media and website from time to time. Corning encourages investors, media, and other interested parties to review the information Corning may publish through its website and social media channels as described above, in addition to the company’s SEC filings, press releases, conference calls, and webcasts.
+
+6
+
+Corning Reports Second-Quarter 2026 Financial Results
+
+Page 7
+
+About Corning Incorporated
+
+Corning (www.corning.com) is one of the world’s leading innovators in materials science, with a 175-year track record of life-changing inventions. Corning applies its unparalleled expertise in glass science, ceramic science, and optical physics, along with its deep manufacturing and engineering capabilities to develop category-defining products that transform industries and enhance people’s lives. Corning succeeds through sustained investment in RD&amp;E, a unique combination of material and process innovation, and deep, trust-based relationships with customers who are global leaders in their industries. Corning’s capabilities are versatile and synergistic, which allows the company to evolve to meet changing market needs, while also helping its customers capture new opportunities in dynamic industries. Today, Corning’s markets include optical communications, mobile consumer electronics, display, automotive, solar, semiconductors, and life sciences.
+
+Media Relations Contact:
+
+Gabrielle Bailey
+
+(607) 684-4557
+
+baileygr@corning.com
+
+Investor Relations Contact:
+
+Christopher Keenan
+
+(607) 974-6716
+
+keenanct@corning.com
+
+7
+
+| Consolidated Statements of Income | Corning Incorporated and Subsidiary Companies |
+|---|---|
+| (Unaudited; in millions, except per share amounts) |  |
+
+|  | Three months ended June 30, |  |  |  | Six months ended June 30, |  |  |  |
+|---|---|---|---|---|---|---|---|---|
+|  | 2026 |  | 2025 |  | 2026 |  | 2025 |  |
+| Net sales |  | $4,505 |  | $3,862 |  | $8,649 |  | $7,314 |
+| Cost of sales | 2,877 |  | 2,470 |  | 5,493 |  | 4,708 |  |
+| Gross margin | 1,628 |  | 1,392 |  | 3,156 |  | 2,606 |  |
+| Operating expenses: |  |  |  |  |  |  |  |  |
+| Selling, general and administrative expenses | 608 |  | 515 |  | 1,196 |  | 986 |  |
+| Research, development and engineering expenses | 299 |  | 276 |  | 577 |  | 546 |  |
+| Amortization of purchased intangibles | 23 |  | 28 |  | 46 |  | 56 |  |
+| Operating income | 698 |  | 573 |  | 1,337 |  | 1,018 |  |
+| Interest income | 12 |  | 5 |  | 21 |  | 17 |  |
+| Interest expense | (94) |  | (83) |  | (186) |  | (165) |  |
+| Translated earnings contract gain, net | 90 |  | 131 |  | 74 |  | 30 |  |
+| Other expense, net | (57) |  | (42) |  | (68) |  | (76) |  |
+| Income before income taxes | 649 |  | 584 |  | 1,178 |  | 824 |  |
+| Provision for income taxes | (40) |  | (84) |  | (161) |  | (139) |  |
+| Net income | 609 |  | 500 |  | 1,017 |  | 685 |  |
+| Net income attributable to non-controlling interest | (50) |  | (31) |  | (87) |  | (59) |  |
+| Net income attributable to Corning Incorporated |  | $559 |  | $469 |  | $930 |  | $626 |
+| Earnings per common share available to common shareholders: |  |  |  |  |  |  |  |  |
+| Basic |  | $0.65 |  | $0.55 |  | $1.08 |  | $0.73 |
+| Diluted |  | $0.64 |  | $0.54 |  | $1.06 |  | $0.72 |
+
+8
+
+| Consolidated Balance Sheets | Corning Inco
+…（截尾）</pre></details><h3>docs[1]：Corning_Q2CY26_Financial_Statements.htm（Financial_Statements）</h3><table class="kv"><tbody><tr><td>volume_path</td><td>/Volumes/micenter/mi3_datahub_prod/micenterfile_ext/unstructured_data_file/supplier/Corning/Corning_Q2CY26_Financial_Statements.htm</td></tr><tr><td>file_name</td><td>Corning_Q2CY26_Financial_Statements.htm</td></tr><tr><td>doc_kind</td><td>Financial_Statements</td></tr><tr><td>sha256</td><td>5ce0dc355e9ec6c0d9131ad9e698e8a2bd9951426ee3ce8f51d9b7d0c8980ac1</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>text_chars</td><td>148152</td></tr><tr><td>page_count</td><td>46</td></tr><tr><td>parse_status</td><td>success</td></tr><tr><td>source_url</td><td><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm">https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm</a></td></tr><tr><td>truncated_for_export</td><td>true</td></tr></tbody></table><details><summary>text_md 全文（20,006 字，匯出時截斷）</summary><pre style="white-space:pre-wrap;max-height:720px">UNITED STATES
+
+SECURITIES AND EXCHANGE COMMISSION
+
+WASHINGTON, D.C. 20549
+
+FORM 10-Q
+
+| ☒ | QUARTERLY REPORT PURSUANT TO SECTION 13 OR 15(d) OF THE SECURITIES EXCHANGE ACT OF 1934 |
+|---|---|
+
+For the quarterly period ended June 30, 2026
+
+OR
+
+| ☐ | TRANSITION REPORT PURSUANT TO SECTION 13 OR 15(d) OF THE SECURITIES EXCHANGE ACT OF 1934 |
+|---|---|
+
+For the transition period from ____________________________ To ____________________________
+
+Commission file number: 1-3247
+
+CORNING INCORPORATED
+
+(Exact name of registrant as specified in its charter)
+
+| New York | 16-0393470 |
+|---|---|
+| (State or other jurisdiction of incorporation or organization) | (I.R.S. Employer Identification No.) |
+| One Riverfront Plaza, Corning, New York | 14831 |
+| (Address of principal executive offices) | (Zip Code) |
+
+607-974-9000
+
+(Registrant’s telephone number, including area code)
+
+Securities registered pursuant to Section 12(b) of the Act:
+
+| Title of each class | Trading Symbol(s) | Name of each exchange on which registered |
+|---|---|---|
+| Common Stock, $0.50 par value per share | GLW | New York Stock Exchange |
+| 4.125% Notes due 2031 | GLW31 | New York Stock Exchange |
+
+Indicate by check mark whether the registrant (1) has filed all reports required to be filed by Section 13 or 15(d) of the Securities Exchange Act of 1934 during the preceding 12 months (or for such shorter period that the registrant was required to file such reports) and (2) has been subject to such filing requirements for the past 90 days.
+
+| Yes | ☒ | No | ☐ |
+|---|---|---|---|
+
+Indicate by check mark whether the registrant has submitted electronically every Interactive Data File required to be submitted pursuant to Rule 405 of Regulation S-T (§232.405 of this chapter) during the preceding 12 months (or for such shorter period that the registrant was required to submit such files).
+
+| Yes | ☒ | No | ☐ |
+|---|---|---|---|
+
+Indicate by check mark whether the registrant is a large accelerated filer, an accelerated filer, a non-accelerated filer, a smaller reporting company or an emerging growth company. See the definitions of “large accelerated filer,” “accelerated filer,” “smaller reporting company” and “emerging growth company” in Rule 12b-2 of the Exchange Act.
+
+| Large Accelerated Filer | ☒ | Accelerated Filer | ☐ |
+|---|---|---|---|
+| Non-Accelerated Filer | ☐ | Smaller Reporting Company | ☐ |
+|  |  | Emerging Growth Company | ☐ |
+
+If an emerging growth company, indicate by check mark if the registrant has elected not to use the extended transition period for complying with any new or revised financial accounting standards pursuant to Section 13(a) of the Exchange Act. ☐
+
+If securities are registered pursuant to Section 12(b) of the Exchange Act, indicate by check mark whether the financial statements of the registrant included in the filing reflect the correction of an error to previously issued financial statements. ☐
+
+Indicate by check mark whether any of those error corrections are restatements that required a recovery analysis of incentive-based compensation received by any of the registrant’s executive officers during the relevant recovery period pursuant to §240.10D-1(b). ☐
+
+Indicate by check mark whether the registrant is a shell company (as defined in Rule 12b-2 of the Exchange Act).
+
+| Yes | ☐ | No | ☒ |
+|---|---|---|---|
+
+Indicate the number of shares outstanding of each of the issuer’s classes of common stock, as of the latest practicable date.
+
+| Class | Outstanding as of July 24, 2026 |
+|---|---|
+| Corning’s Common Stock, $0.50 par value per share | 861,388,331 shares |
+
+1
+
+Table of Contents
+
+INDEX
+
+| PART I – FINANCIAL INFORMATION |  |
+|---|---|
+|  | Page |
+| Item 1. Financial Statements |  |
+| Consolidated Statements of Income | 3 |
+| Consolidated Statements of Comprehensive Income | 4 |
+| Consolidated Balance Sheets | 5 |
+| Consolidated Statements of Cash Flows | 6 |
+| Consolidated Statements of Changes in Shareholders’ Equity | 7 |
+| Notes to Consolidated Financial Statements | 8 |
+| Item 2. Management’s Discussion and Analysis of Financial Condition and Results of Operations | 23 |
+| Item 3. Quantitative and Qualitative Disclosures About Market Risk | 43 |
+| Item 4. Controls and Procedures | 43 |
+| PART II – OTHER INFORMATION |  |
+| Item 1. Legal Proceedings | 44 |
+| Item 1A. Risk Factors | 44 |
+| Item 2. Unregistered Sales of Equity Securities and Use of Proceeds | 44 |
+| Item 5. Other Information | 44 |
+| Item 6. Exhibits | 45 |
+| Signatures | 46 |
+
+2
+
+Table of Contents
+
+| Consolidated Statements of Income | Corning Incorporated and Subsidiary Companies |
+|---|---|
+| (Unaudited; in millions, except per share amounts) |  |
+
+|  | Three months ended June 30, |  |  |  | Six months ended June 30, |  |  |  |
+|---|---|---|---|---|---|---|---|---|
+|  | 2026 |  | 2025 |  | 2026 |  | 2025 |  |
+| Net sales |  | $4,505 |  | $3,862 |  | $8,649 |  | $7,314 |
+| Cost of sales | 2,877 |  | 2,470 |  | 5,493 |  | 4,708 |  |
+| Gross margin | 1,628 |  | 1,392 |  | 3,156 |  | 2,606 |  |
+| Operating expenses: |  |  |  |  |  |  |  |  |
+| Selling, general and administrative expenses | 608 |  | 515 |  | 1,196 |  | 986 |  |
+| Research, development and engineering expenses | 299 |  | 276 |  | 577 |  | 546 |  |
+| Amortization of purchased intangibles | 23 |  | 28 |  | 46 |  | 56 |  |
+| Operating income | 698 |  | 573 |  | 1,337 |  | 1,018 |  |
+| Interest income | 12 |  | 5 |  | 21 |  | 17 |  |
+| Interest expense | (94) |  | (83) |  | (186) |  | (165) |  |
+| Translated earnings contract gain, net (Note 9) | 90 |  | 131 |  | 74 |  | 30 |  |
+| Other expense, net | (57) |  | (42) |  | (68) |  | (76) |  |
+| Income before income taxes | 649 |  | 584 |  | 1,178 |  | 824 |  |
+| Provision for income taxes (Note 11) | (40) |  | (84) |  | (161) |  | (139) |  |
+| Net income | 609 |  | 500 |  | 1,017 |  | 685 |  |
+| Net income attributable to non-controlling interest | (50) |  | (31) |  | (87) |  | (59) |  |
+| Net income attributable to Corning Incorporated |  | $559 |  | $469 |  | $930 |  | $626 |
+| Earnings per common share available to common shareholders: |  |  |  |  |  |  |  |  |
+| Basic (Note 13) |  | $0.65 |  | $0.55 |  | $1.08 |  | $0.73 |
+| Diluted (Note 13) |  | $0.64 |  | $0.54 |  | $1.06 |  | $0.72 |
+
+The accompanying notes are an integral part of these consolidated financial statements.
+
+3
+
+Table of Contents
+
+| Consolidated Statements of Comprehensive Income | Corning Incorporated and Subsidiary Companies |
+|---|---|
+| (Unaudited; in millions) |  |
+
+|  | Three months ended June 30, |  |  |  | Six months ended June 30, |  |  |  |
+|---|---|---|---|---|---|---|---|---|
+|  | 2026 |  | 2025 |  | 2026 |  | 2025 |  |
+| Net income |  | $609 |  | $500 |  | $1,017 |  | $685 |
+| Foreign currency translation adjustments and other (Note 12) | (14) |  | 391 |  | (185) |  | 552 |  |
+| Unamortized losses and prior service costs for postretirement benefit plans | (26) |  | (11) |  | (30) |  | (16) |  |
+| Realized and unrealized gains (losses) on derivatives | 10 |  | 46 |  | (1) |  | 73 |  |
+| Other comprehensive (loss) income, net of tax | (30) |  | 426 |  | (216) |  | 609 |  |
+| Comprehensive income | 579 |  | 926 |  | 801 |  | 1,294 |  |
+| Comprehensive income attributable to non-controlling interest | (50) |  | (31) |  | (87) |  | (59) |  |
+| Comprehensive income attributable to Corning Incorporated |  | $529 |  | $895 |  | $714 |  | $1,235 |
+
+The accompanying notes are an integral part of these consolidated financial statements.
+
+4
+
+Table of Contents
+
+| Consolidated Balance Sheets | Corning Incorporated and Subsidiary Companies |
+|---|---|
+| (Unaudited; in millions, except share and per share amounts) |  |
+
+|  | June 30, 2026 |  | December 31, 2025 |  |
+|---|---|---|---|---|
+| Assets |  |  |  |  |
+| Current assets: |  |  |  |  |
+| Cash and cash equivalents |  | $2,504 |  | $1,526 |
+| Trade accounts receivable, net of doubtful accounts - $29 and $27 | 2,932 |  | 2,779 |  |
+| Inventories (Note 3) | 3,426 |  | 3,077 |  |
+| Other current assets (Note 5) | 2,055 |  | 1,554 |  |
+| Total current assets | 10,917 |  | 8,936 |  |
+| Property, plant and equipment, net of accumulated depreciation - $15,460 and $15,229 | 14,927 |  | 14,825 |  |
+| Goodwill | 2,476 |  | 2,489 |  |
+| Other intangible assets, net | 610 |  | 657 |  |
+| Deferred income taxes (Note 11) | 1,610 |  | 1,515 |  |
+| Other assets (Note 5) | 2,416 |  | 2,554 |  |
+| Total Assets |  | $32,956 |  | $30,976 |
+| Liabilities and Equity |  |  |  |  |
+| Current liabilities: |  |  |  |  |
+| Current portion of long-term debt and short-term borrowings (Note 6) |  | $668 |  | $804 |
+| Accounts payable | 2,361 |  | 1,979 |  |
+| Other accrued liabilities (Notes 5 and 8) | 2,992 |  | 2,845 |  |
+| Total current liabilities | 6,021 |  | 5,628 |  |
+| Long-term debt (Note 6) | 7,756 |  | 7,630 |  |
+| Postretirement benefits other than pensions (Note 7) | 325 |  | 314 |  |
+| Other liabilities (Notes 5 and 8) | 5,727 |  | 5,097 |  |
+| Total liabilities | 19,829 |  | 18,669 |  |
+| Commitments and contingencies (Note 8) |  |  |  |  |
+| Shareholders’ equity: (Note 12) |  |  |  |  |
+| Common stock – Par value $0.50 per share; Shares authorized 3.8 billion; Shares issued: 1.9 billion and 1.8 billion | 927 |  | 924 |  |
+| Additional paid-in capital – common stock | 18,636 |  | 17,580 |  |
+| Retained earnings | 16,747 |  | 16,551 |  |
+| Treasury stock, at cost; Shares held: 994 million and 992 million | (21,429) |  | (21,143) |  |
+| Accumulated other comprehensive loss | (2,321) |  | (2,105) |  |
+| Total Corning Incorporated shareholders’ equity | 12,560 |  | 11,807 |  |
+| Non-controlling interest | 567 |  | 500 |  |
+| Total equity | 13,127 |  | 12,307 |  |
+| Total Liabilities and Equity |  | $32,956 |  | $30,976 |
+
+The accompanying notes are an integral part of these consolidated financial statements.
+
+5
+
+Table of Contents
+
+| Consolidated Statements of Cash Flows | Corning Incorporated and Subsidiary Companies |
+|---|---|
+| (Unaudited; in millions) |  |
+
+|  | Six months ended June 30, |  |  |  |
+|---|---|---|---|---|
+|  | 2026 |  | 2025 |  |
+| Cash Flows from Operating Activities: |  |  |  |  |
+| Net income |  | $1,017 |  | $685 |
+| Adjustments to reconcile net income to net cash provided by operating activities: |  |  |  |  |
+| Depreciation | 702 |  | 603 |  |
+| Amortization of purchased intangibles | 46 |  | 56 |  |
+| Share-based compensation expense | 250 |  | 117 |  |
+| Translation (gain) loss on foreign denominated debt, net | (5) |  | 70 |  |
+| Deferred tax benefit | (101) |  | (39) |  |
+| Translated earnings contract gain, net | (74) |  | (30) |  |
+| Changes in assets and liabilities: |  |  |  |  |
+| Trade accounts receivable | (255) |  | (203) |  |
+| Inventories | (377) |  | (238) |  |
+| Other current assets | (144) |  | (105) |  |
+| Accounts payable and other current liabilities | 195 |  | (59) |  |
+| Customer deposits and government incentives | 709 |  | 43 |  |
+| Deferred income | (102) |  | (70) |  |
+| Other, net | 218 |  | 29 |  |
+| Net cash provided by operating activities | 2,079 |  | 859 |  |
+| Cash Flows from Investing Activities: |  |  |  |  |
+| Capital expenditures | (754) |  | (516) |  |
+| Proceeds from government incentives | 8 |  |  |  |
+| Realized gains on translated earnings contracts and other | 278 |  | 107 |  |
+| Premiums paid on hedging contracts | (102) |  | (34) |  |
+| Other, net | 8 |  | (23) |  |
+| Net cash used in investing activities | (562) |  | (466) |  |
+| Cash Flows from Financing Activities: |  |  |  |  |
+| Repayments of debt | (691) |  | (279) |  |
+| Proceeds from issuance of debt and short-term borrowings | 449 |  | 285 |  |
+| Proceeds from cross currency swap |  |  | 24 |  |
+| Proceeds from warrants | 500 |  |  |  |
+| Payments of employee withholding tax on stock awards | (279) |  | (70) |  |
+| Proceeds from exercise of stock options | 23 |  | 12 |  |
+| Purchases of common stock for treasury |  |  | (133) |  |
+| Dividends paid | (495) |  | (503) |  |
+| Other, net | (79) |  | (32) |  |
+| Net cash used in financing activities | (572) |  | (696) |  |
+| Effect of exchange rates on cash |  |  | 26 |  |
+| Net increase (decrease) in cash and cash equivalents and restricted cash | 945 |  | (277) |  |
+| Cash and cash equivalents and restricted cash at beginning of period | 1,566 |  | 1,768 |  |
+| Cash and cash equivalents and restricted cash at end of period |  | $2,511 |  | $1,491 |
+| Restricted cash included in other current assets | 7 |  |  |  |
+| Cash and cash equivalents at end of period |  | $2,504 |  | $1,491 |
+
+The accompanying notes are an integral part of these consolidated financial statements.
+
+6
+
+Table of Contents
+
+| Consolidated Statements of Changes in Shareholders’ Equity | Corning Incorporated and Subsidiary Companies |
+|---|---|
+| (Unaudited; in millions, except per share amounts) |  |
+
+|  | Common stock |  | Additional paid-in capital common |  | Retained earnings |  | Treasury stock |  | Accumulated other comprehensive loss |  | Total Corning Incorporated shareholders’ equity |  | Non-controlling interest |  | Total |  |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Balance as of December 31, 2025 |  | $924 |  | $17,580 |  | $16,551 |  | $(21,143) |  | $(2,105) |  | $11,807 |  | $500 |  | $12,307 |
+| Net income |  |  |  |  | 371 |  |  |  |  |  | 371 |  | 37 |  | 408 |  |
+| Other comprehensive loss |  |  |  |  |  |  |  |  | (186) |  | (186) |  |  |  | (186) |  |
+| Shares issued to benefit plans and for option exercises | 1 |  | 124 |  |  |  |  |  |  |  | 125 |  |  |  | 125 |  |
+| Common dividends ($0.28 per share) |  |  |  |  | (242) |  |  |  |  |  | (242) |  |  |  | (242) |  |
+| Other, net (1) |  |  |  |  |  |  | (63) |  |  |  | (63) |  |  |  | (63) |  |
+| Balance as of March 31, 2026 |  | $925 |  | $17,704 |  | $16,680 |  | $(21,206) |  | $(2,291) |  | $11,812 |  | $537 |  | $12,349 |
+| Net income |  |  |  |  | 559 |  |  |  |  |  | 559 |  | 50 |  | 609 |  |
+| Other comprehensive loss |  |  |  |  |  |  |  |  | (30) |  | (30) |  | (1) |  | (31) |  |
+| Shares issued to benefit plans and for option exercises | 2 |  | 136 |  |  |  |  |  |  |  | 138 |  |  |  | 138 |  |
+| Issuance of warrants (2) |  |  | 796 |  |  |  |  |  |  |  | 796 |  |  |  | 796 |  |
+| Common dividends ($0.56 per share) |  |  |  |  | (492) |  |  |  |  |  | (492) |  |  |  | (492) |  |
+| Other, net (1) |  |  |  |  |  |  | (223) |  |  |  | (223) |  | (19) |  | (242) |  |
+| Balance as of June 30, 2026 |  | $927 |  | $18,636 |  | $16,747 |  | $(21,429) |  | $(2,321) |  | $12,560 |  | $567 |  | $13,127 |
+
+|  | Common stock |  | Additional paid-in capital common |  | Retained earnings |  | Treasury stock |  | Accumulated other comprehensive loss |  | Total Corning Incorporated shareholders’ equity |  | Non-controlling interest |  | Total |  |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Balance as of December 31, 2024 |  | $921 |  | $17,264 |  | $15,926 |  | $(20,882) |  | $(2,543) |  | $10,686 |  | $384 |  | $11,070 |
+| Net income |  |  |  |  | 157 |  |  |  |  |  | 157 |  | 28 |  | 185 |  |
+| Other comprehensive income |  |  |  |  |  |  |  |  | 183 |  | 183 |  |  |  | 183 |  |
+| Purchase of common stock for treasury |  |  |  |  |  |  | (100) |  |  |  | (100) |  |  |  | (100) |  |
+| Shares issued to benefit plans and for option exercises | 1 |  | 63 |  |  |  |  |  |  |  | 64 |  |  |  | 64 |  |
+| Common dividends ($0.28 per share) |  |  |  |  | (244) |  |  |  |  |  | (244) |  |  |  | (244) |  |
+| Other, net (1) |  |  |  |  |  |  | (30) |  |  |  | (30) |  |  |  | (30) |  |
+| Balance as of March 31, 2025 |  | $922 |  | $17,327 |  | $15,839 |  | $(21,012) |  | $(2,360) |  | $10,716 |  | $412 |  | $11,128 |
+| Net income |  |  |  |  | 469 |  |  |  |  |  | 469 |  | 31 |  | 500 |  |
+| Other comprehensive income |  |  |  |  |  |  |  |  | 426 |  | 426 |  | 1 |  | 427 |  |
+| Purchase of common stock for treasury |  |  |  |  |  |  | (33) |  |  |  | (33) |  |  |  | (33) |  |
+| Shares issued to benefit plans and for option exercises | 1 |  | 62 |  |  |  |  |  |  |  | 63 |  |  |  | 63 |  |
+| Common dividends ($0.56 per share) |  |  |  |  | (485) |  |  |  |  |  | (485) |  |  |  | (485) |  |
+| Other, net (1) |  |  |  |  |  |  | (40) |  |  |  | (40) |  | (15) |  | (55) |  |
+| Balance as of June 30, 2025 |  | $923 |  | $17,389 |  | $15,823 |  | $(21,085) |  | $(1,934) |  | $11,116 |  | $429 |  | $11,545 |
+
+(1)Treasury stock includes the deemed surrender to the Company of common stock to satisfy employee tax withholding obligations.
+
+(2)On May 6, 2026, the Company issued warrants to purchase up to 18 million shares of common stock. Warrants were recorded within additional paid-in capital based on the grant-date fair value. Refer to Note 12 (Shareholders’ Equity) for additional information.
+
+The accompanying notes are an integral part of these consolidated financial statements.
+
+7
+
+Table of Contents
+
+CORNING INCORPORATED AND SUBSIDIARY COMPANIES
+
+NOTES TO CONSOLIDATED FINANCIAL STATEMENTS
+
+(Unaudited)
+
+1. Summary of Significant Accounting Policies
+
+Basis of Presentation and Principles of Consolidation
+
+In these notes, the terms “Corning,” “Company,” “we,” “us,” or “our” mean Corning Incorporated and its subsidiary companies.
+
+The consolidated financial statements include the accounts of Corning Incorporated and its consolidated subsidiaries (collectively, the “Company”), consisting of its wholly-owned subsidiaries, partially-owned subsidiaries in which the Company holds a controlling financial interest through ownership of a majority of the voting interests and those entities in which the Company has a variable interest and of which the Company is the primary beneficiary, and are consolidated in conformity with accounting principles generally accepted in the United States of America (“GAAP”). In the opinion of management, the accompanying unaudited consolidated financial statements contain all adjustments, consisting of normal recurring adjustments, necessary to state fairly the financial position, results of operations and cash flows for the periods presented. All intercompany balances, transactions and profits have been eliminated. Certain information and footnote disclosures normally included in financial statements prepared in accordance with GAAP have been omitted pursuant to the rules and regulations of the United States Securities and Exchange Commission (“SEC”). These consolidated financial statements should be read in conjunction with the audited financial statements and notes thereto included in the Company’s Annual Report on Form 10-K for the year ended December 31, 2025 (“2025 Form 10-K”). The results of operations for the interim periods are not necessarily indicative of results which may be expected for any other interim period or for the full year.
+
+The preparation of financial statements in conformity with GAAP requires management to make estimates and assumptions that affect the reported amounts of assets, liabilities, revenues, expenses and related disclosures of contingent assets and liabilities on the consolidated financial statements and accompanying notes. Significant estimates and assumptions in these consolidated financial statements require the exercise of judgment. Due to the inherent uncertainty involved in making estimates, actual results could differ materially from these estimates.
+
+The non-controlling interest recorded on the consolidated financial statements represents amounts attributable to the minority shareholders of less-than-wholly-owned consolidated subsidiaries, including Hemlock Semiconductor Operations, a majority owned entity within our Solar segment, and US Conec, a variable interest entity within our Optical Communications segment, of which the Company is the primary beneficiary, and other subsidiaries.
+
+Certain prior year amounts have been reclassified to conform to the current year presentation, including a recast of the Company’s segment related disclosures 
+…（截尾）</pre></details></section>
+</main>
+<footer>由 build_sources.py 產出｜2026-10-21</footer>
+</body>
+</html>

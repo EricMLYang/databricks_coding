@@ -73,6 +73,17 @@ def test_summary_report_new_fields(mod):
     assert "- **本業需求**：下半年回溫" in md
     assert "### 正面訊號\n- p1" in md
     assert "### 觀察事項" not in md and "### 待釐清問題" not in md    # 空陣列 / NULL 不印
+    assert "| 法說報告期間 | — |" in md and "### 事業群／產品線" not in md and "### Q&A 重點" not in md
+
+
+def test_summary_report_v20261021_fields(mod):
+    """2026-10-21 爬蟲新版：reported_period / business_segments / qa_highlights。"""
+    md = mod.summary_report({**SUMMARY, "reported_period": " 2026 H1 ",
+        "business_segments": [{"segment": "電子材料", "revenue": None, "revenue_yoy": None, "operating_margin": "19.9%", "opm_yoy": "+15.9 pt", "note": "占比 52.7%"}],
+        "qa_highlights": [{"question": "產能？", "answer": " 滿載 "}]})
+    assert "| 法說報告期間 | 2026 H1 |" in md
+    assert "| 電子材料 | — | — | 19.9% | +15.9 pt | 占比 52.7% |" in md
+    assert "- **Q：**產能？  **A：**滿載" in md
 
 
 def test_element_line_uses_description_for_figure(mod):

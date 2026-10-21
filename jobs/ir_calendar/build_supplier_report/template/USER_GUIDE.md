@@ -1,8 +1,10 @@
 # 供應商「財報＋法說整合報告」模板與使用者說明
 
-- 模板檔：`20261010_供應鏈供應商財務體質報告模板.html`（2026-10-20 自 MI_Crawler `ir_calendar/doc/` 複製，原檔不改）。
-  job 只沿用它的**配色、字體、卡片、表格、段落層級**（CSS 已原樣內嵌在 notebook [c07]），章節順序改依下方使用者說明。
+- 模板檔（現行）：`20261021_SCM財報和法說報告html格式v20261007.html`（2026-10-21 自 MI_Crawler `ir_calendar/doc/` 複製，原檔不改；3M 範例、AUO 配色、12 張 base64 PNG 圖）。
+  job 沿用它的**配色、字體、卡片、表格、區塊帶（band）、段落層級與章節編號**（CSS 已原樣內嵌在 notebook [c07] `TEMPLATE_CSS`），12 張 PNG 改為 [c06] 純 Python inline SVG。
+- 舊模板 `20261010_供應鏈供應商財務體質報告模板.html`（燈號 / 分數 / War Room / Watchlist 版）只留對照，job 已不用。
 - 使用者（採購端）2026-10-20 提供的模板說明原文在 §1；§2 是 job 怎麼對應每一條；§3 是刻意不做的事。
+  五家範例公司用新版面與 2026-10-21 爬蟲新版資料的實際產出（純 Python 版，無 LLM）：`jobs/ir_calendar/範例財報/<公司>/<公司>.html`，覆蓋度結論在 `範例財報/模板覆蓋度評估.md`。
 
 ## §1 使用者說明原文（照錄）
 
@@ -26,24 +28,33 @@
 > 五、交付前檢查
 > 確認採購結論位於「財報資訊」上方、下方沒有重複的五年營收圖、其餘十項指標圖均為單欄、圖上數字不重疊、表格與圖表數值一致、示意資料有清楚標示，且 HTML 內嵌圖片可正常顯示。只交付最終 HTML 檔案及簡短的資料口徑說明。
 
-## §2 job 對應（`ir_calendar_build_supplier_report`）
+## §2 job 對應（`ir_calendar_build_supplier_report`，版型 20261021 / prompt 2.0）
 
 | 說明條目 | job 做法 | 在哪 |
 | --- | --- | --- |
-| 一.1 版型 | 模板 `<style>` 原樣內嵌；hero / card / table / callout / 燈號環 都沿用模板 class | [c07] `TEMPLATE_CSS` |
-| 一.2 順序 | hero → **給 AUO 採購主管的結論** → **財報資訊** → **法說會資訊** → 資料來源與限制 | [c07] `render_report` |
-| 一.3 結論分三塊 | LLM 輸出 `confirmed_facts` / `management_outlook` / `procurement_actions`（四個面向固定：供應穩定性、成本與議價、付款條件、替代料或驗證風險）；prompt 明文禁止「整體財務變動 → 個別料號漲價」 | [c05] `SYSTEM_PROMPT` |
-| 二 財報重點 / 實績 / 事業群 | 重點與事業群由 LLM 從解析文件抽；實績表由 `s_ir_calendar_financials` 程式算（本季 vs 去年同期 vs 上季） | [c03] `build_facts`、[c05] |
-| 二 五年 / 五季 營收 × OPM 圖 | 純 Python 產 **inline SVG**：淺藍柱 + 紫折線，營收標籤在柱內中間偏上，標籤碰撞自動避讓，圖例放圖面上方不蓋資料 | [c06] `svg_combo_chart` |
-| 二 五年指標表 11 項 | 營收、毛利率、稅前淨利率、稅後淨利率、EPS、營業現金流、負債比、流動比 來自 financials；**速動比、應收天數、應付天數 目前「未取得」**（爬蟲 financials 無存貨 / 應收 / 應付欄位，見 §3） | [c02] `INDICATORS` |
-| 二 其餘十項單欄圖 | 每項一列、同寬；無資料的項目只放「未取得」卡片，不畫圖 | [c07] |
-| 三 法說七章節 | LLM 輸出七個固定鍵；空陣列 → 畫面寫「未提及」；prompt 禁止推測合作關係 / 供應項目 | [c05]、[c07] |
-| 四 數字 | **job 只做正式報告**：表格與圖表數字只來自 `s_ir_calendar_financials`，LLM 不得編數字；缺值一律「未取得」。不提供示意值模式 | [c03]、[c05] |
-| 五 交付前檢查 | `tests/test_ir_calendar_build_supplier_report.py` 檢查：章節順序、沒有第二張五年營收圖、十項圖單欄、標籤框不重疊、表格與圖表同一份數列、無殘留 `{{…}}` | tests |
+| 一.1 版型 | 模板 `<style>` 原樣內嵌；header 漸層、band、section 卡、kpi 四卡、trend-card 都沿用模板 class；12 張 PNG 改 inline SVG（同配色：柱 #cfeafa、折線 #7752A8、標記 #F5C400） | [c07] `TEMPLATE_CSS`、[c06] |
+| 一.2 順序 | header（財報公布日 / 法說日 / 法說報告期間）→ **給 AUO 採購主管的結論** → **財報資訊 01–06** → **法說會資訊 01–07（＋08 採購觀察）** → 資料來源與限制 | [c07] `render_report` |
+| 一.3 結論分三塊 | LLM 輸出 `conclusion`（一段敘事）+ `confirmed_facts` / `management_outlook` / `procurement_actions`（四個面向固定）；prompt 明文禁止「整體財務變動 → 個別料號漲價」。無燈號 / 分數 | [c05] `SYSTEM_PROMPT` |
+| 二 01 財報重點 | 四卡：營收 + YoY、營業利益率 + YoY（pt）由 financials 算；第 3、4 卡為事業群營收（或營益率）取自事業群表；下方列 LLM 財報重點 | [c03] `build_kpis`、[c07] `render_kpis` |
+| 二 02 財報實績 | 本季 vs 去年同季 + 同比變動：營收、營業利益率、EPS、營業現金流（單季）、流動比、速動比，全部由 `s_financials` 算 | [c03] `build_actuals` |
+| 二 03 事業群 | 爬蟲 summary `business_segments`（LLM 自簡報 / 新聞稿抽，字串）優先；沒有才用本 job LLM 從文件抽；都沒有 → 未提及。財報表沒有部門別，不從 financials 推 | [c07] `merged_segments` |
+| 二 04 / 05 營收 × OPM 圖 | 純 Python **inline SVG**：淺藍柱 + 紫折線 + 黃點，營收標籤在柱內中間偏上，標籤碰撞自動避讓，圖例放圖面上方不蓋資料；推算列（台股 Q4）無 OPM → 折線斷點 | [c06] `svg_revenue_opm` |
+| 二 06 五年指標表 11 項 | 全部來自 `s_financials`：營收、毛利率、稅前淨利率（`pretax_margin`，缺時由稅前淨利 / 營收算）、稅後淨利率（`net_margin_parent` 歸屬母公司；舊批次缺時退用合併 `net_margin` 並標年份）、EPS、營業現金流、負債比、流動比、**速動比 `quick_ratio`、應收天數 `dso_days`、應付天數 `dpo_days`**（2026-10-21 爬蟲新版起有值） | [c02] `INDICATORS` |
+| 二 其餘十項單欄圖 | 每項一列、同寬；無資料的項目放「未取得」卡片，不畫圖 | [c07] `render_indicators` |
+| 三 法說七節 | 01–06 取爬蟲 summary `management_views` 六個固定 topic 的原文（事業體／產品線重點、擴產／產能變化、獲利能力變化、未來市場預測、投資／M&A／組織整改、AUO 相關議題）；彙整缺的主題用本 job LLM 讀文件補位；都沒有 → 「未提及」。07 取 `qa_highlights`，缺時 LLM qa。每節標示來源；03 附財報數字對照 | [c02] `CONF_TOPICS`、[c07] `merged_conference` |
+| 三 不得推測 | prompt 規則 5 / 6；AUO 相關議題只收文件明確提到 AUO / 友達 / 面板客戶 / Micro LED / Mini LED / 車用顯示 / CPO 的段落 | [c05] |
+| 四 數字 | **job 只做正式報告**：表格與圖表數字只來自 `s_financials`，LLM 不得編數字；缺值一律「未取得」。不提供示意值模式 | [c03]、[c05] |
+| 五 交付前檢查 | `tests/test_ir_calendar_build_supplier_report.py`：章節順序與編號、沒有第二張五年營收圖、十項圖單欄（`data-indicator` ×10）、標籤框不重疊、表格與圖表同一份數列、彙整優先於 LLM、無殘留 `{{…}}` | tests |
+
+頁首「財報公布日」取 `s_document_file` 該期 `Financial_Statements` 的 `doc_date`（台股 doc.twse 沒給日期時為「未取得」）；「法說會日」取 `s_conference.conference_date`，沒有場次時用 `s_summary.conference_date`；「法說報告期間」用 `summary.reported_period`（10 月法說 `period = 2026Q3` 但可能講上半年）。
 
 ## §3 刻意不做 / 已知限制
 
-- 速動比、應收天數、應付天數：`s_ir_calendar_financials` v1 沒有存貨、應收帳款、應付帳款、銷貨成本（台股）欄位，算不出來。要補得先在爬蟲端 `financials.py` 加欄位 → `init_tables` ADD COLUMNS → `consume_batches` [c04] / [c06] → 本 job [c02] `INDICATORS` 改 `source`。
-- 非台股 / 美股公司（TYO、KRX、SZ、HK…）目前沒有結構化財報 → 報告的 KPI、實績表、指標表、所有圖都是「未取得」，只有 LLM 從文件整理的文字段落。
-- 事業群財務表現：只有文件有分部資料時 LLM 才填，否則「未提及」；不從 financials 推。
+- 非台股 / 美股公司（TYO、KRX、SZ、HK…）目前沒有結構化財報 → KPI、實績表、指標表、所有圖都是「未取得」，只有 LLM 從文件整理的文字段落。
+- 速動比、應收天數、應付天數、母公司淨利率：要爬蟲 2026-10-21 新版整檔重發、`consume_batches` 貼新 [c04]/[c06] 並 `rebuild_silver` 後才有值；之前的批次這幾欄 NULL → 「未取得」。
+- 台股季別 Q4 為推算列（全年 − 前三季），只有營收與淨利，五季圖 Q4 無 OPM；美股 Q4 新版已推算營業利益。
+- 事業群表的值是文件原文字串（「約 NT$555 億（占 58.1%）」「部門淨利 US$438M」），不進 gold 數值欄、不可與第 02 節相減。
+- Q&A 只有電話會議型法說（美股逐字稿）拿得到；台股券商場次多為「未提及」。
+- 「AUO 相關議題」目前只到「法說有沒有提到」；對 AUO 料號 / 四支箭的影響判讀不在本 job，爬蟲 `config.yaml` 的 `post_event.auo_topics` 定義待需求方確認。
+- 燈號 / 分數 / War Room / Watchlist / QBR 必問：新版面沒有對應區塊，已移除；gold `light` / `score` 欄位保留、一律 NULL。
 - 圖表是 SVG 不是 PNG：可單獨開啟、列印、不依賴 JS 與外部字型；若收件系統只收 `<img>`，再加轉檔步驟。

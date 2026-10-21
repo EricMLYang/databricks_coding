@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>南亞塑膠工業｜爬蟲資料（bronze payload，新版實測）</title>
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(22px,3.5vw,36px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.mt{margin-top:16px}
+.note,.small{font-size:12px;color:var(--muted)}
+h2{font-size:20px;margin:6px 0 14px}
+h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.kv td:first-child{color:var(--muted);white-space:nowrap;width:220px}
+.kv{table-layout:fixed}.kv td{overflow-wrap:anywhere}.kv td table{table-layout:fixed;width:100%}.kv td table td:first-child{white-space:normal;width:auto;color:inherit}
+.null{color:#b0b8c4;font-style:italic}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.t-ir_conference{background:#1f5aa6}.t-ir_summary{background:#16835d}.t-ir_document{background:#bd7300}.t-ir_document_file{background:#8a6d3b}.t-ir_financials{background:#20a4b7}.t-app_company{background:#65738a}
+pre{background:#0b1f3a;color:#e6eefc;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;max-height:520px}
+details summary{cursor:pointer;color:var(--blue);font-size:13px;margin:6px 0}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:12px 16px;border-radius:8px;margin-top:12px;font-size:13px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--blue);word-break:break-all}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.toc a{margin-right:14px;font-size:13px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}pre{max-height:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="badge">ir_calendar｜來源檢視｜bronze b_ir_calendar_record</div>
+  <h1>南亞塑膠工業｜爬蟲資料（bronze payload，新版實測）</h1>
+  <p>來源檔：南亞塑膠工業_爬蟲_Q3_新版實測.md｜company_key TPE:1303｜period 2026Q3｜產出日期：2026-10-21</p>
+</header>
+<main class="wrap">
+
+<section class="card">
+  <h2>這是什麼</h2>
+  <p>Databricks bronze 表 <code>b_ir_calendar_record</code> 裡，爬蟲（MI_Crawler VM）交付的每個 JSON 檔原樣存成一列（<code>payload</code> 欄）。
+  這一頁是 <code>南亞塑膠工業_爬蟲_Q3_新版實測.md</code> 的排版版：company_key = <b>TPE:1303</b>、period = <b>2026Q3</b>，共 5 檔；
+  同一 record_type ＋ batch_path 只留最新批次。<code>period</code> 為 null 的檔（財報數據）不分期別，一併列出。</p>
+  <table class="kv"><tbody>
+    <tr><td>爬蟲版本</td><td><b>新版實測</b>（批次 dev_20261021T103341）。新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>）跑出的 dev 批次，<b>尚未進 Databricks</b>；ir_conference 的 <code>source</code> 為 DEV_SAMPLE（測試時種的場次，不是行事曆爬到的）。</td></tr>
+    <tr><td>抓到的紀錄類型</td><td>法說場次 1 筆、文件清單（manifest） 1 筆、實體檔 1 筆、財報數據 1 筆、法說彙整 1 筆</td></tr>
+    <tr><td>沒有的紀錄類型</td><td>—</td></tr>
+    <tr><td>對應 silver 表</td><td>見各段「進 silver」；原文另存 <code>b_ir_calendar_record.payload</code></td></tr>
+  </tbody></table>
+  <div class="toc mt"><a href="#r0">法說場次（2026-10-13）</a> <a href="#r1">文件清單（manifest）（2026-10-21）</a> <a href="#r2">實體檔（2026-10-13）</a> <a href="#r3">財報數據（2026-10-21）</a> <a href="#r4">法說彙整（2026-10-21）</a></div>
+</section><section class="card mt" id="r0"><span class="tag t-ir_conference">ir_conference</span><b>法說場次</b><div class="small">batch_path：<code>calendar/2026-10-13_TPE1303_2026Q3.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_conference</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>南亞塑膠工業</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>fiscal_period</td><td>2026Q3</td></tr><tr><td>source_fiscal_period</td><td><span class="null">null</span></td></tr><tr><td>conference_date</td><td>2026-10-13</td></tr><tr><td>start_time</td><td><span class="null">null</span></td></tr><tr><td>end_time</td><td><span class="null">null</span></td></tr><tr><td>local_conference_date</td><td>2026-10-13</td></tr><tr><td>local_start_time</td><td><span class="null">null</span></td></tr><tr><td>conference_type</td><td><span class="null">null</span></td></tr><tr><td>location</td><td><span class="null">null</span></td></tr><tr><td>meeting_link</td><td><span class="null">null</span></td></tr><tr><td>document_url</td><td><span class="null">null</span></td></tr><tr><td>status</td><td>SCHEDULED</td></tr><tr><td>importance</td><td>3</td></tr><tr><td>source</td><td>DEV_SAMPLE</td></tr><tr><td>source_url</td><td><span class="null">null</span></td></tr><tr><td>confidence</td><td><span class="null">null</span></td></tr><tr><td>remark</td><td><span class="null">null</span></td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>revision</td><td>0</td></tr><tr><td>crawled_at</td><td>2026-10-21T10:44:37+08:00</td></tr></tbody></table></div><details><summary>原始 JSON（843 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_conference&quot;,
+  &quot;company_key&quot;: &quot;TPE:1303&quot;,
+  &quot;company_name&quot;: &quot;南亞塑膠工業&quot;,
+  &quot;english_name&quot;: &quot;Nan Ya Plastics Corp.&quot;,
+  &quot;stock_code&quot;: &quot;1303&quot;,
+  &quot;market&quot;: &quot;TPE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q3&quot;,
+  &quot;source_fiscal_period&quot;: null,
+  &quot;conference_date&quot;: &quot;2026-10-13&quot;,
+  &quot;start_time&quot;: null,
+  &quot;end_time&quot;: null,
+  &quot;time_basis&quot;: &quot;SOURCE&quot;,
+  &quot;local_timezone&quot;: &quot;Asia/Taipei&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-10-13&quot;,
+  &quot;local_start_time&quot;: null,
+  &quot;local_end_time&quot;: null,
+  &quot;conference_type&quot;: null,
+  &quot;location&quot;: null,
+  &quot;meeting_link&quot;: null,
+  &quot;document_url&quot;: null,
+  &quot;status&quot;: &quot;SCHEDULED&quot;,
+  &quot;importance&quot;: 3,
+  &quot;source&quot;: &quot;DEV_SAMPLE&quot;,
+  &quot;source_url&quot;: null,
+  &quot;confidence&quot;: null,
+  &quot;remark&quot;: null,
+  &quot;recipients&quot;: [
+    &quot;A00&quot;
+  ],
+  &quot;revision&quot;: 0,
+  &quot;crawled_at&quot;: &quot;2026-10-21T10:44:37+08:00&quot;
+}</pre></details></section><section class="card mt" id="r1"><span class="tag t-ir_document">ir_document</span><b>文件清單（manifest）</b><div class="small">batch_path：<code>docs/TPE_1303/2026Q3/manifest.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_document_file（展開 files[]）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>南亞塑膠工業</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>conference_date</td><td>2026-10-13</td></tr><tr><td>status</td><td>PARTIAL</td></tr><tr><td>wanted</td><td><pre style="max-height:240px;margin:0">[
+  &quot;presentation&quot;,
+  &quot;financial_report&quot;
+]</pre></td></tr><tr><td>missing</td><td><pre style="max-height:240px;margin:0">[
+  &quot;financial_report&quot;
+]</pre></td></tr><tr><td>generated_at</td><td>2026-10-21T10:44:37+08:00</td></tr></tbody></table><h3>files[]</h3><table><thead><tr><th>type</th><th>title</th><th>doc_date</th><th>source</th><th class="num">bytes</th><th>file（連到來源）</th><th>fetched_at</th></tr></thead><tbody><tr><td>presentation</td><td>本公司受邀參加摩根大通舉辦之法人說明會，說明本公司之營運概況</td><td>2026-10-13</td><td>MOPS</td><td class="num">823,316</td><td><a href="https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf">presentation_20261013_ed8c44e1.pdf</a></td><td>2026-10-21T10:29:09</td></tr></tbody></table></div><details><summary>原始 JSON（986 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_document&quot;,
+  &quot;company_key&quot;: &quot;TPE:1303&quot;,
+  &quot;company_name&quot;: &quot;南亞塑膠工業&quot;,
+  &quot;stock_code&quot;: &quot;1303&quot;,
+  &quot;market&quot;: &quot;TPE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q3&quot;,
+  &quot;conference_date&quot;: &quot;2026-10-13&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-10-13&quot;,
+  &quot;status&quot;: &quot;PARTIAL&quot;,
+  &quot;wanted&quot;: [
+    &quot;presentation&quot;,
+    &quot;financial_report&quot;
+  ],
+  &quot;missing&quot;: [
+    &quot;financial_report&quot;
+  ],
+  &quot;files&quot;: [
+    {
+      &quot;type&quot;: &quot;presentation&quot;,
+      &quot;file&quot;: &quot;presentation_20261013_ed8c44e1.pdf&quot;,
+      &quot;path&quot;: &quot;docs/TPE_1303/2026Q3/presentation_20261013_ed8c44e1.pdf&quot;,
+      &quot;source&quot;: &quot;MOPS&quot;,
+      &quot;source_url&quot;: &quot;https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf&quot;,
+      &quot;title&quot;: &quot;本公司受邀參加摩根大通舉辦之法人說明會，說明本公司之營運概況&quot;,
+      &quot;doc_date&quot;: &quot;2026-10-13&quot;,
+      &quot;sha256&quot;: &quot;ed8c44e1b807c58fcb9102c6987093f88d916919cf97713a8faa6cf5b3abdf1d&quot;,
+      &quot;bytes&quot;: 823316,
+      &quot;fetched_at&quot;: &quot;2026-10-21T10:29:09+08:00&quot;
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-10-21T10:44:37+08:00&quot;
+}</pre></details></section><section class="card mt" id="r2"><span class="tag t-ir_document_file">ir_document_file</span><b>實體檔</b><div class="small">batch_path：<code>docs/TPE_1303/2026Q3/Nan-Ya-Plastics_Q3CY26_Presentation.pdf</code>｜批次：dev_20261021T103341<br>實體檔：<code>C:\Users\local_18060116\Temp\claude\C--Users-1806011-Projects-PM-Head-projects-MI-Crawler\dc1912fb-8cf2-4ebd-aefd-77450a8d4f13\scratchpad\ircal_sandbox\out\docs\TPE_1303\2026Q3\presentation_20261013_ed8c44e1.pdf</code><br>進 silver：s_ir_calendar_document_file ＋ Volume 實體檔 → parse_documents → s_ir_calendar_document_text</div><div class="mt"><table class="kv"><tbody><tr><td>company_slug</td><td>Nan-Ya-Plastics</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>doc_kind</td><td>Presentation</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>source_file</td><td>presentation_20261013_ed8c44e1.pdf</td></tr><tr><td>source_url</td><td><a href="https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf">https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf</a></td></tr><tr><td>doc_date</td><td>2026-10-13</td></tr><tr><td>bytes</td><td>823316</td></tr><tr><td>sha256</td><td>ed8c44e1b807c58fcb9102c6987093f88d916919cf97713a8faa6cf5b3abdf1d</td></tr></tbody></table></div><details><summary>原始 JSON（538 字）</summary><pre>{
+  &quot;path&quot;: &quot;docs/TPE_1303/2026Q3/Nan-Ya-Plastics_Q3CY26_Presentation.pdf&quot;,
+  &quot;record_type&quot;: &quot;ir_document_file&quot;,
+  &quot;sha256&quot;: &quot;ed8c44e1b807c58fcb9102c6987093f88d916919cf97713a8faa6cf5b3abdf1d&quot;,
+  &quot;bytes&quot;: 823316,
+  &quot;company_key&quot;: &quot;TPE:1303&quot;,
+  &quot;company_slug&quot;: &quot;Nan-Ya-Plastics&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;doc_kind&quot;: &quot;Presentation&quot;,
+  &quot;fiscal_label&quot;: null,
+  &quot;source_file&quot;: &quot;presentation_20261013_ed8c44e1.pdf&quot;,
+  &quot;source_url&quot;: &quot;https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf&quot;,
+  &quot;doc_date&quot;: &quot;2026-10-13&quot;
+}</pre></details></section><section class="card mt" id="r3"><span class="tag t-ir_financials">ir_financials</span><b>財報數據</b><div class="small">batch_path：<code>financials/TPE_1303.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_financials（annual[] + quarterly[] 一期一列）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>南亞塑膠工業</td></tr><tr><td>currency</td><td>TWD</td></tr><tr><td>unit</td><td>thousand</td></tr><tr><td>source</td><td>MOPS t164sb03/04/05</td></tr><tr><td>generated_at</td><td>2026-10-21T10:33:41</td></tr></tbody></table><h3>annual[]（5 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num">2025-12-31</td><td class="num">259,911,744</td><td class="num">238,324,664</td><td class="num">21,599,221</td><td class="num">3,703,579</td><td class="num">6,458,894</td><td class="num">5,065,640</td><td class="num">4,518,598</td><td class="num">0.57</td><td class="num">8,649,366</td><td class="num"><span class="null">—</span></td><td class="num">-11,329,334</td><td class="num"><span class="null">—</span></td><td class="num">-11,332,463</td><td class="num">610,598,465</td><td class="num">238,799,500</td><td class="num">371,798,965</td><td class="num">8.31</td><td class="num">1.42</td><td class="num">2.49</td><td class="num">1.95</td><td class="num">1.74</td><td class="num">39.11</td><td class="num">1.32</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num">2024-12-31</td><td class="num">259,608,483</td><td class="num">241,033,392</td><td class="num">18,574,037</td><td class="num">447,534</td><td class="num">4,523,470</td><td class="num">3,307,170</td><td class="num">3,340,129</td><td class="num">0.42</td><td class="num">18,785,832</td><td class="num"><span class="null">—</span></td><td class="num">-12,640,451</td><td class="num"><span class="null">—</span></td><td class="num">-17,900,172</td><td class="num">617,473,497</td><td class="num">254,870,192</td><td class="num">362,603,305</td><td class="num">7.15</td><td class="num">0.17</td><td class="num">1.74</td><td class="num">1.27</td><td class="num">1.29</td><td class="num">41.28</td><td class="num">1.32</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num">2023-12-31</td><td class="num">259,755,344</td><td class="num">240,519,344</td><td class="num">19,226,303</td><td class="num">1,983,852</td><td class="num">9,130,315</td><td class="num">8,110,047</td><td class="num">6,310,050</td><td class="num">0.80</td><td class="num">35,677,698</td><td class="num"><span class="null">—</span></td><td class="num">-23,957,751</td><td class="num"><span class="null">—</span></td><td class="num">-31,407,694</td><td class="num">648,527,953</td><td class="num">271,443,894</td><td class="num">377,084,059</td><td class="num">7.40</td><td class="num">0.76</td><td class="num">3.51</td><td class="num">3.12</td><td class="num">2.43</td><td class="num">41.86</td><td class="num">1.69</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num">2022-12-31</td><td class="num">355,183,300</td><td class="num">301,276,564</td><td class="num">53,908,401</td><td class="num">32,029,840</td><td class="num">47,550,832</td><td class="num">38,484,719</td><td class="num">32,108,977</td><td class="num">4.05</td><td class="num">75,296,335</td><td class="num"><span class="null">—</span></td><td class="num">-31,241,870</td><td class="num"><span class="null">—</span></td><td class="num">-41,375,201</td><td class="num">665,316,156</td><td class="num">271,214,726</td><td class="num">394,101,430</td><td class="num">15.18</td><td class="num">9.02</td><td class="num">13.39</td><td class="num">10.84</td><td class="num">9.04</td><td class="num">40.76</td><td class="num">1.43</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num">2021-12-31</td><td class="num">411,670,391</td><td class="num">307,825,271</td><td class="num">103,845,308</td><td class="num">81,000,040</td><td class="num">103,463,955</td><td class="num">84,832,825</td><td class="num">81,295,023</td><td class="num">10.25</td><td class="num">78,876,308</td><td class="num"><span class="null">—</span></td><td class="num">-29,178,142</td><td class="num"><span class="null">—</span></td><td class="num">-33,307,906</td><td class="num">668,695,386</td><td class="num">239,954,616</td><td class="num">428,740,770</td><td class="num">25.23</td><td class="num">19.68</td><td class="num">25.13</td><td class="num">20.61</td><td class="num">19.75</td><td class="num">35.88</td><td class="num">2.25</td><td class="num"></td></tr></tbody></table></div><h3>quarterly[]（6 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num">2026Q2</td><td class="num"></td><td class="num">2026-06-30</td><td class="num">83,646,883</td><td class="num">67,821,721</td><td class="num">15,808,278</td><td class="num">11,357,281</td><td class="num">30,763,883</td><td class="num">27,550,181</td><td class="num">26,753,199</td><td class="num">3.37</td><td class="num">3,119,754</td><td class="num">3,278,205</td><td class="num">-3,463,864</td><td class="num">-7,776,074</td><td class="num">-6,654,429</td><td class="num">723,033,450</td><td class="num">225,379,100</td><td class="num">497,654,350</td><td class="num">18.90</td><td class="num">13.58</td><td class="num">36.78</td><td class="num">32.94</td><td class="num">31.98</td><td class="num">31.17</td><td class="num">1.78</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num">2026-03-31</td><td class="num">68,596,393</td><td class="num">60,407,722</td><td class="num">8,186,597</td><td class="num">3,741,833</td><td class="num">16,080,166</td><td class="num">14,674,818</td><td class="num">14,254,717</td><td class="num">1.80</td><td class="num">158,451</td><td class="num">158,451</td><td class="num">-4,312,210</td><td class="num">-4,312,210</td><td class="num">-7,733,111</td><td class="num">647,743,623</td><td class="num">247,168,932</td><td class="num">400,574,691</td><td class="num">11.93</td><td class="num">5.45</td><td class="num">23.44</td><td class="num">21.39</td><td class="num">20.78</td><td class="num">38.16</td><td class="num">1.47</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num">2025-12-31</td><td class="num">64,466,653</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">5,302,730</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-5,811,602</td><td class="num">8,649,366</td><td class="num">-3,812,405</td><td class="num">-11,329,334</td><td class="num">-3,360,569</td><td class="num">610,598,465</td><td class="num">238,799,500</td><td class="num">371,798,965</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">8.23</td><td class="num"><span class="null">—</span></td><td class="num">39.11</td><td class="num">1.32</td><td class="num">revenue、net_income、operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num">2025-09-30</td><td class="num">64,177,490</td><td class="num">58,856,229</td><td class="num">5,321,458</td><td class="num">1,036,358</td><td class="num">3,995,337</td><td class="num">3,474,519</td><td class="num">3,256,142</td><td class="num">0.41</td><td class="num">7,823,666</td><td class="num">14,460,968</td><td class="num">-2,816,225</td><td class="num">-7,516,929</td><td class="num">-1,627,565</td><td class="num">588,213,361</td><td class="num">243,647,296</td><td class="num">344,566,065</td><td class="num">8.29</td><td class="num">1.61</td><td class="num">6.23</td><td class="num">5.41</td><td class="num">5.07</td><td class="num">41.42</td><td class="num">1.16</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num">2025-06-30</td><td class="num">65,715,970</td><td class="num">60,037,527</td><td class="num">5,682,675</td><td class="num">1,302,179</td><td class="num">-4,194,291</td><td class="num">-4,205,478</td><td class="num">-4,116,061</td><td class="num">-0.52</td><td class="num">5,273,208</td><td class="num">6,637,302</td><td class="num">-2,070,391</td><td class="num">-4,700,704</td><td class="num">-1,404,933</td><td class="num">580,481,384</td><td class="num">249,920,410</td><td class="num">330,560,974</td><td class="num">8.65</td><td class="num">1.98</td><td class="num">-6.38</td><td class="num">-6.40</td><td class="num">-6.26</td><td class="num">43.05</td><td class="num">1.50</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num">2025-03-31</td><td class="num">65,551,631</td><td class="num">60,928,591</td><td class="num">4,625,055</td><td class="num">35,832</td><td class="num">814,012</td><td class="num">493,869</td><td class="num">453,111</td><td class="num">0.06</td><td class="num">1,364,094</td><td class="num">1,364,094</td><td class="num">-2,630,313</td><td class="num">-2,630,313</td><td class="num">-4,939,396</td><td class="num">618,904,591</td><td class="num">258,976,053</td><td class="num">359,928,538</td><td class="num">7.06</td><td class="num">0.05</td><td class="num">1.24</td><td class="num">0.75</td><td class="num">0.69</td><td class="num">41.84</td><td class="num">1.49</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr></tbody></table></div><div class="note">金額為原始單位（台股仟元、美股元）；季別列的 OCF / 資本支出是年初累計（YTD），新版另推算單季值；derived 標示推算值。source_urls 省略，見原始 JSON。</div><h3>新版才有的資產負債表明細與天數（annual[] ＋ quarterly[]）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">現金</th><th class="num">FVTPL 金融資產</th><th class="num">FVOCI 金融資產</th><th class="num">應收票據</th><th class="num">應收帳款</th><th class="num">應收關係人</th><th class="num">存貨</th><th class="num">應付帳款</th><th class="num">應付關係人</th><th class="num">速動資產</th><th class="num">速動比</th><th class="num">應收天數</th><th class="num">應付天數</th><th class="num">天數基準</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num">46,149,879</td><td class="num">1,849,655</td><td class="num">16,124,456</td><td class="num">3,587,126</td><td class="num">41,587,652</td><td class="num">1,168,785</td><td class="num">51,303,252</td><td class="num">9,092,911</td><td class="num">4,133,441</td><td class="num">110,467,553</td><td class="num">0.82</td><td class="num">61.9</td><td class="num">21.7</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num">66,445,373</td><td class="num">1,846,201</td><td class="num">14,407,700</td><td class="num">2,853,793</td><td class="num">37,190,281</td><td class="num">1,807,747</td><td class="num">51,696,294</td><td class="num">7,689,760</td><td class="num">7,363,533</td><td class="num">124,551,095</td><td class="num">0.89</td><td class="num">56.4</td><td class="num">23.8</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num">80,301,186</td><td class="num">1,641,598</td><td class="num">32,339,271</td><td class="num">3,411,353</td><td class="num">33,821,570</td><td class="num">1,121,294</td><td class="num">50,552,031</td><td class="num">11,305,522</td><td class="num">5,058,154</td><td class="num">152,636,272</td><td class="num">1.20</td><td class="num">62.5</td><td class="num">27.6</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num">89,444,513</td><td class="num">1,562,720</td><td class="num">35,494,677</td><td class="num">3,503,958</td><td class="num">45,547,738</td><td class="num">1,531,649</td><td class="num">52,985,302</td><td class="num">14,484,851</td><td class="num">5,509,673</td><td class="num">177,085,255</td><td class="num">1.04</td><td class="num">57.9</td><td class="num">26.6</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num">74,549,426</td><td class="num">3,793,399</td><td class="num">42,012,470</td><td class="num">5,942,172</td><td class="num">53,735,729</td><td class="num">2,450,080</td><td class="num">57,566,457</td><td class="num">15,812,149</td><td class="num">8,132,144</td><td class="num">182,483,276</td><td class="num">1.60</td><td class="num">55.1</td><td class="num">28.4</td><td class="num">end</td></tr><tr><td class="num">2026Q2</td><td class="num"></td><td class="num">41,946,162</td><td class="num">1,909,219</td><td class="num">23,901,879</td><td class="num">3,582,430</td><td class="num">54,742,276</td><td class="num">1,977,280</td><td class="num">60,357,388</td><td class="num">9,657,579</td><td class="num">4,869,534</td><td class="num">128,059,246</td><td class="num">1.09</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num">42,831,248</td><td class="num">1,899,472</td><td class="num">19,984,878</td><td class="num">3,013,658</td><td class="num">46,014,363</td><td class="num">1,351,893</td><td class="num">56,079,717</td><td class="num">8,084,581</td><td class="num">6,115,411</td><td class="num">115,095,512</td><td class="num">0.88</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num">46,149,879</td><td class="num">1,849,655</td><td class="num">16,124,456</td><td class="num">3,587,126</td><td class="num">41,587,652</td><td class="num">1,168,785</td><td class="num">51,303,252</td><td class="num">9,092,911</td><td class="num">4,133,441</td><td class="num">110,467,553</td><td class="num">0.82</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num">55,244,544</td><td class="num">1,774,299</td><td class="num">15,660,230</td><td class="num">2,663,508</td><td class="num">38,322,422</td><td class="num">1,366,638</td><td class="num">50,728,970</td><td class="num">7,798,638</td><td class="num">5,288,034</td><td class="num">115,031,641</td><td class="num">0.76</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num">56,554,662</td><td class="num">1,722,624</td><td class="num">13,595,851</td><td class="num">2,741,126</td><td class="num">38,419,637</td><td class="num">1,111,926</td><td class="num">49,496,269</td><td class="num">7,411,090</td><td class="num">5,623,773</td><td class="num">114,145,826</td><td class="num">0.99</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num">64,899,944</td><td class="num">1,890,485</td><td class="num">14,559,619</td><td class="num">3,517,477</td><td class="num">38,876,197</td><td class="num">1,254,948</td><td class="num">50,508,764</td><td class="num">7,926,045</td><td class="num">6,456,172</td><td class="num">124,998,670</td><td class="num">0.99</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr></tbody></table></div><div class="note">速動資產＝現金及約當現金＋按公允價值衡量之金融資產（流動）＋應收票據＋應收帳款（含關係人）；速動比＝速動資產／流動負債。應收天數＝平均應收帳款／營收×365、應付天數＝平均應付帳款／銷貨成本×365，days_basis＝avg 為期初期末平均、end 為期末值（最早一年）；天數只在年度列。</div></div><details><summary>原始 JSON（23,297 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_financials&quot;,
+  &quot;company_key&quot;: &quot;TPE:1303&quot;,
+  &quot;company_name&quot;: &quot;南亞塑膠工業&quot;,
+  &quot;stock_code&quot;: &quot;1303&quot;,
+  &quot;market&quot;: &quot;TPE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;currency&quot;: &quot;TWD&quot;,
+  &quot;unit&quot;: &quot;thousand&quot;,
+  &quot;source&quot;: &quot;MOPS t164sb03/04/05&quot;,
+  &quot;annual&quot;: [
+    {
+      &quot;fiscal_year&quot;: 2025,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;revenue&quot;: 259911744,
+      &quot;cost_of_revenue&quot;: 238324664,
+      &quot;gross_profit&quot;: 21599221,
+      &quot;operating_income&quot;: 3703579,
+      &quot;pretax_income&quot;: 6458894,
+      &quot;net_income&quot;: 5065640,
+      &quot;net_income_parent&quot;: 4518598,
+      &quot;eps&quot;: 0.57,
+      &quot;cash&quot;: 46149879,
+      &quot;fin_assets_fvtpl_current&quot;: 1849655,
+      &quot;fin_assets_fvoci_current&quot;: 16124456,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 3587126,
+      &quot;accounts_receivable&quot;: 41587652,
+      &quot;accounts_receivable_related&quot;: 1168785,
+      &quot;inventory&quot;: 51303252,
+      &quot;current_assets&quot;: 177835621,
+      &quot;total_assets&quot;: 610598465,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 9092911,
+      &quot;accounts_payable_related&quot;: 4133441,
+      &quot;current_liabilities&quot;: 134700304,
+      &quot;total_liabilities&quot;: 238799500,
+      &quot;equity&quot;: 371798965,
+      &quot;equity_parent&quot;: 355665838,
+      &quot;operating_cash_flow&quot;: 8649366,
+      &quot;capex&quot;: -11329334,
+      &quot;investing_cash_flow&quot;: -11332463,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 8.31,
+      &quot;operating_margin&quot;: 1.42,
+      &quot;pretax_margin&quot;: 2.49,
+      &quot;net_margin&quot;: 1.95,
+      &quot;net_margin_parent&quot;: 1.74,
+      &quot;debt_ratio&quot;: 39.11,
+      &quot;current_ratio&quot;: 1.32,
+      &quot;quick_assets&quot;: 110467553,
+      &quot;quick_ratio&quot;: 0.82,
+      &quot;dso_days&quot;: 61.9,
+      &quot;dpo_days&quot;: 21.7,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2024,
+      &quot;period_end&quot;: &quot;2024-12-31&quot;,
+      &quot;revenue&quot;: 259608483,
+      &quot;cost_of_revenue&quot;: 241033392,
+      &quot;gross_profit&quot;: 18574037,
+      &quot;operating_income&quot;: 447534,
+      &quot;pretax_income&quot;: 4523470,
+      &quot;net_income&quot;: 3307170,
+      &quot;net_income_parent&quot;: 3340129,
+      &quot;eps&quot;: 0.42,
+      &quot;cash&quot;: 66445373,
+      &quot;fin_assets_fvtpl_current&quot;: 1846201,
+      &quot;fin_assets_fvoci_current&quot;: 14407700,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 2853793,
+      &quot;accounts_receivable&quot;: 37190281,
+      &quot;accounts_receivable_related&quot;: 1807747,
+      &quot;inventory&quot;: 51696294,
+      &quot;current_assets&quot;: 185501596,
+      &quot;total_assets&quot;: 617473497,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 7689760,
+      &quot;accounts_payable_related&quot;: 7363533,
+      &quot;current_liabilities&quot;: 140671073,
+      &quot;total_liabilities&quot;: 254870192,
+      &quot;equity&quot;: 362603305,
+      &quot;equity_parent&quot;: 346583223,
+      &quot;operating_cash_flow&quot;: 18785832,
+      &quot;capex&quot;: -12640451,
+      &quot;investing_cash_flow&quot;: -17900172,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=113&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=113&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=113&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 7.15,
+      &quot;operating_margin&quot;: 0.17,
+      &quot;pretax_margin&quot;: 1.74,
+      &quot;net_margin&quot;: 1.27,
+      &quot;net_margin_parent&quot;: 1.29,
+      &quot;debt_ratio&quot;: 41.28,
+      &quot;current_ratio&quot;: 1.32,
+      &quot;quick_assets&quot;: 124551095,
+      &quot;quick_ratio&quot;: 0.89,
+      &quot;dso_days&quot;: 56.4,
+      &quot;dpo_days&quot;: 23.8,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2023,
+      &quot;period_end&quot;: &quot;2023-12-31&quot;,
+      &quot;revenue&quot;: 259755344,
+      &quot;cost_of_revenue&quot;: 240519344,
+      &quot;gross_profit&quot;: 19226303,
+      &quot;operating_income&quot;: 1983852,
+      &quot;pretax_income&quot;: 9130315,
+      &quot;net_income&quot;: 8110047,
+      &quot;net_income_parent&quot;: 6310050,
+      &quot;eps&quot;: 0.8,
+      &quot;cash&quot;: 80301186,
+      &quot;fin_assets_fvtpl_current&quot;: 1641598,
+      &quot;fin_assets_fvoci_current&quot;: 32339271,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 3411353,
+      &quot;accounts_receivable&quot;: 33821570,
+      &quot;accounts_receivable_related&quot;: 1121294,
+      &quot;inventory&quot;: 50552031,
+      &quot;current_assets&quot;: 215138945,
+      &quot;total_assets&quot;: 648527953,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 11305522,
+      &quot;accounts_payable_related&quot;: 5058154,
+      &quot;current_liabilities&quot;: 127207774,
+      &quot;total_liabilities&quot;: 271443894,
+      &quot;equity&quot;: 377084059,
+      &quot;equity_parent&quot;: 360144279,
+      &quot;operating_cash_flow&quot;: 35677698,
+      &quot;capex&quot;: -23957751,
+      &quot;investing_cash_flow&quot;: -31407694,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=112&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=112&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=112&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 7.4,
+      &quot;operating_margin&quot;: 0.76,
+      &quot;pretax_margin&quot;: 3.51,
+      &quot;net_margin&quot;: 3.12,
+      &quot;net_margin_parent&quot;: 2.43,
+      &quot;debt_ratio&quot;: 41.86,
+      &quot;current_ratio&quot;: 1.69,
+      &quot;quick_assets&quot;: 152636272,
+      &quot;quick_ratio&quot;: 1.2,
+      &quot;dso_days&quot;: 62.5,
+      &quot;dpo_days&quot;: 27.6,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2022,
+      &quot;period_end&quot;: &quot;2022-12-31&quot;,
+      &quot;revenue&quot;: 355183300,
+      &quot;cost_of_revenue&quot;: 301276564,
+      &quot;gross_profit&quot;: 53908401,
+      &quot;operating_income&quot;: 32029840,
+      &quot;pretax_income&quot;: 47550832,
+      &quot;net_income&quot;: 38484719,
+      &quot;net_income_parent&quot;: 32108977,
+      &quot;eps&quot;: 4.05,
+      &quot;cash&quot;: 89444513,
+      &quot;fin_assets_fvtpl_current&quot;: 1562720,
+      &quot;fin_assets_fvoci_current&quot;: 35494677,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 3503958,
+      &quot;accounts_receivable&quot;: 45547738,
+      &quot;accounts_receivable_related&quot;: 1531649,
+      &quot;inventory&quot;: 52985302,
+      &quot;current_assets&quot;: 243213654,
+      &quot;total_assets&quot;: 665316156,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 14484851,
+      &quot;accounts_payable_related&quot;: 5509673,
+      &quot;current_liabilities&quot;: 170563237,
+      &quot;total_liabilities&quot;: 271214726,
+      &quot;equity&quot;: 394101430,
+      &quot;equity_parent&quot;: 375104590,
+      &quot;operating_cash_flow&quot;: 75296335,
+      &quot;capex&quot;: -31241870,
+      &quot;investing_cash_flow&quot;: -41375201,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=111&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=111&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=111&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 15.18,
+      &quot;operating_margin&quot;: 9.02,
+      &quot;pretax_margin&quot;: 13.39,
+      &quot;net_margin&quot;: 10.84,
+      &quot;net_margin_parent&quot;: 9.04,
+      &quot;debt_ratio&quot;: 40.76,
+      &quot;current_ratio&quot;: 1.43,
+      &quot;quick_assets&quot;: 177085255,
+      &quot;quick_ratio&quot;: 1.04,
+      &quot;dso_days&quot;: 57.9,
+      &quot;dpo_days&quot;: 26.6,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2021,
+      &quot;period_end&quot;: &quot;2021-12-31&quot;,
+      &quot;revenue&quot;: 411670391,
+      &quot;cost_of_revenue&quot;: 307825271,
+      &quot;gross_profit&quot;: 103845308,
+      &quot;operating_income&quot;: 81000040,
+      &quot;pretax_income&quot;: 103463955,
+      &quot;net_income&quot;: 84832825,
+      &quot;net_income_parent&quot;: 81295023,
+      &quot;eps&quot;: 10.25,
+      &quot;cash&quot;: 74549426,
+      &quot;fin_assets_fvtpl_current&quot;: 3793399,
+      &quot;fin_assets_fvoci_current&quot;: 42012470,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 5942172,
+      &quot;accounts_receivable&quot;: 53735729,
+      &quot;accounts_receivable_related&quot;: 2450080,
+      &quot;inventory&quot;: 57566457,
+      &quot;current_assets&quot;: 255907403,
+      &quot;total_assets&quot;: 668695386,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 15812149,
+      &quot;accounts_payable_related&quot;: 8132144,
+      &quot;current_liabilities&quot;: 113979077,
+      &quot;total_liabilities&quot;: 239954616,
+      &quot;equity&quot;: 428740770,
+      &quot;equity_parent&quot;: 414070090,
+      &quot;operating_cash_flow&quot;: 78876308,
+      &quot;capex&quot;: -29178142,
+      &quot;investing_cash_flow&quot;: -33307906,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=110&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=110&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=110&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 25.23,
+      &quot;operating_margin&quot;: 19.68,
+      &quot;pretax_margin&quot;: 25.13,
+      &quot;net_margin&quot;: 20.61,
+      &quot;net_margin_parent&quot;: 19.75,
+      &quot;debt_ratio&quot;: 35.88,
+      &quot;current_ratio&quot;: 2.25,
+      &quot;quick_assets&quot;: 182483276,
+      &quot;quick_ratio&quot;: 1.6,
+      &quot;dso_days&quot;: 55.1,
+      &quot;dpo_days&quot;: 28.4,
+      &quot;days_basis&quot;: &quot;end&quot;,
+      &quot;derived&quot;: null
+    }
+  ],
+  &quot;quarterly&quot;: [
+    {
+      &quot;period&quot;: &quot;2026Q2&quot;,
+      &quot;period_end&quot;: &quot;2026-06-30&quot;,
+      &quot;revenue&quot;: 83646883,
+      &quot;cost_of_revenue&quot;: 67821721,
+      &quot;gross_profit&quot;: 15808278,
+      &quot;operating_income&quot;: 11357281,
+      &quot;pretax_income&quot;: 30763883,
+      &quot;net_income&quot;: 27550181,
+      &quot;net_income_parent&quot;: 26753199,
+      &quot;eps&quot;: 3.37,
+      &quot;cash&quot;: 41946162,
+      &quot;fin_assets_fvtpl_current&quot;: 1909219,
+      &quot;fin_assets_fvoci_current&quot;: 23901879,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 3582430,
+      &quot;accounts_receivable&quot;: 54742276,
+      &quot;accounts_receivable_related&quot;: 1977280,
+      &quot;inventory&quot;: 60357388,
+      &quot;current_assets&quot;: 208542666,
+      &quot;total_assets&quot;: 723033450,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 9657579,
+      &quot;accounts_payable_related&quot;: 4869534,
+      &quot;current_liabilities&quot;: 117261172,
+      &quot;total_liabilities&quot;: 225379100,
+      &quot;equity&quot;: 497654350,
+      &quot;equity_parent&quot;: 477747773,
+      &quot;operating_cash_flow_ytd&quot;: 3278205,
+      &quot;capex_ytd&quot;: -7776074,
+      &quot;investing_cash_flow_ytd&quot;: -14387540,
+      &quot;revenue_ytd&quot;: 152243276,
+      &quot;net_income_ytd&quot;: 42224999,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=115&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=115&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=115&amp;season=2&quot;
+      ],
+      &quot;gross_margin&quot;: 18.9,
+      &quot;operating_margin&quot;: 13.58,
+      &quot;pretax_margin&quot;: 36.78,
+      &quot;net_margin&quot;: 32.94,
+      &quot;net_margin_parent&quot;: 31.98,
+      &quot;debt_ratio&quot;: 31.17,
+      &quot;current_ratio&quot;: 1.78,
+      &quot;quick_assets&quot;: 128059246,
+      &quot;quick_ratio&quot;: 1.09,
+      &quot;operating_cash_flow&quot;: 3119754,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -3463864,
+      &quot;investing_cash_flow&quot;: -6654429
+    },
+    {
+      &quot;period&quot;: &quot;2026Q1&quot;,
+      &quot;period_end&quot;: &quot;2026-03-31&quot;,
+      &quot;revenue&quot;: 68596393,
+      &quot;cost_of_revenue&quot;: 60407722,
+      &quot;gross_profit&quot;: 8186597,
+      &quot;operating_income&quot;: 3741833,
+      &quot;pretax_income&quot;: 16080166,
+      &quot;net_income&quot;: 14674818,
+      &quot;net_income_parent&quot;: 14254717,
+      &quot;eps&quot;: 1.8,
+      &quot;cash&quot;: 42831248,
+      &quot;fin_assets_fvtpl_current&quot;: 1899472,
+      &quot;fin_assets_fvoci_current&quot;: 19984878,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 3013658,
+      &quot;accounts_receivable&quot;: 46014363,
+      &quot;accounts_receivable_related&quot;: 1351893,
+      &quot;inventory&quot;: 56079717,
+      &quot;current_assets&quot;: 193418745,
+      &quot;total_assets&quot;: 647743623,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 8084581,
+      &quot;accounts_payable_related&quot;: 6115411,
+      &quot;current_liabilities&quot;: 131197270,
+      &quot;total_liabilities&quot;: 247168932,
+      &quot;equity&quot;: 400574691,
+      &quot;equity_parent&quot;: 383826269,
+      &quot;operating_cash_flow_ytd&quot;: 158451,
+      &quot;capex_ytd&quot;: -4312210,
+      &quot;investing_cash_flow_ytd&quot;: -7733111,
+      &quot;revenue_ytd&quot;: 68596393,
+      &quot;net_income_ytd&quot;: 14674818,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=115&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=115&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=115&amp;season=1&quot;
+      ],
+      &quot;gross_margin&quot;: 11.93,
+      &quot;operating_margin&quot;: 5.45,
+      &quot;pretax_margin&quot;: 23.44,
+      &quot;net_margin&quot;: 21.39,
+      &quot;net_margin_parent&quot;: 20.78,
+      &quot;debt_ratio&quot;: 38.16,
+      &quot;current_ratio&quot;: 1.47,
+      &quot;quick_assets&quot;: 115095512,
+      &quot;quick_ratio&quot;: 0.88,
+      &quot;operating_cash_flow&quot;: 158451,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -4312210,
+      &quot;investing_cash_flow&quot;: -7733111
+    },
+    {
+      &quot;period&quot;: &quot;2025Q4&quot;,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;revenue&quot;: 64466653,
+      &quot;net_income&quot;: 5302730,
+      &quot;gross_profit&quot;: null,
+      &quot;operating_income&quot;: null,
+      &quot;pretax_income&quot;: null,
+      &quot;eps&quot;: null,
+      &quot;cash&quot;: 46149879,
+      &quot;fin_assets_fvtpl_current&quot;: 1849655,
+      &quot;fin_assets_fvoci_current&quot;: 16124456,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 3587126,
+      &quot;accounts_receivable&quot;: 41587652,
+      &quot;accounts_receivable_related&quot;: 1168785,
+      &quot;inventory&quot;: 51303252,
+      &quot;current_assets&quot;: 177835621,
+      &quot;total_assets&quot;: 610598465,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 9092911,
+      &quot;accounts_payable_related&quot;: 4133441,
+      &quot;current_liabilities&quot;: 134700304,
+      &quot;total_liabilities&quot;: 238799500,
+      &quot;equity&quot;: 371798965,
+      &quot;equity_parent&quot;: 355665838,
+      &quot;operating_cash_flow_ytd&quot;: 8649366,
+      &quot;capex_ytd&quot;: -11329334,
+      &quot;investing_cash_flow_ytd&quot;: -11332463,
+      &quot;derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;net_income&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: null,
+      &quot;operating_margin&quot;: null,
+      &quot;pretax_margin&quot;: null,
+      &quot;net_margin&quot;: 8.23,
+      &quot;net_margin_parent&quot;: null,
+      &quot;debt_ratio&quot;: 39.11,
+      &quot;current_ratio&quot;: 1.32,
+      &quot;quick_assets&quot;: 110467553,
+      &quot;quick_ratio&quot;: 0.82,
+      &quot;operating_cash_flow&quot;: -5811602,
+      &quot;capex&quot;: -3812405,
+      &quot;investing_cash_flow&quot;: -3360569
+    },
+    {
+      &quot;period&quot;: &quot;2025Q3&quot;,
+      &quot;period_end&quot;: &quot;2025-09-30&quot;,
+      &quot;revenue&quot;: 64177490,
+      &quot;cost_of_revenue&quot;: 58856229,
+      &quot;gross_profit&quot;: 5321458,
+      &quot;operating_income&quot;: 1036358,
+      &quot;pretax_income&quot;: 3995337,
+      &quot;net_income&quot;: 3474519,
+      &quot;net_income_parent&quot;: 3256142,
+      &quot;eps&quot;: 0.41,
+      &quot;cash&quot;: 55244544,
+      &quot;fin_assets_fvtpl_current&quot;: 1774299,
+      &quot;fin_assets_fvoci_current&quot;: 15660230,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 2663508,
+      &quot;accounts_receivable&quot;: 38322422,
+      &quot;accounts_receivable_related&quot;: 1366638,
+      &quot;inventory&quot;: 50728970,
+      &quot;current_assets&quot;: 175360882,
+      &quot;total_assets&quot;: 588213361,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 7798638,
+      &quot;accounts_payable_related&quot;: 5288034,
+      &quot;current_liabilities&quot;: 151111586,
+      &quot;total_liabilities&quot;: 243647296,
+      &quot;equity&quot;: 344566065,
+      &quot;equity_parent&quot;: 328987874,
+      &quot;operating_cash_flow_ytd&quot;: 14460968,
+      &quot;capex_ytd&quot;: -7516929,
+      &quot;investing_cash_flow_ytd&quot;: -7971894,
+      &quot;revenue_ytd&quot;: 195445091,
+      &quot;net_income_ytd&quot;: -237090,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=3&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=3&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=3&quot;
+      ],
+      &quot;gross_margin&quot;: 8.29,
+      &quot;operating_margin&quot;: 1.61,
+      &quot;pretax_margin&quot;: 6.23,
+      &quot;net_margin&quot;: 5.41,
+      &quot;net_margin_parent&quot;: 5.07,
+      &quot;debt_ratio&quot;: 41.42,
+      &quot;current_ratio&quot;: 1.16,
+      &quot;quick_assets&quot;: 115031641,
+      &quot;quick_ratio&quot;: 0.76,
+      &quot;operating_cash_flow&quot;: 7823666,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -2816225,
+      &quot;investing_cash_flow&quot;: -1627565
+    },
+    {
+      &quot;period&quot;: &quot;2025Q2&quot;,
+      &quot;period_end&quot;: &quot;2025-06-30&quot;,
+      &quot;revenue&quot;: 65715970,
+      &quot;cost_of_revenue&quot;: 60037527,
+      &quot;gross_profit&quot;: 5682675,
+      &quot;operating_income&quot;: 1302179,
+      &quot;pretax_income&quot;: -4194291,
+      &quot;net_income&quot;: -4205478,
+      &quot;net_income_parent&quot;: -4116061,
+      &quot;eps&quot;: -0.52,
+      &quot;cash&quot;: 56554662,
+      &quot;fin_assets_fvtpl_current&quot;: 1722624,
+      &quot;fin_assets_fvoci_current&quot;: 13595851,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 2741126,
+      &quot;accounts_receivable&quot;: 38419637,
+      &quot;accounts_receivable_related&quot;: 1111926,
+      &quot;inventory&quot;: 49496269,
+      &quot;current_assets&quot;: 173953680,
+      &quot;total_assets&quot;: 580481384,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 7411090,
+      &quot;accounts_payable_related&quot;: 5623773,
+      &quot;current_liabilities&quot;: 115700954,
+      &quot;total_liabilities&quot;: 249920410,
+      &quot;equity&quot;: 330560974,
+      &quot;equity_parent&quot;: 315318797,
+      &quot;operating_cash_flow_ytd&quot;: 6637302,
+      &quot;capex_ytd&quot;: -4700704,
+      &quot;investing_cash_flow_ytd&quot;: -6344329,
+      &quot;revenue_ytd&quot;: 131267601,
+      &quot;net_income_ytd&quot;: -3711609,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=2&quot;
+      ],
+      &quot;gross_margin&quot;: 8.65,
+      &quot;operating_margin&quot;: 1.98,
+      &quot;pretax_margin&quot;: -6.38,
+      &quot;net_margin&quot;: -6.4,
+      &quot;net_margin_parent&quot;: -6.26,
+      &quot;debt_ratio&quot;: 43.05,
+      &quot;current_ratio&quot;: 1.5,
+      &quot;quick_assets&quot;: 114145826,
+      &quot;quick_ratio&quot;: 0.99,
+      &quot;operating_cash_flow&quot;: 5273208,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -2070391,
+      &quot;investing_cash_flow&quot;: -1404933
+    },
+    {
+      &quot;period&quot;: &quot;2025Q1&quot;,
+      &quot;period_end&quot;: &quot;2025-03-31&quot;,
+      &quot;revenue&quot;: 65551631,
+      &quot;cost_of_revenue&quot;: 60928591,
+      &quot;gross_profit&quot;: 4625055,
+      &quot;operating_income&quot;: 35832,
+      &quot;pretax_income&quot;: 814012,
+      &quot;net_income&quot;: 493869,
+      &quot;net_income_parent&quot;: 453111,
+      &quot;eps&quot;: 0.06,
+      &quot;cash&quot;: 64899944,
+      &quot;fin_assets_fvtpl_current&quot;: 1890485,
+      &quot;fin_assets_fvoci_current&quot;: 14559619,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 3517477,
+      &quot;accounts_receivable&quot;: 38876197,
+      &quot;accounts_receivable_related&quot;: 1254948,
+      &quot;inventory&quot;: 50508764,
+      &quot;current_assets&quot;: 187971571,
+      &quot;total_assets&quot;: 618904591,
+      &quot;notes_payable&quot;: null,
+      &quot;accounts_payable&quot;: 7926045,
+      &quot;accounts_payable_related&quot;: 6456172,
+      &quot;current_liabilities&quot;: 125995755,
+      &quot;total_liabilities&quot;: 258976053,
+      &quot;equity&quot;: 359928538,
+      &quot;equity_parent&quot;: 343995733,
+      &quot;operating_cash_flow_ytd&quot;: 1364094,
+      &quot;capex_ytd&quot;: -2630313,
+      &quot;investing_cash_flow_ytd&quot;: -4939396,
+      &quot;revenue_ytd&quot;: 65551631,
+      &quot;net_income_ytd&quot;: 493869,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1303&amp;year=114&amp;season=1&quot;
+      ],
+      &quot;gross_margin&quot;: 7.06,
+      &quot;operating_margin&quot;: 0.05,
+      &quot;pretax_margin&quot;: 1.24,
+      &quot;net_margin&quot;: 0.75,
+      &quot;net_margin_parent&quot;: 0.69,
+      &quot;debt_ratio&quot;: 41.84,
+      &quot;current_ratio&quot;: 1.49,
+      &quot;quick_assets&quot;: 124998670,
+      &quot;quick_ratio&quot;: 0.99,
+      &quot;operating_cash_flow&quot;: 1364094,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -2630313,
+      &quot;investing_cash_flow&quot;: -4939396
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-10-21T10:33:41&quot;
+}</pre></details></section><section class="card mt" id="r4"><span class="tag t-ir_summary">ir_summary</span><b>法說彙整</b><div class="small">batch_path：<code>summaries/2026-10-13_TPE1303_2026Q3.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_summary</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>南亞塑膠工業</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>fiscal_period</td><td>2026Q3</td></tr><tr><td>conference_date</td><td>2026-10-13</td></tr><tr><td>local_conference_date</td><td>2026-10-13</td></tr><tr><td>fallback</td><td>false</td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>crawled_at</td><td>2026-10-21T10:50:16+08:00</td></tr></tbody></table><h3>summary 物件</h3><table class="kv"><tbody><tr><td>found</td><td>true</td></tr><tr><td>reported_period（報告期間）</td><td>2026 Q3（2026 年 7～9 月）及 2026 年前三季自結數</td></tr><tr><td>core_points（重點）</td><td><ul><li>2026 Q3 自結歸屬母公司稅後純益 NT$388.3 億、EPS NT$4.90，單季創歷史新高；前三季 EPS NT$10.07 已賺逾一個股本，超越 2021 年前三季 NT$8.05 的舊紀錄</li><li>獲利雙引擎：本業電子材料（Q3 營收占比升至 58.1%，各產品產能利用率接近滿載、陸續調漲售價、M6 以上高階產品放量）＋ 南亞科投資收益 NT$235.6 億（約貢獻 EPS 2.97 元）</li><li>高階材料進度：M7、M8 CCL 已量產並與雲端服務供應商（CSP）洽談大單，預計 Q4 產量明顯躍升；M9、M10 以自研 HVLP4 銅箔與碳氫樹脂送樣驗證中，預計 2027 上半年取得驗證結果</li><li>擴產以既有產線去瓶頸與設備改造為主：新港廠新增每月 30 萬張 CCL 產能（以 M7、M8 為主），今年累計增加 110 個坩鍋紡位、年底前數十台織布機到港，明年再透過產線整改每月增加數十萬張 CCL</li><li>傳統事業：乙二醇（EG）因中東產能受損未修復、供應緊張價格續漲而營運良好；本季已無戰爭初期原料飆漲帶來的大額庫存利益；塑膠加工及聚酯維持一定利潤（聚酯受惠美國南卡廠獲利提升）</li></ul></td></tr><tr><td>guidance（展望）</td><td>公司預期 2026 年 10 月及第 4 季合併營收續增且高於第 3 季，動能仍以電子材料為主；部分高階產品自 Q4 起進入出貨與客戶驗證並行階段，2027 年隨材料陸續完成認證並量產，出貨量預計明顯增加。法人另估 2027 年電子材料營收占比可升至七成以上、高階玻纖布 2027 年持續緊缺（法人說法，非公司財測）。</td></tr><tr><td>key_numbers（關鍵數字）</td><td><ul><li>2026 Q3 合併營收 NT$956.0 億（NT$955.97 億，YoY +49.0%）</li><li>2026 Q3 營業利益 NT$183.1 億，QoQ +61.2%（另有媒體稱 QoQ +96.1%，媒體說法不一）</li><li>2026 Q3 營業利益率 19.2%（YoY +17.5 個百分點、QoQ +5.6 個百分點）；電子材料營業利益率 30.9%（部分媒體將 30.9% 稱為公司整體營業淨利率，媒體說法不一）</li><li>2026 Q3 業外淨收益 NT$289.1 億，占稅前獲利 61%；其中南亞科投資收益 NT$235.6 億（貢獻 EPS 約 2.97 元）、台塑石化投資收益 NT$60.7 億</li><li>2026 Q3 合併稅前利益 NT$472.2 億；歸屬母公司稅後利益 NT$388.3 億（QoQ +45.2%）；EPS NT$4.90（YoY +1092.6%）</li><li>2026 前三季合併營收 NT$2,478.4 億（YoY +26.8%）；稅前利益 NT$940.6 億；歸屬母公司稅後利益 NT$798.4 億（去年同期為虧損 NT$4.07 億）；EPS NT$10.07</li><li>2026 年 9 月合併營收 NT$344.2 億（MoM +12.5%、YoY +55.3%，創近 54 個月新高）；9 月電子材料營收 YoY +90.1%，較去年同期增加 NT$94.1 億（銷量貢獻 NT$41.8 億、售價貢獻 NT$52.3 億）</li><li>2026 Q3 電子材料營收占比 58.1%（換算約 NT$555 億）</li></ul></td></tr><tr><td>risks（風險）</td><td><ul><li>獲利逾六成來自業外（南亞科投資收益），與記憶體景氣高度連動</li><li>M9、M10 驗證結果要等到 2027 上半年，高階放量時程仍有不確定性</li><li>化工、聚酯除 EG 外需求偏弱，且本季已無庫存利益支撐</li><li>玻纖布織布機產能受限，高階玻纖布供給緊缺可能持續到 2027 年</li></ul></td></tr><tr><td>headline_metrics（法說揭露的重點數字）</td><td><div style="overflow:auto"><table><thead><tr><th>指標</th><th>期間</th><th>值</th><th>YoY</th><th>註</th></tr></thead><tbody><tr><td>營收</td><td>2026 Q3</td><td>NT$956.0 億（NT$955.97 億）</td><td>+49.0%</td><td><span class="null">null</span></td></tr><tr><td>營收</td><td>2026 前三季</td><td>NT$2,478.4 億</td><td>+26.8%</td><td><span class="null">null</span></td></tr><tr><td>營收</td><td>2026 年 9 月</td><td>NT$344.2 億</td><td>+55.3%</td><td>MoM +12.5%，創近 54 個月新高</td></tr><tr><td>營業利益率</td><td>2026 Q3</td><td>19.2%</td><td>+17.5 個百分點</td><td>QoQ +5.6 個百分點；營業利益 NT$183.1 億，QoQ +61.2%（另有媒體稱 QoQ +96.1%，媒體說法不一）</td></tr><tr><td>稅後淨利</td><td>2026 Q3</td><td>NT$388.3 億（歸屬母公司）</td><td><span class="null">null</span></td><td>QoQ +45.2%，單季創歷史新高；合併稅前利益 NT$472.2 億</td></tr><tr><td>稅後淨利</td><td>2026 前三季</td><td>NT$798.4 億（歸屬母公司）</td><td><span class="null">null</span></td><td>去年同期為虧損 NT$4.07 億；稅前利益 NT$940.6 億</td></tr><tr><td>EPS</td><td>2026 Q3</td><td>NT$4.90</td><td>+1092.6%</td><td>單季歷史新高</td></tr><tr><td>EPS</td><td>2026 前三季</td><td>NT$10.07</td><td><span class="null">null</span></td><td>歷史新高，超越 2021 年前三季 NT$8.05</td></tr><tr><td>其他</td><td>2026 Q3</td><td>業外淨收益 NT$289.1 億</td><td><span class="null">null</span></td><td>占稅前獲利 61%；南亞科投資收益 NT$235.6 億（貢獻 EPS 約 2.97 元）、台塑石化投資收益 NT$60.7 億</td></tr></tbody></table></div></td></tr><tr><td>business_segments（事業群）</td><td><div style="overflow:auto"><table><thead><tr><th>事業群</th><th>營收</th><th>營收 YoY</th><th>營益率</th><th>營益率 YoY</th><th>註</th></tr></thead><tbody><tr><td>電子材料</td><td>約 NT$555 億（2026 Q3，占合併營收 58.1%）</td><td>9 月單月 YoY +90.1%（季度 YoY 未揭露）</td><td>30.9%</td><td><span class="null">null</span></td><td>各產品產能利用率接近滿載、陸續調漲售價、高階產品逐步放量、銷售組合優化；營業利益 QoQ +96.1%（媒體歸屬於電子材料，另有媒體歸屬於公司整體，媒體說法不一）</td></tr><tr><td>化工</td><td><span class="null">null</span></td><td><span class="null">null</span></td><td><span class="null">null</span></td><td><span class="null">null</span></td><td>乙二醇（EG）因中東產能受損未修復，供應緊張、市價續漲、利差擴大，營運良好；本季已無戰爭初期原料飆漲帶來的大額庫存利益；其他化工需求仍偏弱</td></tr><tr><td>聚酯</td><td><span class="null">null</span></td><td><span class="null">null</span></td><td><span class="null">null</span></td><td><span class="null">null</span></td><td>維持一定利潤；受惠美國南卡廠獲利提升</td></tr><tr><td>塑膠加工</td><td><span class="null">null</span></td><td><span class="null">null</span></td><td><span class="null">null</span></td><td><span class="null">null</span></td><td>維持一定利潤</td></tr></tbody></table></div></td></tr><tr><td>management_views（管理層觀點，固定五類＝模板法說 01–05）</td><td><div style="overflow:auto"><table><thead><tr><th>主題</th><th>內容</th></tr></thead><tbody><tr><td>事業體／產品線重點</td><td>電子材料為本業獲利爆發主因：AI 相關產業快速擴張資本支出，電子材料供應極度緊缺且價格大漲，Q3 營收占比升至 58.1%，各產品產能利用率接近滿載並陸續調漲售價；公司已研製低介電與低熱膨脹玻纖、細晶粒銅箔、自研碳氫樹脂與超低損耗銅箔基板，以垂直整合優勢加快認證與量產。</td></tr><tr><td>擴產／產能變化</td><td>短期以既有產線優化與重啟部分設備提升產出而非新建廠房：新港廠新增每月 30 萬張 CCL 產能（以 M7、M8 為主），今年累計增加 110 個坩鍋紡位、年底前數十台織布機到港；明年透過產線整改每月再增加數十萬張 CCL；T-glass 產能已提升至每月數萬米。</td></tr><tr><td>獲利能力變化</td><td>Q3 營業利益 NT$183.1 億、營業利益率升至 19.2%（QoQ +5.6 個百分點），主因電子材料漲價、高階放量與銷售組合優化，電子材料營業利益率達 30.9%；業外淨收益 NT$289.1 億占稅前獲利 61%，主要來自南亞科記憶體供需缺口急遽放大帶來的投資收益。</td></tr><tr><td>未來市場預測</td><td>預期 10 月及 Q4 合併營收續增且高於 Q3，仍以電子材料為主要動能；M7、M8 已量產並與 CSP 客戶洽談大單，預計 Q4 產量明顯躍升；M9、M10 預計 2027 上半年取得驗證結果，2027 年隨材料完成認證量產出貨量明顯增加；高階玻纖布因織布機產能受限預估 2027 年持續緊缺。</td></tr><tr><td>投資／M&amp;A／組織整改</td><td>與日東紡合作：Low DK2 透過日東紡合作穩定取得配額，並協助日東紡織造特殊玻纖布，預計 2027 年達成 20% 生產目標；轉投資南亞科 Q3 貢獻投資收益 NT$235.6 億、台塑石化 NT$60.7 億，預期 Q4 持續受惠。</td></tr></tbody></table></div></td></tr><tr><td>qa_highlights（Q&amp;A）</td><td><span class="null">[]（新版有此鍵但本場沒內容）</span></td></tr><tr><td>positive_signals（正向訊號）</td><td><ul><li>電子材料產能利用率接近滿載且售價逐月調漲，Q4 營收預期續增，供應端處於強勢議價地位</li><li>M7、M8 CCL 已量產並與 CSP 洽談大單，Q4 產量躍升；自研 HVLP4 銅箔、碳氫樹脂（可不用石英布達到理想電性）支撐 M9～M11 以上規格開發</li><li>上中下游垂直整合（玻纖紗／布、銅箔、樹脂、CCL），各材料團隊可共同調整配方，縮短新品上市時程</li><li>新港廠每月 30 萬張 CCL 新產能及 2027 年產線整改，高階供給持續增加</li></ul></td></tr><tr><td>watch_items（觀察項）</td><td><ul><li>電子材料供給極度緊缺、價格大漲，對採購方而言成本與配額壓力延續至 2027 年</li><li>高階玻纖布（T-glass、Low DK2）供給緊缺預估持續到 2027 年，配額部分依賴日東紡合作</li><li>業外收益占稅前獲利 61%，獲利結構對南亞科記憶體景氣敏感度高</li><li>化工（EG 除外）、聚酯需求仍偏弱，且本季起已無庫存利益支撐</li></ul></td></tr><tr><td>open_questions（未答問題）</td><td><ul><li>Q4 及 2027 年電子材料具體營收／出貨量目標與資本支出金額未揭露</li><li>與 CSP 客戶洽談的 M7、M8 大單規模、簽約時程與客戶名稱未說明</li><li>M9、M10 驗證僅給「2027 上半年取得結果」方向，未給量產與營收貢獻時點</li><li>化工、聚酯、塑膠加工各部門的營收與獲利數字未揭露；新增產能（坩鍋紡位、織布機）對應的玻纖布月產能數字未說明</li></ul></td></tr><tr><td>notes（彙整備註）</td><td>法說會日期與簡報：finmoconf 列出南亞 2026/10/13 法人說明會，對應公開資訊觀測站簡報檔 130320261012M001.pdf（中、英文版），但該 PDF 為壓縮串流無法解析文字，本摘要未能直接引用簡報內容。搜尋範圍內（2026/10/06～10/20）無媒體明確以「10 月 13 日法說會」為題報導；上述內容來自 10/12 公司公告之 Q3 自結損益新聞稿與 10/13～10/14 的法人／媒體報導（產品進度、擴產數字、2027 展望多為法人報告轉述）。Q&amp;A 內容無任何來源揭露。數字衝突：營業利益 QoQ 有 +61.2% 與 +96.1% 兩種說法；30.9% 有「公司整體營業淨利率」與「電子材料營業利益率」兩種歸屬（以 183.1／956 計算整體營業利益率為 19.2%）；南亞科投資收益一則媒體寫 NT$23.56 億，其餘均為 NT$235.6 億，本摘要採 NT$235.6 億。未見任何與友達（AUO）、Micro LED、車用顯示、CPO／光通訊相關的說法。</td></tr><tr><td>sources（來源）</td><td><ul><li><a href="https://finmoconf.diveinvest.net/company/1303">南亞(1303) 法說會簡報 PDF（2026/10/13 條目，中文版簡報 130320261012M001.pdf）</a>｜finmoconf.diveinvest.net</li><li><a href="https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf">南亞 2026/10/13 法人說明會簡報（公開資訊觀測站，PDF 無法解析文字）</a>｜公開資訊觀測站</li><li><a href="https://money.udn.com/money/story/5710/9809544">南亞獲利／自結第3季 EPS 4.9元 與前三季雙寫新高 前三季賺逾一股本</a>｜經濟日報</li><li><a href="https://fnc.ebc.net.tw/fncnews/stock/220502">南亞Q3獲利大爆發！ 前3季EPS賺逾1股本 創歷史新高</a>｜東森財經新聞</li><li><a href="https://www.chinatimes.com/realtimenews/20261012002761-260410">南亞翻身！前三季獲利賺一個股本 EPS達10.07元</a>｜工商時報／中時新聞網</li><li><a href="https://finance.biggo.com/news/be935d8b-f11f-46f6-8e2f-21d410aaf145">AI-Driven Electronics Materials Boom Lifts Taiwan&#x27;s Nan Ya Plastics to Record Full-Year EPS in Just Three Quarters</a>｜BigGo Finance</li><li><a href="https://money.udn.com/money/story/5710/9811596">南亞前三季大賺逾一個股本 法人調升獲利預估值及目標價</a>｜經濟日報</li><li><a href="https://udn.com/news/story/7252/9813670">法人上修南亞獲利 股價一度攻至350.5元、再創新高</a>｜經濟日報</li><li><a href="https://www.mirrormedia.mg/external/setn_1922368">這塑化大廠第三季EPS飆4.9元 目標價曝光</a>｜鏡週刊（轉載三立新聞網）</li><li><a href="https://www.peoplenews.tw/articles/economic-news/61191">台塑變局2》電子材料占營收近六成 南亞押2027年高階材料放量</a>｜民報</li></ul></td></tr></tbody></table></div><details><summary>原始 JSON（8,825 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_summary&quot;,
+  &quot;company_key&quot;: &quot;TPE:1303&quot;,
+  &quot;company_name&quot;: &quot;南亞塑膠工業&quot;,
+  &quot;stock_code&quot;: &quot;1303&quot;,
+  &quot;market&quot;: &quot;TPE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q3&quot;,
+  &quot;conference_date&quot;: &quot;2026-10-13&quot;,
+  &quot;time_basis&quot;: &quot;SOURCE&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-10-13&quot;,
+  &quot;fallback&quot;: false,
+  &quot;summary&quot;: {
+    &quot;found&quot;: true,
+    &quot;reported_period&quot;: &quot;2026 Q3（2026 年 7～9 月）及 2026 年前三季自結數&quot;,
+    &quot;core_points&quot;: [
+      &quot;2026 Q3 自結歸屬母公司稅後純益 NT$388.3 億、EPS NT$4.90，單季創歷史新高；前三季 EPS NT$10.07 已賺逾一個股本，超越 2021 年前三季 NT$8.05 的舊紀錄&quot;,
+      &quot;獲利雙引擎：本業電子材料（Q3 營收占比升至 58.1%，各產品產能利用率接近滿載、陸續調漲售價、M6 以上高階產品放量）＋ 南亞科投資收益 NT$235.6 億（約貢獻 EPS 2.97 元）&quot;,
+      &quot;高階材料進度：M7、M8 CCL 已量產並與雲端服務供應商（CSP）洽談大單，預計 Q4 產量明顯躍升；M9、M10 以自研 HVLP4 銅箔與碳氫樹脂送樣驗證中，預計 2027 上半年取得驗證結果&quot;,
+      &quot;擴產以既有產線去瓶頸與設備改造為主：新港廠新增每月 30 萬張 CCL 產能（以 M7、M8 為主），今年累計增加 110 個坩鍋紡位、年底前數十台織布機到港，明年再透過產線整改每月增加數十萬張 CCL&quot;,
+      &quot;傳統事業：乙二醇（EG）因中東產能受損未修復、供應緊張價格續漲而營運良好；本季已無戰爭初期原料飆漲帶來的大額庫存利益；塑膠加工及聚酯維持一定利潤（聚酯受惠美國南卡廠獲利提升）&quot;
+    ],
+    &quot;guidance&quot;: &quot;公司預期 2026 年 10 月及第 4 季合併營收續增且高於第 3 季，動能仍以電子材料為主；部分高階產品自 Q4 起進入出貨與客戶驗證並行階段，2027 年隨材料陸續完成認證並量產，出貨量預計明顯增加。法人另估 2027 年電子材料營收占比可升至七成以上、高階玻纖布 2027 年持續緊缺（法人說法，非公司財測）。&quot;,
+    &quot;key_numbers&quot;: [
+      &quot;2026 Q3 合併營收 NT$956.0 億（NT$955.97 億，YoY +49.0%）&quot;,
+      &quot;2026 Q3 營業利益 NT$183.1 億，QoQ +61.2%（另有媒體稱 QoQ +96.1%，媒體說法不一）&quot;,
+      &quot;2026 Q3 營業利益率 19.2%（YoY +17.5 個百分點、QoQ +5.6 個百分點）；電子材料營業利益率 30.9%（部分媒體將 30.9% 稱為公司整體營業淨利率，媒體說法不一）&quot;,
+      &quot;2026 Q3 業外淨收益 NT$289.1 億，占稅前獲利 61%；其中南亞科投資收益 NT$235.6 億（貢獻 EPS 約 2.97 元）、台塑石化投資收益 NT$60.7 億&quot;,
+      &quot;2026 Q3 合併稅前利益 NT$472.2 億；歸屬母公司稅後利益 NT$388.3 億（QoQ +45.2%）；EPS NT$4.90（YoY +1092.6%）&quot;,
+      &quot;2026 前三季合併營收 NT$2,478.4 億（YoY +26.8%）；稅前利益 NT$940.6 億；歸屬母公司稅後利益 NT$798.4 億（去年同期為虧損 NT$4.07 億）；EPS NT$10.07&quot;,
+      &quot;2026 年 9 月合併營收 NT$344.2 億（MoM +12.5%、YoY +55.3%，創近 54 個月新高）；9 月電子材料營收 YoY +90.1%，較去年同期增加 NT$94.1 億（銷量貢獻 NT$41.8 億、售價貢獻 NT$52.3 億）&quot;,
+      &quot;2026 Q3 電子材料營收占比 58.1%（換算約 NT$555 億）&quot;
+    ],
+    &quot;risks&quot;: [
+      &quot;獲利逾六成來自業外（南亞科投資收益），與記憶體景氣高度連動&quot;,
+      &quot;M9、M10 驗證結果要等到 2027 上半年，高階放量時程仍有不確定性&quot;,
+      &quot;化工、聚酯除 EG 外需求偏弱，且本季已無庫存利益支撐&quot;,
+      &quot;玻纖布織布機產能受限，高階玻纖布供給緊缺可能持續到 2027 年&quot;
+    ],
+    &quot;headline_metrics&quot;: [
+      {
+        &quot;metric&quot;: &quot;營收&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;NT$956.0 億（NT$955.97 億）&quot;,
+        &quot;yoy&quot;: &quot;+49.0%&quot;,
+        &quot;note&quot;: null
+      },
+      {
+        &quot;metric&quot;: &quot;營收&quot;,
+        &quot;period&quot;: &quot;2026 前三季&quot;,
+        &quot;value&quot;: &quot;NT$2,478.4 億&quot;,
+        &quot;yoy&quot;: &quot;+26.8%&quot;,
+        &quot;note&quot;: null
+      },
+      {
+        &quot;metric&quot;: &quot;營收&quot;,
+        &quot;period&quot;: &quot;2026 年 9 月&quot;,
+        &quot;value&quot;: &quot;NT$344.2 億&quot;,
+        &quot;yoy&quot;: &quot;+55.3%&quot;,
+        &quot;note&quot;: &quot;MoM +12.5%，創近 54 個月新高&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;營業利益率&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;19.2%&quot;,
+        &quot;yoy&quot;: &quot;+17.5 個百分點&quot;,
+        &quot;note&quot;: &quot;QoQ +5.6 個百分點；營業利益 NT$183.1 億，QoQ +61.2%（另有媒體稱 QoQ +96.1%，媒體說法不一）&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;稅後淨利&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;NT$388.3 億（歸屬母公司）&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;QoQ +45.2%，單季創歷史新高；合併稅前利益 NT$472.2 億&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;稅後淨利&quot;,
+        &quot;period&quot;: &quot;2026 前三季&quot;,
+        &quot;value&quot;: &quot;NT$798.4 億（歸屬母公司）&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;去年同期為虧損 NT$4.07 億；稅前利益 NT$940.6 億&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;EPS&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;NT$4.90&quot;,
+        &quot;yoy&quot;: &quot;+1092.6%&quot;,
+        &quot;note&quot;: &quot;單季歷史新高&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;EPS&quot;,
+        &quot;period&quot;: &quot;2026 前三季&quot;,
+        &quot;value&quot;: &quot;NT$10.07&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;歷史新高，超越 2021 年前三季 NT$8.05&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;其他&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;業外淨收益 NT$289.1 億&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;占稅前獲利 61%；南亞科投資收益 NT$235.6 億（貢獻 EPS 約 2.97 元）、台塑石化投資收益 NT$60.7 億&quot;
+      }
+    ],
+    &quot;business_segments&quot;: [
+      {
+        &quot;segment&quot;: &quot;電子材料&quot;,
+        &quot;revenue&quot;: &quot;約 NT$555 億（2026 Q3，占合併營收 58.1%）&quot;,
+        &quot;revenue_yoy&quot;: &quot;9 月單月 YoY +90.1%（季度 YoY 未揭露）&quot;,
+        &quot;operating_margin&quot;: &quot;30.9%&quot;,
+        &quot;opm_yoy&quot;: null,
+        &quot;note&quot;: &quot;各產品產能利用率接近滿載、陸續調漲售價、高階產品逐步放量、銷售組合優化；營業利益 QoQ +96.1%（媒體歸屬於電子材料，另有媒體歸屬於公司整體，媒體說法不一）&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;化工&quot;,
+        &quot;revenue&quot;: null,
+        &quot;revenue_yoy&quot;: null,
+        &quot;operating_margin&quot;: null,
+        &quot;opm_yoy&quot;: null,
+        &quot;note&quot;: &quot;乙二醇（EG）因中東產能受損未修復，供應緊張、市價續漲、利差擴大，營運良好；本季已無戰爭初期原料飆漲帶來的大額庫存利益；其他化工需求仍偏弱&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;聚酯&quot;,
+        &quot;revenue&quot;: null,
+        &quot;revenue_yoy&quot;: null,
+        &quot;operating_margin&quot;: null,
+        &quot;opm_yoy&quot;: null,
+        &quot;note&quot;: &quot;維持一定利潤；受惠美國南卡廠獲利提升&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;塑膠加工&quot;,
+        &quot;revenue&quot;: null,
+        &quot;revenue_yoy&quot;: null,
+        &quot;operating_margin&quot;: null,
+        &quot;opm_yoy&quot;: null,
+        &quot;note&quot;: &quot;維持一定利潤&quot;
+      }
+    ],
+    &quot;management_views&quot;: [
+      {
+        &quot;topic&quot;: &quot;事業體／產品線重點&quot;,
+        &quot;view&quot;: &quot;電子材料為本業獲利爆發主因：AI 相關產業快速擴張資本支出，電子材料供應極度緊缺且價格大漲，Q3 營收占比升至 58.1%，各產品產能利用率接近滿載並陸續調漲售價；公司已研製低介電與低熱膨脹玻纖、細晶粒銅箔、自研碳氫樹脂與超低損耗銅箔基板，以垂直整合優勢加快認證與量產。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;擴產／產能變化&quot;,
+        &quot;view&quot;: &quot;短期以既有產線優化與重啟部分設備提升產出而非新建廠房：新港廠新增每月 30 萬張 CCL 產能（以 M7、M8 為主），今年累計增加 110 個坩鍋紡位、年底前數十台織布機到港；明年透過產線整改每月再增加數十萬張 CCL；T-glass 產能已提升至每月數萬米。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;獲利能力變化&quot;,
+        &quot;view&quot;: &quot;Q3 營業利益 NT$183.1 億、營業利益率升至 19.2%（QoQ +5.6 個百分點），主因電子材料漲價、高階放量與銷售組合優化，電子材料營業利益率達 30.9%；業外淨收益 NT$289.1 億占稅前獲利 61%，主要來自南亞科記憶體供需缺口急遽放大帶來的投資收益。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;未來市場預測&quot;,
+        &quot;view&quot;: &quot;預期 10 月及 Q4 合併營收續增且高於 Q3，仍以電子材料為主要動能；M7、M8 已量產並與 CSP 客戶洽談大單，預計 Q4 產量明顯躍升；M9、M10 預計 2027 上半年取得驗證結果，2027 年隨材料完成認證量產出貨量明顯增加；高階玻纖布因織布機產能受限預估 2027 年持續緊缺。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;投資／M&amp;A／組織整改&quot;,
+        &quot;view&quot;: &quot;與日東紡合作：Low DK2 透過日東紡合作穩定取得配額，並協助日東紡織造特殊玻纖布，預計 2027 年達成 20% 生產目標；轉投資南亞科 Q3 貢獻投資收益 NT$235.6 億、台塑石化 NT$60.7 億，預期 Q4 持續受惠。&quot;
+      }
+    ],
+    &quot;qa_highlights&quot;: [],
+    &quot;positive_signals&quot;: [
+      &quot;電子材料產能利用率接近滿載且售價逐月調漲，Q4 營收預期續增，供應端處於強勢議價地位&quot;,
+      &quot;M7、M8 CCL 已量產並與 CSP 洽談大單，Q4 產量躍升；自研 HVLP4 銅箔、碳氫樹脂（可不用石英布達到理想電性）支撐 M9～M11 以上規格開發&quot;,
+      &quot;上中下游垂直整合（玻纖紗／布、銅箔、樹脂、CCL），各材料團隊可共同調整配方，縮短新品上市時程&quot;,
+      &quot;新港廠每月 30 萬張 CCL 新產能及 2027 年產線整改，高階供給持續增加&quot;
+    ],
+    &quot;watch_items&quot;: [
+      &quot;電子材料供給極度緊缺、價格大漲，對採購方而言成本與配額壓力延續至 2027 年&quot;,
+      &quot;高階玻纖布（T-glass、Low DK2）供給緊缺預估持續到 2027 年，配額部分依賴日東紡合作&quot;,
+      &quot;業外收益占稅前獲利 61%，獲利結構對南亞科記憶體景氣敏感度高&quot;,
+      &quot;化工（EG 除外）、聚酯需求仍偏弱，且本季起已無庫存利益支撐&quot;
+    ],
+    &quot;open_questions&quot;: [
+      &quot;Q4 及 2027 年電子材料具體營收／出貨量目標與資本支出金額未揭露&quot;,
+      &quot;與 CSP 客戶洽談的 M7、M8 大單規模、簽約時程與客戶名稱未說明&quot;,
+      &quot;M9、M10 驗證僅給「2027 上半年取得結果」方向，未給量產與營收貢獻時點&quot;,
+      &quot;化工、聚酯、塑膠加工各部門的營收與獲利數字未揭露；新增產能（坩鍋紡位、織布機）對應的玻纖布月產能數字未說明&quot;
+    ],
+    &quot;sources&quot;: [
+      {
+        &quot;title&quot;: &quot;南亞(1303) 法說會簡報 PDF（2026/10/13 條目，中文版簡報 130320261012M001.pdf）&quot;,
+        &quot;url&quot;: &quot;https://finmoconf.diveinvest.net/company/1303&quot;,
+        &quot;media&quot;: &quot;finmoconf.diveinvest.net&quot;
+      },
+      {
+        &quot;title&quot;: &quot;南亞 2026/10/13 法人說明會簡報（公開資訊觀測站，PDF 無法解析文字）&quot;,
+        &quot;url&quot;: &quot;https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf&quot;,
+        &quot;media&quot;: &quot;公開資訊觀測站&quot;
+      },
+      {
+        &quot;title&quot;: &quot;南亞獲利／自結第3季 EPS 4.9元 與前三季雙寫新高 前三季賺逾一股本&quot;,
+        &quot;url&quot;: &quot;https://money.udn.com/money/story/5710/9809544&quot;,
+        &quot;media&quot;: &quot;經濟日報&quot;
+      },
+      {
+        &quot;title&quot;: &quot;南亞Q3獲利大爆發！ 前3季EPS賺逾1股本 創歷史新高&quot;,
+        &quot;url&quot;: &quot;https://fnc.ebc.net.tw/fncnews/stock/220502&quot;,
+        &quot;media&quot;: &quot;東森財經新聞&quot;
+      },
+      {
+        &quot;title&quot;: &quot;南亞翻身！前三季獲利賺一個股本 EPS達10.07元&quot;,
+        &quot;url&quot;: &quot;https://www.chinatimes.com/realtimenews/20261012002761-260410&quot;,
+        &quot;media&quot;: &quot;工商時報／中時新聞網&quot;
+      },
+      {
+        &quot;title&quot;: &quot;AI-Driven Electronics Materials Boom Lifts Taiwan&#x27;s Nan Ya Plastics to Record Full-Year EPS in Just Three Quarters&quot;,
+        &quot;url&quot;: &quot;https://finance.biggo.com/news/be935d8b-f11f-46f6-8e2f-21d410aaf145&quot;,
+        &quot;media&quot;: &quot;BigGo Finance&quot;
+      },
+      {
+        &quot;title&quot;: &quot;南亞前三季大賺逾一個股本 法人調升獲利預估值及目標價&quot;,
+        &quot;url&quot;: &quot;https://money.udn.com/money/story/5710/9811596&quot;,
+        &quot;media&quot;: &quot;經濟日報&quot;
+      },
+      {
+        &quot;title&quot;: &quot;法人上修南亞獲利 股價一度攻至350.5元、再創新高&quot;,
+        &quot;url&quot;: &quot;https://udn.com/news/story/7252/9813670&quot;,
+        &quot;media&quot;: &quot;經濟日報&quot;
+      },
+      {
+        &quot;title&quot;: &quot;這塑化大廠第三季EPS飆4.9元 目標價曝光&quot;,
+        &quot;url&quot;: &quot;https://www.mirrormedia.mg/external/setn_1922368&quot;,
+        &quot;media&quot;: &quot;鏡週刊（轉載三立新聞網）&quot;
+      },
+      {
+        &quot;title&quot;: &quot;台塑變局2》電子材料占營收近六成 南亞押2027年高階材料放量&quot;,
+        &quot;url&quot;: &quot;https://www.peoplenews.tw/articles/economic-news/61191&quot;,
+        &quot;media&quot;: &quot;民報&quot;
+      }
+    ],
+    &quot;notes&quot;: &quot;法說會日期與簡報：finmoconf 列出南亞 2026/10/13 法人說明會，對應公開資訊觀測站簡報檔 130320261012M001.pdf（中、英文版），但該 PDF 為壓縮串流無法解析文字，本摘要未能直接引用簡報內容。搜尋範圍內（2026/10/06～10/20）無媒體明確以「10 月 13 日法說會」為題報導；上述內容來自 10/12 公司公告之 Q3 自結損益新聞稿與 10/13～10/14 的法人／媒體報導（產品進度、擴產數字、2027 展望多為法人報告轉述）。Q&amp;A 內容無任何來源揭露。數字衝突：營業利益 QoQ 有 +61.2% 與 +96.1% 兩種說法；30.9% 有「公司整體營業淨利率」與「電子材料營業利益率」兩種歸屬（以 183.1／956 計算整體營業利益率為 19.2%）；南亞科投資收益一則媒體寫 NT$23.56 億，其餘均為 NT$235.6 億，本摘要採 NT$235.6 億。未見任何與友達（AUO）、Micro LED、車用顯示、CPO／光通訊相關的說法。&quot;
+  },
+  &quot;recipients&quot;: [
+    &quot;A00&quot;
+  ],
+  &quot;crawled_at&quot;: &quot;2026-10-21T10:50:16+08:00&quot;
+}</pre></details></section>
+</main>
+<footer>由 build_sources.py 產出｜2026-10-21</footer>
+</body>
+</html>

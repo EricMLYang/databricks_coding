@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>臺灣永光化學工業｜爬蟲資料（bronze payload，新版實測）</title>
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(22px,3.5vw,36px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.mt{margin-top:16px}
+.note,.small{font-size:12px;color:var(--muted)}
+h2{font-size:20px;margin:6px 0 14px}
+h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.kv td:first-child{color:var(--muted);white-space:nowrap;width:220px}
+.kv{table-layout:fixed}.kv td{overflow-wrap:anywhere}.kv td table{table-layout:fixed;width:100%}.kv td table td:first-child{white-space:normal;width:auto;color:inherit}
+.null{color:#b0b8c4;font-style:italic}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.t-ir_conference{background:#1f5aa6}.t-ir_summary{background:#16835d}.t-ir_document{background:#bd7300}.t-ir_document_file{background:#8a6d3b}.t-ir_financials{background:#20a4b7}.t-app_company{background:#65738a}
+pre{background:#0b1f3a;color:#e6eefc;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;max-height:520px}
+details summary{cursor:pointer;color:var(--blue);font-size:13px;margin:6px 0}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:12px 16px;border-radius:8px;margin-top:12px;font-size:13px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--blue);word-break:break-all}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.toc a{margin-right:14px;font-size:13px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}pre{max-height:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="badge">ir_calendar｜來源檢視｜bronze b_ir_calendar_record</div>
+  <h1>臺灣永光化學工業｜爬蟲資料（bronze payload，新版實測）</h1>
+  <p>來源檔：臺灣永光化學工業_爬蟲_新版實測.md｜company_key TPE:1711｜period 2026Q2｜產出日期：2026-10-21</p>
+</header>
+<main class="wrap">
+
+<section class="card">
+  <h2>這是什麼</h2>
+  <p>Databricks bronze 表 <code>b_ir_calendar_record</code> 裡，爬蟲（MI_Crawler VM）交付的每個 JSON 檔原樣存成一列（<code>payload</code> 欄）。
+  這一頁是 <code>臺灣永光化學工業_爬蟲_新版實測.md</code> 的排版版：company_key = <b>TPE:1711</b>、period = <b>2026Q2</b>，共 3 檔；
+  同一 record_type ＋ batch_path 只留最新批次。<code>period</code> 為 null 的檔（財報數據）不分期別，一併列出。</p>
+  <table class="kv"><tbody>
+    <tr><td>爬蟲版本</td><td><b>新版實測</b>（批次 dev_20261021T103341）。新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>）跑出的 dev 批次，<b>尚未進 Databricks</b>；ir_conference 的 <code>source</code> 為 DEV_SAMPLE（測試時種的場次，不是行事曆爬到的）。</td></tr>
+    <tr><td>抓到的紀錄類型</td><td>文件清單（manifest） 1 筆、實體檔 1 筆、財報數據 1 筆</td></tr>
+    <tr><td>沒有的紀錄類型</td><td><mark>法說場次、法說彙整</mark></td></tr>
+    <tr><td>對應 silver 表</td><td>見各段「進 silver」；原文另存 <code>b_ir_calendar_record.payload</code></td></tr>
+  </tbody></table>
+  <div class="toc mt"><a href="#r0">文件清單（manifest）（2026-10-21）</a> <a href="#r1">實體檔（—）</a> <a href="#r2">財報數據（2026-10-21）</a></div>
+</section><section class="card mt" id="r0"><span class="tag t-ir_document">ir_document</span><b>文件清單（manifest）</b><div class="small">batch_path：<code>docs/TPE_1711/2026Q2/manifest.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_document_file（展開 files[]）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>臺灣永光化學工業</td></tr><tr><td>period</td><td>2026Q2</td></tr><tr><td>conference_date</td><td><span class="null">null</span></td></tr><tr><td>status</td><td>PARTIAL</td></tr><tr><td>wanted</td><td><pre style="max-height:240px;margin:0">[
+  &quot;presentation&quot;,
+  &quot;financial_report&quot;
+]</pre></td></tr><tr><td>missing</td><td><pre style="max-height:240px;margin:0">[
+  &quot;presentation&quot;
+]</pre></td></tr><tr><td>generated_at</td><td>2026-10-21T10:53:36+08:00</td></tr></tbody></table><h3>files[]</h3><table><thead><tr><th>type</th><th>title</th><th>doc_date</th><th>source</th><th class="num">bytes</th><th>file（連到來源）</th><th>fetched_at</th></tr></thead><tbody><tr><td>financial_report</td><td>202602_1711_AI1.pdf</td><td></td><td>TWSE_DOC</td><td class="num">1,315,378</td><td><a href="https://doc.twse.com.tw/pdf/202602_1711_AI1_20261021_103103.pdf">financial_report_20261021_315ec22c.pdf</a></td><td>2026-10-21T10:31:31</td></tr></tbody></table></div><details><summary>原始 JSON（974 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_document&quot;,
+  &quot;company_key&quot;: &quot;TPE:1711&quot;,
+  &quot;company_name&quot;: &quot;臺灣永光化學工業&quot;,
+  &quot;stock_code&quot;: &quot;1711&quot;,
+  &quot;market&quot;: &quot;TPE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q2&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q2&quot;,
+  &quot;conference_date&quot;: null,
+  &quot;local_conference_date&quot;: null,
+  &quot;status&quot;: &quot;PARTIAL&quot;,
+  &quot;wanted&quot;: [
+    &quot;presentation&quot;,
+    &quot;financial_report&quot;
+  ],
+  &quot;missing&quot;: [
+    &quot;presentation&quot;
+  ],
+  &quot;files&quot;: [
+    {
+      &quot;type&quot;: &quot;financial_report&quot;,
+      &quot;file&quot;: &quot;financial_report_20261021_315ec22c.pdf&quot;,
+      &quot;path&quot;: &quot;docs/TPE_1711/2026Q2/financial_report_20261021_315ec22c.pdf&quot;,
+      &quot;source&quot;: &quot;TWSE_DOC&quot;,
+      &quot;source_url&quot;: &quot;https://doc.twse.com.tw/pdf/202602_1711_AI1_20261021_103103.pdf&quot;,
+      &quot;title&quot;: &quot;202602_1711_AI1.pdf&quot;,
+      &quot;doc_date&quot;: null,
+      &quot;sha256&quot;: &quot;315ec22c9ed96ae33e9affccf2b24b931b75ef9928c8d9f13634dea647fb7647&quot;,
+      &quot;bytes&quot;: 1315378,
+      &quot;fetched_at&quot;: &quot;2026-10-21T10:31:31+08:00&quot;
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-10-21T10:53:36+08:00&quot;
+}</pre></details></section><section class="card mt" id="r1"><span class="tag t-ir_document_file">ir_document_file</span><b>實體檔</b><div class="small">batch_path：<code>docs/TPE_1711/2026Q2/Everlight-Chemical_Q2CY26_Financial_Statements.pdf</code>｜批次：dev_20261021T103341<br>實體檔：<code>C:\Users\local_18060116\Temp\claude\C--Users-1806011-Projects-PM-Head-projects-MI-Crawler\dc1912fb-8cf2-4ebd-aefd-77450a8d4f13\scratchpad\ircal_sandbox\out\docs\TPE_1711\2026Q2\financial_report_20261021_315ec22c.pdf</code><br>進 silver：s_ir_calendar_document_file ＋ Volume 實體檔 → parse_documents → s_ir_calendar_document_text</div><div class="mt"><table class="kv"><tbody><tr><td>company_slug</td><td>Everlight-Chemical</td></tr><tr><td>period</td><td>2026Q2</td></tr><tr><td>doc_kind</td><td>Financial_Statements</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>source_file</td><td>financial_report_20261021_315ec22c.pdf</td></tr><tr><td>source_url</td><td><a href="https://doc.twse.com.tw/pdf/202602_1711_AI1_20261021_103103.pdf">https://doc.twse.com.tw/pdf/202602_1711_AI1_20261021_103103.pdf</a></td></tr><tr><td>doc_date</td><td><span class="null">null</span></td></tr><tr><td>bytes</td><td>1315378</td></tr><tr><td>sha256</td><td>315ec22c9ed96ae33e9affccf2b24b931b75ef9928c8d9f13634dea647fb7647</td></tr></tbody></table></div><details><summary>原始 JSON（565 字）</summary><pre>{
+  &quot;path&quot;: &quot;docs/TPE_1711/2026Q2/Everlight-Chemical_Q2CY26_Financial_Statements.pdf&quot;,
+  &quot;record_type&quot;: &quot;ir_document_file&quot;,
+  &quot;sha256&quot;: &quot;315ec22c9ed96ae33e9affccf2b24b931b75ef9928c8d9f13634dea647fb7647&quot;,
+  &quot;bytes&quot;: 1315378,
+  &quot;company_key&quot;: &quot;TPE:1711&quot;,
+  &quot;company_slug&quot;: &quot;Everlight-Chemical&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q2&quot;,
+  &quot;doc_kind&quot;: &quot;Financial_Statements&quot;,
+  &quot;fiscal_label&quot;: null,
+  &quot;source_file&quot;: &quot;financial_report_20261021_315ec22c.pdf&quot;,
+  &quot;source_url&quot;: &quot;https://doc.twse.com.tw/pdf/202602_1711_AI1_20261021_103103.pdf&quot;,
+  &quot;doc_date&quot;: null
+}</pre></details></section><section class="card mt" id="r2"><span class="tag t-ir_financials">ir_financials</span><b>財報數據</b><div class="small">batch_path：<code>financials/TPE_1711.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_financials（annual[] + quarterly[] 一期一列）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>臺灣永光化學工業</td></tr><tr><td>currency</td><td>TWD</td></tr><tr><td>unit</td><td>thousand</td></tr><tr><td>source</td><td>MOPS t164sb03/04/05</td></tr><tr><td>generated_at</td><td>2026-10-21T10:33:41</td></tr></tbody></table><h3>annual[]（5 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num">2025-12-31</td><td class="num">7,568,574</td><td class="num">6,132,894</td><td class="num">1,435,680</td><td class="num">-196,002</td><td class="num">-172,976</td><td class="num">-136,155</td><td class="num">-117,176</td><td class="num">-0.21</td><td class="num">837,813</td><td class="num"><span class="null">—</span></td><td class="num">-526,167</td><td class="num"><span class="null">—</span></td><td class="num">-854,886</td><td class="num">12,793,865</td><td class="num">4,358,286</td><td class="num">8,435,579</td><td class="num">18.97</td><td class="num">-2.59</td><td class="num">-2.29</td><td class="num">-1.80</td><td class="num">-1.55</td><td class="num">34.07</td><td class="num">1.99</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num">2024-12-31</td><td class="num">8,168,220</td><td class="num">6,380,955</td><td class="num">1,787,265</td><td class="num">175,360</td><td class="num">286,213</td><td class="num">253,262</td><td class="num">243,590</td><td class="num">0.44</td><td class="num">979,533</td><td class="num"><span class="null">—</span></td><td class="num">-407,617</td><td class="num"><span class="null">—</span></td><td class="num">-696,253</td><td class="num">13,243,201</td><td class="num">4,434,046</td><td class="num">8,809,155</td><td class="num">21.88</td><td class="num">2.15</td><td class="num">3.50</td><td class="num">3.10</td><td class="num">2.98</td><td class="num">33.48</td><td class="num">2.20</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num">2023-12-31</td><td class="num">7,861,424</td><td class="num">6,261,590</td><td class="num">1,599,834</td><td class="num">83,420</td><td class="num">108,957</td><td class="num">95,077</td><td class="num">85,866</td><td class="num">0.16</td><td class="num">1,336,175</td><td class="num"><span class="null">—</span></td><td class="num">-424,646</td><td class="num"><span class="null">—</span></td><td class="num">-783,097</td><td class="num">12,900,726</td><td class="num">4,244,851</td><td class="num">8,655,875</td><td class="num">20.35</td><td class="num">1.06</td><td class="num">1.39</td><td class="num">1.21</td><td class="num">1.09</td><td class="num">32.90</td><td class="num">2.34</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num">2022-12-31</td><td class="num">8,891,702</td><td class="num">6,896,531</td><td class="num">1,995,171</td><td class="num">380,756</td><td class="num">483,834</td><td class="num">392,540</td><td class="num">374,432</td><td class="num">0.68</td><td class="num">853,174</td><td class="num"><span class="null">—</span></td><td class="num">-212,551</td><td class="num"><span class="null">—</span></td><td class="num">-375,264</td><td class="num">13,132,503</td><td class="num">4,325,806</td><td class="num">8,806,697</td><td class="num">22.44</td><td class="num">4.28</td><td class="num">5.44</td><td class="num">4.41</td><td class="num">4.21</td><td class="num">32.94</td><td class="num">2.49</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num">2021-12-31</td><td class="num">9,200,988</td><td class="num">6,987,506</td><td class="num">2,213,482</td><td class="num">552,776</td><td class="num">597,440</td><td class="num">481,829</td><td class="num">472,970</td><td class="num">0.86</td><td class="num">757,244</td><td class="num"><span class="null">—</span></td><td class="num">-164,262</td><td class="num"><span class="null">—</span></td><td class="num">-272,984</td><td class="num">14,136,270</td><td class="num">5,029,996</td><td class="num">9,106,274</td><td class="num">24.06</td><td class="num">6.01</td><td class="num">6.49</td><td class="num">5.24</td><td class="num">5.14</td><td class="num">35.58</td><td class="num">2.06</td><td class="num"></td></tr></tbody></table></div><h3>quarterly[]（6 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num">2026Q2</td><td class="num"></td><td class="num">2026-06-30</td><td class="num">2,131,562</td><td class="num">1,601,048</td><td class="num">530,514</td><td class="num">110,726</td><td class="num">121,076</td><td class="num">103,590</td><td class="num">103,961</td><td class="num">0.19</td><td class="num">161,646</td><td class="num">377,058</td><td class="num">-55,447</td><td class="num">-196,433</td><td class="num">-274,424</td><td class="num">14,025,892</td><td class="num">4,854,654</td><td class="num">9,171,238</td><td class="num">24.89</td><td class="num">5.19</td><td class="num">5.68</td><td class="num">4.86</td><td class="num">4.88</td><td class="num">34.61</td><td class="num">1.80</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num">2026-03-31</td><td class="num">2,045,450</td><td class="num">1,605,345</td><td class="num">440,105</td><td class="num">37,488</td><td class="num">63,575</td><td class="num">49,650</td><td class="num">50,555</td><td class="num">0.09</td><td class="num">215,412</td><td class="num">215,412</td><td class="num">-140,986</td><td class="num">-140,986</td><td class="num">-111,426</td><td class="num">12,978,202</td><td class="num">4,469,031</td><td class="num">8,509,171</td><td class="num">21.52</td><td class="num">1.83</td><td class="num">3.11</td><td class="num">2.43</td><td class="num">2.47</td><td class="num">34.43</td><td class="num">1.98</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num">2025-12-31</td><td class="num">1,834,743</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-24,928</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">399,915</td><td class="num">837,813</td><td class="num">-195,902</td><td class="num">-526,167</td><td class="num">-363,109</td><td class="num">12,793,865</td><td class="num">4,358,286</td><td class="num">8,435,579</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-1.36</td><td class="num"><span class="null">—</span></td><td class="num">34.07</td><td class="num">1.99</td><td class="num">revenue、net_income、operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num">2025-09-30</td><td class="num">1,805,858</td><td class="num">1,517,832</td><td class="num">288,026</td><td class="num">-101,317</td><td class="num">-66,475</td><td class="num">-66,636</td><td class="num">-60,969</td><td class="num">-0.11</td><td class="num">119,031</td><td class="num">437,898</td><td class="num">-135,343</td><td class="num">-330,265</td><td class="num">6,271</td><td class="num">12,724,902</td><td class="num">4,310,830</td><td class="num">8,414,072</td><td class="num">15.95</td><td class="num">-5.61</td><td class="num">-3.68</td><td class="num">-3.69</td><td class="num">-3.38</td><td class="num">33.88</td><td class="num">2.19</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num">2025-06-30</td><td class="num">1,986,985</td><td class="num">1,595,957</td><td class="num">391,028</td><td class="num">-19,481</td><td class="num">-93,217</td><td class="num">-82,049</td><td class="num">-73,417</td><td class="num">-0.13</td><td class="num">79,707</td><td class="num">318,867</td><td class="num">-89,125</td><td class="num">-194,922</td><td class="num">-292,497</td><td class="num">12,971,114</td><td class="num">4,654,370</td><td class="num">8,316,744</td><td class="num">19.68</td><td class="num">-0.98</td><td class="num">-4.69</td><td class="num">-4.13</td><td class="num">-3.69</td><td class="num">35.88</td><td class="num">1.96</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num">2025-03-31</td><td class="num">1,940,988</td><td class="num">1,507,802</td><td class="num">433,186</td><td class="num">19,761</td><td class="num">47,164</td><td class="num">37,458</td><td class="num">38,070</td><td class="num">0.07</td><td class="num">239,160</td><td class="num">239,160</td><td class="num">-105,797</td><td class="num">-105,797</td><td class="num">-205,551</td><td class="num">13,305,242</td><td class="num">4,692,550</td><td class="num">8,612,692</td><td class="num">22.32</td><td class="num">1.02</td><td class="num">2.43</td><td class="num">1.93</td><td class="num">1.96</td><td class="num">35.27</td><td class="num">1.95</td><td class="num">operating_cash_flow、capex、investing_cash_flow</td></tr></tbody></table></div><div class="note">金額為原始單位（台股仟元、美股元）；季別列的 OCF / 資本支出是年初累計（YTD），新版另推算單季值；derived 標示推算值。source_urls 省略，見原始 JSON。</div><h3>新版才有的資產負債表明細與天數（annual[] ＋ quarterly[]）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">現金</th><th class="num">FVTPL 金融資產</th><th class="num">FVOCI 金融資產</th><th class="num">應收票據</th><th class="num">應收帳款</th><th class="num">應收關係人</th><th class="num">存貨</th><th class="num">應付帳款</th><th class="num">應付關係人</th><th class="num">速動資產</th><th class="num">速動比</th><th class="num">應收天數</th><th class="num">應付天數</th><th class="num">天數基準</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num">1,119,887</td><td class="num">67,005</td><td class="num"><span class="null">—</span></td><td class="num">119,943</td><td class="num">1,498,996</td><td class="num"><span class="null">—</span></td><td class="num">3,124,899</td><td class="num">562,930</td><td class="num"><span class="null">—</span></td><td class="num">2,835,831</td><td class="num">0.92</td><td class="num">81.3</td><td class="num">39.2</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num">1,305,622</td><td class="num">60,775</td><td class="num"><span class="null">—</span></td><td class="num">161,274</td><td class="num">1,592,143</td><td class="num"><span class="null">—</span></td><td class="num">3,423,297</td><td class="num">670,835</td><td class="num"><span class="null">—</span></td><td class="num">3,119,814</td><td class="num">1.01</td><td class="num">75.4</td><td class="num">36.8</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num">1,409,839</td><td class="num">36,903</td><td class="num"><span class="null">—</span></td><td class="num">202,209</td><td class="num">1,418,164</td><td class="num"><span class="null">—</span></td><td class="num">3,389,731</td><td class="num">532,175</td><td class="num"><span class="null">—</span></td><td class="num">3,127,115</td><td class="num">1.10</td><td class="num">73.2</td><td class="num">29.3</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num">1,215,150</td><td class="num">4,020</td><td class="num"><span class="null">—</span></td><td class="num">188,005</td><td class="num">1,346,800</td><td class="num"><span class="null">—</span></td><td class="num">3,970,872</td><td class="num">341,564</td><td class="num"><span class="null">—</span></td><td class="num">2,753,975</td><td class="num">0.99</td><td class="num">69.3</td><td class="num">26.4</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num">1,449,753</td><td class="num">60,247</td><td class="num"><span class="null">—</span></td><td class="num">215,955</td><td class="num">1,626,491</td><td class="num"><span class="null">—</span></td><td class="num">3,530,338</td><td class="num">329,088</td><td class="num"><span class="null">—</span></td><td class="num">3,355,948</td><td class="num">0.98</td><td class="num">73.1</td><td class="num">29.7</td><td class="num">end</td></tr><tr><td class="num">2026Q2</td><td class="num"></td><td class="num">1,328,467</td><td class="num">92,737</td><td class="num"><span class="null">—</span></td><td class="num">144,038</td><td class="num">1,696,552</td><td class="num"><span class="null">—</span></td><td class="num">3,148,358</td><td class="num">716,885</td><td class="num"><span class="null">—</span></td><td class="num">3,261,794</td><td class="num">0.88</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num">1,238,626</td><td class="num">32,085</td><td class="num"><span class="null">—</span></td><td class="num">123,942</td><td class="num">1,660,239</td><td class="num"><span class="null">—</span></td><td class="num">3,038,141</td><td class="num">659,627</td><td class="num"><span class="null">—</span></td><td class="num">3,054,892</td><td class="num">0.95</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num">1,119,887</td><td class="num">67,005</td><td class="num"><span class="null">—</span></td><td class="num">119,943</td><td class="num">1,498,996</td><td class="num"><span class="null">—</span></td><td class="num">3,124,899</td><td class="num">562,930</td><td class="num"><span class="null">—</span></td><td class="num">2,835,831</td><td class="num">0.92</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num">1,153,069</td><td class="num">6,828</td><td class="num"><span class="null">—</span></td><td class="num">98,050</td><td class="num">1,396,680</td><td class="num"><span class="null">—</span></td><td class="num">3,292,526</td><td class="num">481,186</td><td class="num"><span class="null">—</span></td><td class="num">2,654,627</td><td class="num">0.93</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num">1,251,150</td><td class="num">158,196</td><td class="num"><span class="null">—</span></td><td class="num">109,193</td><td class="num">1,398,616</td><td class="num"><span class="null">—</span></td><td class="num">3,443,325</td><td class="num">669,263</td><td class="num"><span class="null">—</span></td><td class="num">2,947,155</td><td class="num">0.87</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num">1,414,457</td><td class="num">67,780</td><td class="num"><span class="null">—</span></td><td class="num">121,853</td><td class="num">1,496,566</td><td class="num"><span class="null">—</span></td><td class="num">3,523,253</td><td class="num">671,892</td><td class="num"><span class="null">—</span></td><td class="num">3,100,656</td><td class="num">0.88</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr></tbody></table></div><div class="note">速動資產＝現金及約當現金＋按公允價值衡量之金融資產（流動）＋應收票據＋應收帳款（含關係人）；速動比＝速動資產／流動負債。應收天數＝平均應收帳款／營收×365、應付天數＝平均應付帳款／銷貨成本×365，days_basis＝avg 為期初期末平均、end 為期末值（最早一年）；天數只在年度列。</div></div><details><summary>原始 JSON（22,778 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_financials&quot;,
+  &quot;company_key&quot;: &quot;TPE:1711&quot;,
+  &quot;company_name&quot;: &quot;臺灣永光化學工業&quot;,
+  &quot;stock_code&quot;: &quot;1711&quot;,
+  &quot;market&quot;: &quot;TPE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;currency&quot;: &quot;TWD&quot;,
+  &quot;unit&quot;: &quot;thousand&quot;,
+  &quot;source&quot;: &quot;MOPS t164sb03/04/05&quot;,
+  &quot;annual&quot;: [
+    {
+      &quot;fiscal_year&quot;: 2025,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;revenue&quot;: 7568574,
+      &quot;cost_of_revenue&quot;: 6132894,
+      &quot;gross_profit&quot;: 1435680,
+      &quot;operating_income&quot;: -196002,
+      &quot;pretax_income&quot;: -172976,
+      &quot;net_income&quot;: -136155,
+      &quot;net_income_parent&quot;: -117176,
+      &quot;eps&quot;: -0.21,
+      &quot;cash&quot;: 1119887,
+      &quot;fin_assets_fvtpl_current&quot;: 67005,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 30000,
+      &quot;notes_receivable&quot;: 119943,
+      &quot;accounts_receivable&quot;: 1498996,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3124899,
+      &quot;current_assets&quot;: 6178440,
+      &quot;total_assets&quot;: 12793865,
+      &quot;notes_payable&quot;: 44225,
+      &quot;accounts_payable&quot;: 562930,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3098776,
+      &quot;total_liabilities&quot;: 4358286,
+      &quot;equity&quot;: 8435579,
+      &quot;equity_parent&quot;: 8177269,
+      &quot;operating_cash_flow&quot;: 837813,
+      &quot;capex&quot;: -526167,
+      &quot;investing_cash_flow&quot;: -854886,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 18.97,
+      &quot;operating_margin&quot;: -2.59,
+      &quot;pretax_margin&quot;: -2.29,
+      &quot;net_margin&quot;: -1.8,
+      &quot;net_margin_parent&quot;: -1.55,
+      &quot;debt_ratio&quot;: 34.07,
+      &quot;current_ratio&quot;: 1.99,
+      &quot;quick_assets&quot;: 2835831,
+      &quot;quick_ratio&quot;: 0.92,
+      &quot;dso_days&quot;: 81.3,
+      &quot;dpo_days&quot;: 39.2,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2024,
+      &quot;period_end&quot;: &quot;2024-12-31&quot;,
+      &quot;revenue&quot;: 8168220,
+      &quot;cost_of_revenue&quot;: 6380955,
+      &quot;gross_profit&quot;: 1787265,
+      &quot;operating_income&quot;: 175360,
+      &quot;pretax_income&quot;: 286213,
+      &quot;net_income&quot;: 253262,
+      &quot;net_income_parent&quot;: 243590,
+      &quot;eps&quot;: 0.44,
+      &quot;cash&quot;: 1305622,
+      &quot;fin_assets_fvtpl_current&quot;: 60775,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 0,
+      &quot;notes_receivable&quot;: 161274,
+      &quot;accounts_receivable&quot;: 1592143,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3423297,
+      &quot;current_assets&quot;: 6772950,
+      &quot;total_assets&quot;: 13243201,
+      &quot;notes_payable&quot;: 40745,
+      &quot;accounts_payable&quot;: 670835,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3084425,
+      &quot;total_liabilities&quot;: 4434046,
+      &quot;equity&quot;: 8809155,
+      &quot;equity_parent&quot;: 8536140,
+      &quot;operating_cash_flow&quot;: 979533,
+      &quot;capex&quot;: -407617,
+      &quot;investing_cash_flow&quot;: -696253,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=113&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=113&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=113&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 21.88,
+      &quot;operating_margin&quot;: 2.15,
+      &quot;pretax_margin&quot;: 3.5,
+      &quot;net_margin&quot;: 3.1,
+      &quot;net_margin_parent&quot;: 2.98,
+      &quot;debt_ratio&quot;: 33.48,
+      &quot;current_ratio&quot;: 2.2,
+      &quot;quick_assets&quot;: 3119814,
+      &quot;quick_ratio&quot;: 1.01,
+      &quot;dso_days&quot;: 75.4,
+      &quot;dpo_days&quot;: 36.8,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2023,
+      &quot;period_end&quot;: &quot;2023-12-31&quot;,
+      &quot;revenue&quot;: 7861424,
+      &quot;cost_of_revenue&quot;: 6261590,
+      &quot;gross_profit&quot;: 1599834,
+      &quot;operating_income&quot;: 83420,
+      &quot;pretax_income&quot;: 108957,
+      &quot;net_income&quot;: 95077,
+      &quot;net_income_parent&quot;: 85866,
+      &quot;eps&quot;: 0.16,
+      &quot;cash&quot;: 1409839,
+      &quot;fin_assets_fvtpl_current&quot;: 36903,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 60000,
+      &quot;notes_receivable&quot;: 202209,
+      &quot;accounts_receivable&quot;: 1418164,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3389731,
+      &quot;current_assets&quot;: 6677394,
+      &quot;total_assets&quot;: 12900726,
+      &quot;notes_payable&quot;: 42729,
+      &quot;accounts_payable&quot;: 532175,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 2849660,
+      &quot;total_liabilities&quot;: 4244851,
+      &quot;equity&quot;: 8655875,
+      &quot;equity_parent&quot;: 8344075,
+      &quot;operating_cash_flow&quot;: 1336175,
+      &quot;capex&quot;: -424646,
+      &quot;investing_cash_flow&quot;: -783097,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=112&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=112&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=112&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 20.35,
+      &quot;operating_margin&quot;: 1.06,
+      &quot;pretax_margin&quot;: 1.39,
+      &quot;net_margin&quot;: 1.21,
+      &quot;net_margin_parent&quot;: 1.09,
+      &quot;debt_ratio&quot;: 32.9,
+      &quot;current_ratio&quot;: 2.34,
+      &quot;quick_assets&quot;: 3127115,
+      &quot;quick_ratio&quot;: 1.1,
+      &quot;dso_days&quot;: 73.2,
+      &quot;dpo_days&quot;: 29.3,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2022,
+      &quot;period_end&quot;: &quot;2022-12-31&quot;,
+      &quot;revenue&quot;: 8891702,
+      &quot;cost_of_revenue&quot;: 6896531,
+      &quot;gross_profit&quot;: 1995171,
+      &quot;operating_income&quot;: 380756,
+      &quot;pretax_income&quot;: 483834,
+      &quot;net_income&quot;: 392540,
+      &quot;net_income_parent&quot;: 374432,
+      &quot;eps&quot;: 0.68,
+      &quot;cash&quot;: 1215150,
+      &quot;fin_assets_fvtpl_current&quot;: 4020,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 0,
+      &quot;notes_receivable&quot;: 188005,
+      &quot;accounts_receivable&quot;: 1346800,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3970872,
+      &quot;current_assets&quot;: 6904206,
+      &quot;total_assets&quot;: 13132503,
+      &quot;notes_payable&quot;: 89065,
+      &quot;accounts_payable&quot;: 341564,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 2769249,
+      &quot;total_liabilities&quot;: 4325806,
+      &quot;equity&quot;: 8806697,
+      &quot;equity_parent&quot;: 8455072,
+      &quot;operating_cash_flow&quot;: 853174,
+      &quot;capex&quot;: -212551,
+      &quot;investing_cash_flow&quot;: -375264,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=111&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=111&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=111&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 22.44,
+      &quot;operating_margin&quot;: 4.28,
+      &quot;pretax_margin&quot;: 5.44,
+      &quot;net_margin&quot;: 4.41,
+      &quot;net_margin_parent&quot;: 4.21,
+      &quot;debt_ratio&quot;: 32.94,
+      &quot;current_ratio&quot;: 2.49,
+      &quot;quick_assets&quot;: 2753975,
+      &quot;quick_ratio&quot;: 0.99,
+      &quot;dso_days&quot;: 69.3,
+      &quot;dpo_days&quot;: 26.4,
+      &quot;days_basis&quot;: &quot;avg&quot;,
+      &quot;derived&quot;: null
+    },
+    {
+      &quot;fiscal_year&quot;: 2021,
+      &quot;period_end&quot;: &quot;2021-12-31&quot;,
+      &quot;revenue&quot;: 9200988,
+      &quot;cost_of_revenue&quot;: 6987506,
+      &quot;gross_profit&quot;: 2213482,
+      &quot;operating_income&quot;: 552776,
+      &quot;pretax_income&quot;: 597440,
+      &quot;net_income&quot;: 481829,
+      &quot;net_income_parent&quot;: 472970,
+      &quot;eps&quot;: 0.86,
+      &quot;cash&quot;: 1449753,
+      &quot;fin_assets_fvtpl_current&quot;: 60247,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 3502,
+      &quot;notes_receivable&quot;: 215955,
+      &quot;accounts_receivable&quot;: 1626491,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3530338,
+      &quot;current_assets&quot;: 7036850,
+      &quot;total_assets&quot;: 14136270,
+      &quot;notes_payable&quot;: 238909,
+      &quot;accounts_payable&quot;: 329088,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3417561,
+      &quot;total_liabilities&quot;: 5029996,
+      &quot;equity&quot;: 9106274,
+      &quot;equity_parent&quot;: 8806140,
+      &quot;operating_cash_flow&quot;: 757244,
+      &quot;capex&quot;: -164262,
+      &quot;investing_cash_flow&quot;: -272984,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=110&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=110&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=110&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: 24.06,
+      &quot;operating_margin&quot;: 6.01,
+      &quot;pretax_margin&quot;: 6.49,
+      &quot;net_margin&quot;: 5.24,
+      &quot;net_margin_parent&quot;: 5.14,
+      &quot;debt_ratio&quot;: 35.58,
+      &quot;current_ratio&quot;: 2.06,
+      &quot;quick_assets&quot;: 3355948,
+      &quot;quick_ratio&quot;: 0.98,
+      &quot;dso_days&quot;: 73.1,
+      &quot;dpo_days&quot;: 29.7,
+      &quot;days_basis&quot;: &quot;end&quot;,
+      &quot;derived&quot;: null
+    }
+  ],
+  &quot;quarterly&quot;: [
+    {
+      &quot;period&quot;: &quot;2026Q2&quot;,
+      &quot;period_end&quot;: &quot;2026-06-30&quot;,
+      &quot;revenue&quot;: 2131562,
+      &quot;cost_of_revenue&quot;: 1601048,
+      &quot;gross_profit&quot;: 530514,
+      &quot;operating_income&quot;: 110726,
+      &quot;pretax_income&quot;: 121076,
+      &quot;net_income&quot;: 103590,
+      &quot;net_income_parent&quot;: 103961,
+      &quot;eps&quot;: 0.19,
+      &quot;cash&quot;: 1328467,
+      &quot;fin_assets_fvtpl_current&quot;: 92737,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 0,
+      &quot;notes_receivable&quot;: 144038,
+      &quot;accounts_receivable&quot;: 1696552,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3148358,
+      &quot;current_assets&quot;: 6705005,
+      &quot;total_assets&quot;: 14025892,
+      &quot;notes_payable&quot;: 41557,
+      &quot;accounts_payable&quot;: 716885,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3724069,
+      &quot;total_liabilities&quot;: 4854654,
+      &quot;equity&quot;: 9171238,
+      &quot;equity_parent&quot;: 8913197,
+      &quot;operating_cash_flow_ytd&quot;: 377058,
+      &quot;capex_ytd&quot;: -196433,
+      &quot;investing_cash_flow_ytd&quot;: -385850,
+      &quot;revenue_ytd&quot;: 4177012,
+      &quot;net_income_ytd&quot;: 153240,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=115&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=115&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=115&amp;season=2&quot;
+      ],
+      &quot;gross_margin&quot;: 24.89,
+      &quot;operating_margin&quot;: 5.19,
+      &quot;pretax_margin&quot;: 5.68,
+      &quot;net_margin&quot;: 4.86,
+      &quot;net_margin_parent&quot;: 4.88,
+      &quot;debt_ratio&quot;: 34.61,
+      &quot;current_ratio&quot;: 1.8,
+      &quot;quick_assets&quot;: 3261794,
+      &quot;quick_ratio&quot;: 0.88,
+      &quot;operating_cash_flow&quot;: 161646,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -55447,
+      &quot;investing_cash_flow&quot;: -274424
+    },
+    {
+      &quot;period&quot;: &quot;2026Q1&quot;,
+      &quot;period_end&quot;: &quot;2026-03-31&quot;,
+      &quot;revenue&quot;: 2045450,
+      &quot;cost_of_revenue&quot;: 1605345,
+      &quot;gross_profit&quot;: 440105,
+      &quot;operating_income&quot;: 37488,
+      &quot;pretax_income&quot;: 63575,
+      &quot;net_income&quot;: 49650,
+      &quot;net_income_parent&quot;: 50555,
+      &quot;eps&quot;: 0.09,
+      &quot;cash&quot;: 1238626,
+      &quot;fin_assets_fvtpl_current&quot;: 32085,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 0,
+      &quot;notes_receivable&quot;: 123942,
+      &quot;accounts_receivable&quot;: 1660239,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3038141,
+      &quot;current_assets&quot;: 6342018,
+      &quot;total_assets&quot;: 12978202,
+      &quot;notes_payable&quot;: 42817,
+      &quot;accounts_payable&quot;: 659627,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3210447,
+      &quot;total_liabilities&quot;: 4469031,
+      &quot;equity&quot;: 8509171,
+      &quot;equity_parent&quot;: 8250860,
+      &quot;operating_cash_flow_ytd&quot;: 215412,
+      &quot;capex_ytd&quot;: -140986,
+      &quot;investing_cash_flow_ytd&quot;: -111426,
+      &quot;revenue_ytd&quot;: 2045450,
+      &quot;net_income_ytd&quot;: 49650,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=115&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=115&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=115&amp;season=1&quot;
+      ],
+      &quot;gross_margin&quot;: 21.52,
+      &quot;operating_margin&quot;: 1.83,
+      &quot;pretax_margin&quot;: 3.11,
+      &quot;net_margin&quot;: 2.43,
+      &quot;net_margin_parent&quot;: 2.47,
+      &quot;debt_ratio&quot;: 34.43,
+      &quot;current_ratio&quot;: 1.98,
+      &quot;quick_assets&quot;: 3054892,
+      &quot;quick_ratio&quot;: 0.95,
+      &quot;operating_cash_flow&quot;: 215412,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -140986,
+      &quot;investing_cash_flow&quot;: -111426
+    },
+    {
+      &quot;period&quot;: &quot;2025Q4&quot;,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;revenue&quot;: 1834743,
+      &quot;net_income&quot;: -24928,
+      &quot;gross_profit&quot;: null,
+      &quot;operating_income&quot;: null,
+      &quot;pretax_income&quot;: null,
+      &quot;eps&quot;: null,
+      &quot;cash&quot;: 1119887,
+      &quot;fin_assets_fvtpl_current&quot;: 67005,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 30000,
+      &quot;notes_receivable&quot;: 119943,
+      &quot;accounts_receivable&quot;: 1498996,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3124899,
+      &quot;current_assets&quot;: 6178440,
+      &quot;total_assets&quot;: 12793865,
+      &quot;notes_payable&quot;: 44225,
+      &quot;accounts_payable&quot;: 562930,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3098776,
+      &quot;total_liabilities&quot;: 4358286,
+      &quot;equity&quot;: 8435579,
+      &quot;equity_parent&quot;: 8177269,
+      &quot;operating_cash_flow_ytd&quot;: 837813,
+      &quot;capex_ytd&quot;: -526167,
+      &quot;investing_cash_flow_ytd&quot;: -854886,
+      &quot;derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;net_income&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=4&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=4&quot;
+      ],
+      &quot;gross_margin&quot;: null,
+      &quot;operating_margin&quot;: null,
+      &quot;pretax_margin&quot;: null,
+      &quot;net_margin&quot;: -1.36,
+      &quot;net_margin_parent&quot;: null,
+      &quot;debt_ratio&quot;: 34.07,
+      &quot;current_ratio&quot;: 1.99,
+      &quot;quick_assets&quot;: 2835831,
+      &quot;quick_ratio&quot;: 0.92,
+      &quot;operating_cash_flow&quot;: 399915,
+      &quot;capex&quot;: -195902,
+      &quot;investing_cash_flow&quot;: -363109
+    },
+    {
+      &quot;period&quot;: &quot;2025Q3&quot;,
+      &quot;period_end&quot;: &quot;2025-09-30&quot;,
+      &quot;revenue&quot;: 1805858,
+      &quot;cost_of_revenue&quot;: 1517832,
+      &quot;gross_profit&quot;: 288026,
+      &quot;operating_income&quot;: -101317,
+      &quot;pretax_income&quot;: -66475,
+      &quot;net_income&quot;: -66636,
+      &quot;net_income_parent&quot;: -60969,
+      &quot;eps&quot;: -0.11,
+      &quot;cash&quot;: 1153069,
+      &quot;fin_assets_fvtpl_current&quot;: 6828,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: null,
+      &quot;notes_receivable&quot;: 98050,
+      &quot;accounts_receivable&quot;: 1396680,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3292526,
+      &quot;current_assets&quot;: 6263070,
+      &quot;total_assets&quot;: 12724902,
+      &quot;notes_payable&quot;: 49380,
+      &quot;accounts_payable&quot;: 481186,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 2857283,
+      &quot;total_liabilities&quot;: 4310830,
+      &quot;equity&quot;: 8414072,
+      &quot;equity_parent&quot;: 8152170,
+      &quot;operating_cash_flow_ytd&quot;: 437898,
+      &quot;capex_ytd&quot;: -330265,
+      &quot;investing_cash_flow_ytd&quot;: -491777,
+      &quot;revenue_ytd&quot;: 5733831,
+      &quot;net_income_ytd&quot;: -111227,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=3&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=3&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=3&quot;
+      ],
+      &quot;gross_margin&quot;: 15.95,
+      &quot;operating_margin&quot;: -5.61,
+      &quot;pretax_margin&quot;: -3.68,
+      &quot;net_margin&quot;: -3.69,
+      &quot;net_margin_parent&quot;: -3.38,
+      &quot;debt_ratio&quot;: 33.88,
+      &quot;current_ratio&quot;: 2.19,
+      &quot;quick_assets&quot;: 2654627,
+      &quot;quick_ratio&quot;: 0.93,
+      &quot;operating_cash_flow&quot;: 119031,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -135343,
+      &quot;investing_cash_flow&quot;: 6271
+    },
+    {
+      &quot;period&quot;: &quot;2025Q2&quot;,
+      &quot;period_end&quot;: &quot;2025-06-30&quot;,
+      &quot;revenue&quot;: 1986985,
+      &quot;cost_of_revenue&quot;: 1595957,
+      &quot;gross_profit&quot;: 391028,
+      &quot;operating_income&quot;: -19481,
+      &quot;pretax_income&quot;: -93217,
+      &quot;net_income&quot;: -82049,
+      &quot;net_income_parent&quot;: -73417,
+      &quot;eps&quot;: -0.13,
+      &quot;cash&quot;: 1251150,
+      &quot;fin_assets_fvtpl_current&quot;: 158196,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 30000,
+      &quot;notes_receivable&quot;: 109193,
+      &quot;accounts_receivable&quot;: 1398616,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3443325,
+      &quot;current_assets&quot;: 6659645,
+      &quot;total_assets&quot;: 12971114,
+      &quot;notes_payable&quot;: 51665,
+      &quot;accounts_payable&quot;: 669263,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3401072,
+      &quot;total_liabilities&quot;: 4654370,
+      &quot;equity&quot;: 8316744,
+      &quot;equity_parent&quot;: 8067340,
+      &quot;operating_cash_flow_ytd&quot;: 318867,
+      &quot;capex_ytd&quot;: -194922,
+      &quot;investing_cash_flow_ytd&quot;: -498048,
+      &quot;revenue_ytd&quot;: 3927973,
+      &quot;net_income_ytd&quot;: -44591,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=2&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=2&quot;
+      ],
+      &quot;gross_margin&quot;: 19.68,
+      &quot;operating_margin&quot;: -0.98,
+      &quot;pretax_margin&quot;: -4.69,
+      &quot;net_margin&quot;: -4.13,
+      &quot;net_margin_parent&quot;: -3.69,
+      &quot;debt_ratio&quot;: 35.88,
+      &quot;current_ratio&quot;: 1.96,
+      &quot;quick_assets&quot;: 2947155,
+      &quot;quick_ratio&quot;: 0.87,
+      &quot;operating_cash_flow&quot;: 79707,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -89125,
+      &quot;investing_cash_flow&quot;: -292497
+    },
+    {
+      &quot;period&quot;: &quot;2025Q1&quot;,
+      &quot;period_end&quot;: &quot;2025-03-31&quot;,
+      &quot;revenue&quot;: 1940988,
+      &quot;cost_of_revenue&quot;: 1507802,
+      &quot;gross_profit&quot;: 433186,
+      &quot;operating_income&quot;: 19761,
+      &quot;pretax_income&quot;: 47164,
+      &quot;net_income&quot;: 37458,
+      &quot;net_income_parent&quot;: 38070,
+      &quot;eps&quot;: 0.07,
+      &quot;cash&quot;: 1414457,
+      &quot;fin_assets_fvtpl_current&quot;: 67780,
+      &quot;fin_assets_fvoci_current&quot;: null,
+      &quot;fin_assets_amortized_current&quot;: 0,
+      &quot;notes_receivable&quot;: 121853,
+      &quot;accounts_receivable&quot;: 1496566,
+      &quot;accounts_receivable_related&quot;: null,
+      &quot;inventory&quot;: 3523253,
+      &quot;current_assets&quot;: 6875663,
+      &quot;total_assets&quot;: 13305242,
+      &quot;notes_payable&quot;: 52162,
+      &quot;accounts_payable&quot;: 671892,
+      &quot;accounts_payable_related&quot;: null,
+      &quot;current_liabilities&quot;: 3534992,
+      &quot;total_liabilities&quot;: 4692550,
+      &quot;equity&quot;: 8612692,
+      &quot;equity_parent&quot;: 8341019,
+      &quot;operating_cash_flow_ytd&quot;: 239160,
+      &quot;capex_ytd&quot;: -105797,
+      &quot;investing_cash_flow_ytd&quot;: -205551,
+      &quot;revenue_ytd&quot;: 1940988,
+      &quot;net_income_ytd&quot;: 37458,
+      &quot;source_urls&quot;: [
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb04?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb03?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=1&quot;,
+        &quot;https://mopsov.twse.com.tw/mops/web/ajax_t164sb05?encodeURIComponent=1&amp;step=1&amp;firstin=1&amp;off=1&amp;queryName=co_id&amp;inpuType=co_id&amp;TYPEK=all&amp;isnew=false&amp;co_id=1711&amp;year=114&amp;season=1&quot;
+      ],
+      &quot;gross_margin&quot;: 22.32,
+      &quot;operating_margin&quot;: 1.02,
+      &quot;pretax_margin&quot;: 2.43,
+      &quot;net_margin&quot;: 1.93,
+      &quot;net_margin_parent&quot;: 1.96,
+      &quot;debt_ratio&quot;: 35.27,
+      &quot;current_ratio&quot;: 1.95,
+      &quot;quick_assets&quot;: 3100656,
+      &quot;quick_ratio&quot;: 0.88,
+      &quot;operating_cash_flow&quot;: 239160,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;capex&quot;: -105797,
+      &quot;investing_cash_flow&quot;: -205551
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-10-21T10:33:41&quot;
+}</pre></details></section>
+</main>
+<footer>由 build_sources.py 產出｜2026-10-21</footer>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>奇美實業｜原始資料（silver bundle）</title>
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(22px,3.5vw,36px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.mt{margin-top:16px}
+.note,.small{font-size:12px;color:var(--muted)}
+h2{font-size:20px;margin:6px 0 14px}
+h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.kv td:first-child{color:var(--muted);white-space:nowrap;width:220px}
+.kv{table-layout:fixed}.kv td{overflow-wrap:anywhere}.kv td table{table-layout:fixed;width:100%}.kv td table td:first-child{white-space:normal;width:auto;color:inherit}
+.null{color:#b0b8c4;font-style:italic}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.t-ir_conference{background:#1f5aa6}.t-ir_summary{background:#16835d}.t-ir_document{background:#bd7300}.t-ir_document_file{background:#8a6d3b}.t-ir_financials{background:#20a4b7}.t-app_company{background:#65738a}
+pre{background:#0b1f3a;color:#e6eefc;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;max-height:520px}
+details summary{cursor:pointer;color:var(--blue);font-size:13px;margin:6px 0}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:12px 16px;border-radius:8px;margin-top:12px;font-size:13px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--blue);word-break:break-all}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.toc a{margin-right:14px;font-size:13px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}pre{max-height:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="badge">ir_calendar｜來源檢視｜silver bundle</div>
+  <h1>奇美實業｜原始資料（silver bundle）</h1>
+  <p>來源檔：奇美實業.md｜company_key TPE:1763｜period 2026Q2｜產出日期：2026-10-21</p>
+</header>
+<main class="wrap">
+
+<section class="card">
+  <h2>這是什麼</h2>
+  <p>把 Databricks silver 各表以 <code>company_key</code>（＋ <code>period</code>）join 後包成一個 JSON，
+  形狀 = <code>build_supplier_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>奇美實業.md</code> 就是這個 JSON，
+  <code>build_report.py</code> 讀它產出財務體質報告。period = <b>2026Q2</b>。</p>
+  <table><thead><tr><th>鍵</th><th>來源 silver 表</th><th>內容</th></tr></thead><tbody>
+  <tr><td><a href='#company'><code>company</code></a></td><td><code>s_ir_calendar_company</code></td><td>公司主檔一列</td></tr><tr><td><a href='#fin_rows'><code>fin_rows</code></a></td><td><code>s_ir_calendar_financials</code></td><td>7 列（年度 5、季別 2）</td></tr><tr><td><a href='#summary'><code>summary</code></a></td><td><code>s_ir_calendar_summary</code></td><td>null（無法說彙整）</td></tr><tr><td><a href='#conference'><code>conference</code></a></td><td><code>s_ir_calendar_conference</code></td><td>null（無法說場次）</td></tr><tr><td><a href='#docs'><code>docs</code></a></td><td><code>s_ir_calendar_document_text</code></td><td>1 份（Financial_Statements）</td></tr>
+  </tbody></table>
+  <div class="callout">silver 是從 bronze payload 轉出來的（<code>consume_batches</code> [c06]），欄位已攤平、型別已轉；
+  要看爬蟲原文請看同資料夾的 <code>奇美實業_爬蟲資料.html</code>。</div>
+</section><section class="card mt" id="company"><h2>company（公司主檔）</h2><table class="kv"><tbody><tr><td>company_key</td><td>TPE:1763</td></tr><tr><td>company_name</td><td>奇美實業股份有限公司</td></tr><tr><td>english_name</td><td>CHIMEI CORPORATION</td></tr><tr><td>stock_code</td><td>1763</td></tr><tr><td>market</td><td>TPE</td></tr><tr><td>market_type</td><td><span class="null">null</span></td></tr><tr><td>category_name</td><td>SUPPLIER</td></tr><tr><td>industry</td><td><span class="null">null</span></td></tr><tr><td>website_url</td><td><span class="null">null</span></td></tr><tr><td>ir_url</td><td><span class="null">null</span></td></tr><tr><td>aliases</td><td><pre style="max-height:240px;margin:0">[
+  &quot;CHIMEI CORPORATION&quot;,
+  &quot;奇美實業&quot;
+]</pre></td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>remark</td><td><span class="null">null</span></td></tr><tr><td>is_active</td><td>true</td></tr><tr><td>profile_source</td><td><span class="null">null</span></td></tr><tr><td>file_slug</td><td>Chimei</td></tr><tr><td>master_generated_at</td><td>2026-10-15 02:44:50</td></tr><tr><td>batch_id</td><td>000026_20261015T104450</td></tr><tr><td>seq</td><td>26</td></tr><tr><td>batch_path</td><td>master/company.json</td></tr><tr><td>updated_at</td><td>2026-10-20 08:57:38.454146</td></tr></tbody></table></section><section class="card mt" id="fin_rows"><h2>fin_rows（財報數據，7 列）</h2><div style="overflow:auto"><table><thead><tr><th class="num">類型</th><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num">annual</td><td class="num">2021FY</td><td class="num">2021</td><td class="num">2021-12-31</td><td class="num">178,671,691</td><td class="num"><span class="null">—</span></td><td class="num">46,494,950</td><td class="num">36,090,669</td><td class="num">36,382,221</td><td class="num">25,699,089</td><td class="num"><span class="null">—</span></td><td class="num">12.08</td><td class="num">18,772,101</td><td class="num"><span class="null">—</span></td><td class="num">-12,037,081</td><td class="num"><span class="null">—</span></td><td class="num">-3,261,223</td><td class="num">153,861,896</td><td class="num">46,349,835</td><td class="num">107,512,061</td><td class="num">26.02</td><td class="num">20.20</td><td class="num"><span class="null">—</span></td><td class="num">14.38</td><td class="num"><span class="null">—</span></td><td class="num">30.12</td><td class="num">3.96</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2022FY</td><td class="num">2022</td><td class="num">2022-12-31</td><td class="num">153,538,492</td><td class="num"><span class="null">—</span></td><td class="num">15,460,464</td><td class="num">5,100,489</td><td class="num">5,558,149</td><td class="num">3,011,967</td><td class="num"><span class="null">—</span></td><td class="num">1.57</td><td class="num">14,182,938</td><td class="num"><span class="null">—</span></td><td class="num">-9,342,532</td><td class="num"><span class="null">—</span></td><td class="num">-9,314,465</td><td class="num">144,449,360</td><td class="num">45,901,628</td><td class="num">98,547,732</td><td class="num">10.07</td><td class="num">3.32</td><td class="num"><span class="null">—</span></td><td class="num">1.96</td><td class="num"><span class="null">—</span></td><td class="num">31.78</td><td class="num">2.89</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2023FY</td><td class="num">2023</td><td class="num">2023-12-31</td><td class="num">124,821,623</td><td class="num"><span class="null">—</span></td><td class="num">6,497,348</td><td class="num">-1,705,414</td><td class="num">-1,112,021</td><td class="num">-666,069</td><td class="num"><span class="null">—</span></td><td class="num">0.05</td><td class="num">1,841,636</td><td class="num"><span class="null">—</span></td><td class="num">-12,440,983</td><td class="num"><span class="null">—</span></td><td class="num">-12,242,931</td><td class="num">130,308,756</td><td class="num">38,276,841</td><td class="num">92,031,915</td><td class="num">5.21</td><td class="num">-1.37</td><td class="num"><span class="null">—</span></td><td class="num">-0.53</td><td class="num"><span class="null">—</span></td><td class="num">29.37</td><td class="num">3.27</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2024FY</td><td class="num">2024</td><td class="num">2024-12-31</td><td class="num">132,886,735</td><td class="num"><span class="null">—</span></td><td class="num">7,748,098</td><td class="num">-1,188,633</td><td class="num">-116,848</td><td class="num">176,649</td><td class="num"><span class="null">—</span></td><td class="num">0.38</td><td class="num">8,142,898</td><td class="num"><span class="null">—</span></td><td class="num">-10,447,766</td><td class="num"><span class="null">—</span></td><td class="num">-10,085,297</td><td class="num">140,082,873</td><td class="num">47,670,045</td><td class="num">92,412,828</td><td class="num">5.83</td><td class="num">-0.89</td><td class="num"><span class="null">—</span></td><td class="num">0.13</td><td class="num"><span class="null">—</span></td><td class="num">34.03</td><td class="num">2.30</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2025FY</td><td class="num">2025</td><td class="num">2025-12-31</td><td class="num">113,678,840</td><td class="num"><span class="null">—</span></td><td class="num">7,827,127</td><td class="num">-465,261</td><td class="num">552,856</td><td class="num">525,957</td><td class="num"><span class="null">—</span></td><td class="num">0.60</td><td class="num">10,653,071</td><td class="num"><span class="null">—</span></td><td class="num">-5,557,062</td><td class="num"><span class="null">—</span></td><td class="num">-5,483,264</td><td class="num">138,921,368</td><td class="num">49,112,204</td><td class="num">89,809,164</td><td class="num">6.89</td><td class="num">-0.41</td><td class="num"><span class="null">—</span></td><td class="num">0.46</td><td class="num"><span class="null">—</span></td><td class="num">35.35</td><td class="num">2.71</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q2</td><td class="num"></td><td class="num">2025-06-30</td><td class="num">59,987,246</td><td class="num"><span class="null">—</span></td><td class="num">4,644,444</td><td class="num">474,474</td><td class="num">436,505</td><td class="num">475,596</td><td class="num"><span class="null">—</span></td><td class="num">0.29</td><td class="num"><span class="null">—</span></td><td class="num">1,450,482</td><td class="num"><span class="null">—</span></td><td class="num">-3,448,664</td><td class="num"><span class="null">—</span></td><td class="num">134,702,369</td><td class="num">47,843,322</td><td class="num">86,859,047</td><td class="num">7.74</td><td class="num">0.79</td><td class="num"><span class="null">—</span></td><td class="num">0.79</td><td class="num"><span class="null">—</span></td><td class="num">35.52</td><td class="num">2.91</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2026Q2</td><td class="num"></td><td class="num">2026-06-30</td><td class="num">53,641,992</td><td class="num"><span class="null">—</span></td><td class="num">3,896,424</td><td class="num">29,926</td><td class="num">440,640</td><td class="num">435,758</td><td class="num">975,122</td><td class="num">0.55</td><td class="num"><span class="null">—</span></td><td class="num">-3,899,074</td><td class="num"><span class="null">—</span></td><td class="num">-2,016,252</td><td class="num"><span class="null">—</span></td><td class="num">139,818,079</td><td class="num">51,373,920</td><td class="num">88,444,159</td><td class="num">7.26</td><td class="num">0.06</td><td class="num"><span class="null">—</span></td><td class="num">0.81</td><td class="num"><span class="null">—</span></td><td class="num">36.74</td><td class="num">2.48</td><td class="num"></td></tr></tbody></table></div><div class="note">金額為原始單位（currency / unit 見第一列：台股 TWD 仟元、美股 USD 元）。</div></section><section class="card mt" id="summary"><h2>summary（法說彙整）</h2><p class="null">null — 這家在 s_ir_calendar_summary 沒有對應期別的列</p></section><section class="card mt" id="conference"><h2>conference（法說場次）</h2><p class=null>null — s_ir_calendar_conference 無對應期別的列</p></section><section class="card mt" id="docs"><h2>docs（解析後文件，1 份）</h2><h3>docs[0]：Chimei_Q2CY26_Financial_Statements.pdf（Financial_Statements）</h3><table class="kv"><tbody><tr><td>volume_path</td><td>/Volumes/micenter/mi3_datahub_prod/micenterfile_ext/unstructured_data_file/supplier/Chimei/Chimei_Q2CY26_Financial_Statements.pdf</td></tr><tr><td>file_name</td><td>Chimei_Q2CY26_Financial_Statements.pdf</td></tr><tr><td>doc_kind</td><td>Financial_Statements</td></tr><tr><td>sha256</td><td>9752fd1ad4d0c72a0896fe656c8c141b36bc2c96e2ce93c4281474db4b3bdc3a</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>text_chars</td><td>106871</td></tr><tr><td>page_count</td><td>54</td></tr><tr><td>parse_status</td><td>success</td></tr><tr><td>source_url</td><td><a href="https://doc.twse.com.tw/pdf/202602_1763_AI1_20261015_184048.pdf">https://doc.twse.com.tw/pdf/202602_1763_AI1_20261015_184048.pdf</a></td></tr><tr><td>truncated_for_export</td><td>true</td></tr></tbody></table><details><summary>text_md 全文（20,006 字，匯出時截斷）</summary><pre style="white-space:pre-wrap;max-height:720px">股票代碼：1763
+
+奇美實業股份有限公司及子公司
+合併財務報告暨會計師核閱報告
+
+民國一一五年及一一四年第二季
+
+公 司 地 址：台南市仁德區中正路一段398號
+電　　　話：(06)266-3000
+
+〜1〜
+
+目　　錄
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;項&lt;/th&gt;&lt;th&gt;目&lt;/th&gt;&lt;th&gt;頁次&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;一、封面&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;二、目錄&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;三、會計師核閱報告書&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;四、合併資產負債表&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;五、合併綜合損益表&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;5&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;六、合併權益變動表&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;6&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;七、合併現金流量表&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;八、合併財務報告附註&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(一)公司沿革&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;8&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(二)通過財務報告之日期及程序&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;8&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(三)新發布及修訂準則及解釋之適用&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;8~9&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(四)重大會計政策之彙總說明&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;10~11&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(五)重大會計判斷、估計及假設不確定性之主要來源&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;11&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(六)重要會計項目之說明&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;11~43&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(七)關係人交易&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;43~45&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(八)質押之資產&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;45&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(九)重大或有負債及未認列之合約承諾&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;46&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(十)重大之災害損失&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;46&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(十一)重大之期後事項&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;46&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(十二)其他&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;47&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(十三)附註揭露事項&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;1.重大交易事項相關資訊&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;47~50&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2.轉投資事業相關資訊&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;50~51&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3.大陸投資資訊&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;51~52&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;(十四)部門資訊&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;52&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+〜2〜
+
+KPMG
+
+安侯建業聯合會計師事務所
+KPMG
+
+台北市110615信義路5段7號68樓(台北101大樓)
+68F., TAIPEI 101 TOWER, No. 7, Sec. 5,
+Xinyi Road, Taipei City 110615, Taiwan (R.O.C.)
+
+&lt;table&gt;&lt;tr&gt;&lt;td&gt;電&lt;/td&gt;&lt;td&gt;話 Tel&lt;/td&gt;&lt;td&gt;+886 2 8101 6666&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;傳&lt;/td&gt;&lt;td&gt;真 Fax&lt;/td&gt;&lt;td&gt;+886 2 8101 6667&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;網&lt;/td&gt;&lt;td&gt;址 Web&lt;/td&gt;&lt;td&gt;kpmg.com/tw&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+會 計 師 核 閱 報 告
+
+奇美實業股份有限公司董事會　公鑒：
+
+前言
+
+奇美實業股份有限公司及其子公司民國一一五年及一一四年六月三十日之合併資產負債
+表，暨民國一一五年及一一四年一月一日至六月三十日之合併綜合損益表、合併權益變動表及
+合併現金流量表，以及合併財務報告附註(包括重大會計政策彙總)，業經本會計師核閱竣事。
+依證券發行人財務報告編製準則及金融監督管理委員會認可並發布生效之國際會計準則第三十
+四號「期中財務報導」編製允當表達之合併財務報告係管理階層之責任，本會計師之責任係依
+據核閱結果對合併財務報告作成結論。
+
+範圍
+
+除保留結論之基礎段所述者外，本會計師係依照核閱準則2410號「財務報表之核閱」執行
+核閱工作。核閱合併財務報告時所執行之程序包括查詢(主要向負責財務與會計事務之人員查
+詢)、分析性程序及其他核閱程序。核閱工作之範圍明顯小於查核工作之範圍，因此本會計師可
+能無法察覺所有可藉由查核工作辨認之重大事項，故無法表示查核意見。
+
+保留結論之基礎
+
+如合併財務報告附註四(二)所述，列入上開合併財務報告之部份非重要子公司，係依該等
+被投資公司同期間未經會計師核閱之財務報告為依據，民國一一五年及一一四年六月三十日之
+資產總額分別為6,850,283千元及6,633,106千元，分別占合併資產總額之4.90%及4.92%；負債總
+額分別為1,670,374千元及1,564,391千元，分別占合併負債總額之3.25%及3.27%；民國一一五年
+及一一四年一月一日至六月三十日之綜合損益分別為利益660,945千元及利益477,041千元，分別
+占合併綜合損益之28.13%及(13.85)%。
+除上段所述者外，如合併財務報告附註六(六)所述，奇美實業股份有限公司及其子公司民
+國一一五年及一一四年六月三十日採用權益法之投資分別為419,160千元及361,409千元，暨民國
+一一五年及一一四年一月一日至六月三十日採用權益法之關聯企業及合資損益之份額分別為利
+益35,850千元及利益39,243千元，係依該等被投資公司同期間未經會計師核閱之財務報告為依
+據。
+
+〜3〜
+
+KPMG, a Taiwan partnership and a member firm of the KPMG global organization of independent member firms affiliated with KPMG International Limited, a private English company limited by guarantee.
+
+KPMG
+
+保留結論
+
+依本會計師核閱結果，除保留結論之基礎段所述該等被投資公司財務報告倘經會計師核
+閱，對合併財務報告可能有所調整之影響外，並未發現上開合併財務報告在所有重大方面有未
+依照證券發行人財務報告編製準則及金融監督管理委員會認可並發布生效之國際會計準則第三
+十四號「期中財務報導」編製，致無法允當表達奇美實業股份有限公司及其子公司民國一一五
+年及一一四年六月三十日之合併財務狀況，暨民國一一五年及一一四年一月一日至六月三十日
+之合併財務績效及合併現金流量之情事。
+
+安 侯 建 業 聯 合 會 計 師 事 務 所
+
+吴 赵仁
+
+吴道子印
+
+會　計　師：
+
+連淑芬
+
+重光元年
+
+金管證審字第1070304941號
+金管證六字第0940100754號
+證券主管機關
+核准簽證文號
+：
+民　國 一一五 年 八 月 十 日
+
+〜3-1〜
+
+奇美實業股份有限公司及子公司
+
+合併資產負債表
+
+民國一一五年六月三十日、一一四年十二月三十一日及六月三十日
+
+單位：新台幣千元
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th colspan=&quot;2&quot;&gt;115.6.30&lt;/th&gt;&lt;th colspan=&quot;2&quot;&gt;114.12.31&lt;/th&gt;&lt;th colspan=&quot;2&quot;&gt;114.6.30&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;資產&lt;/th&gt;&lt;th&gt;金額&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;th&gt;金額&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;th&gt;金額&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;流動資產：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;現金及約當現金(附註六(一))&lt;/td&gt;&lt;td&gt;$ 22,794,147&lt;/td&gt;&lt;td&gt;16&lt;/td&gt;&lt;td&gt;29,449,440&lt;/td&gt;&lt;td&gt;21&lt;/td&gt;&lt;td&gt;21,692,334&lt;/td&gt;&lt;td&gt;16&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;透過損益按公允價值衡量之金融資產—流動(附註六(二)及八)&lt;/td&gt;&lt;td&gt;14,182,073&lt;/td&gt;&lt;td&gt;10&lt;/td&gt;&lt;td&gt;14,439,796&lt;/td&gt;&lt;td&gt;10&lt;/td&gt;&lt;td&gt;14,028,121&lt;/td&gt;&lt;td&gt;11&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;應收票據及帳款淨額(附註六(三)、七及八)&lt;/td&gt;&lt;td&gt;7,077,740&lt;/td&gt;&lt;td&gt;5&lt;/td&gt;&lt;td&gt;6,606,978&lt;/td&gt;&lt;td&gt;5&lt;/td&gt;&lt;td&gt;9,241,890&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他應收款(附註六(四)及七)&lt;/td&gt;&lt;td&gt;250,709&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;191,116&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;267,635&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;存貨(附註六(五))&lt;/td&gt;&lt;td&gt;21,544,838&lt;/td&gt;&lt;td&gt;16&lt;/td&gt;&lt;td&gt;14,612,873&lt;/td&gt;&lt;td&gt;11&lt;/td&gt;&lt;td&gt;16,250,717&lt;/td&gt;&lt;td&gt;12&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他流動資產—其他(附註六(十一)及八)&lt;/td&gt;&lt;td&gt;1,603,102&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,025,124&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,571,852&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;67,452,609&lt;/td&gt;&lt;td&gt;48&lt;/td&gt;&lt;td&gt;66,325,327&lt;/td&gt;&lt;td&gt;48&lt;/td&gt;&lt;td&gt;63,052,549&lt;/td&gt;&lt;td&gt;47&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;非流動資產：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;透過其他綜合損益按公允價值衡量之金融資產—非流動(附註六(二))&lt;/td&gt;&lt;td&gt;678,328&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;644,240&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;504,794&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;採用權益法之投資(附註六(六))&lt;/td&gt;&lt;td&gt;744,070&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;676,597&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;635,353&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;不動產、廠房及設備(附註六(八))&lt;/td&gt;&lt;td&gt;66,361,865&lt;/td&gt;&lt;td&gt;48&lt;/td&gt;&lt;td&gt;66,532,081&lt;/td&gt;&lt;td&gt;48&lt;/td&gt;&lt;td&gt;65,475,223&lt;/td&gt;&lt;td&gt;49&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;使用權資產(附註六(九))&lt;/td&gt;&lt;td&gt;1,901,113&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,923,898&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,905,792&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;無形資產(附註六(十))&lt;/td&gt;&lt;td&gt;991,029&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,099,371&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,119,066&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;遞延所得稅資產&lt;/td&gt;&lt;td&gt;1,077,446&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,059,143&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,203,665&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他非流動資產—其他(附註六(十一)及八)&lt;/td&gt;&lt;td&gt;611,619&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;660,711&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;805,927&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;72,365,470&lt;/td&gt;&lt;td&gt;52&lt;/td&gt;&lt;td&gt;72,596,041&lt;/td&gt;&lt;td&gt;52&lt;/td&gt;&lt;td&gt;71,649,820&lt;/td&gt;&lt;td&gt;53&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;資產總計&lt;/td&gt;&lt;td&gt;$ 139,818,079&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;138,921,368&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;134,702,369&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th colspan=&quot;3&quot;&gt;115.6.30&lt;/th&gt;&lt;th colspan=&quot;3&quot;&gt;114.12.31&lt;/th&gt;&lt;th colspan=&quot;3&quot;&gt;114.6.30&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;負債及權益&lt;/th&gt;&lt;th&gt;金額&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;th&gt;金額&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;th&gt;金額&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;流動負債：&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2100 短期借款(附註六(十二))&lt;/td&gt;&lt;td&gt;$ 13,122,679&lt;/td&gt;&lt;td&gt;10&lt;/td&gt;&lt;td&gt;10,160,541&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;td&gt;9,946,160&lt;/td&gt;&lt;td&gt;8&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2110 應付短期票券(附註六(十三))&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;49,978&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;149,857&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2170 應付票據及帳款(附註七)&lt;/td&gt;&lt;td&gt;3,916,430&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;3,708,368&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;3,986,849&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2200 其他應付款(附註七)&lt;/td&gt;&lt;td&gt;3,586,297&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;4,518,928&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;3,948,327&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2230 本期所得稅負債&lt;/td&gt;&lt;td&gt;422,428&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;133,773&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;21,798&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2280 租賃負債一流動(附註六(十六))&lt;/td&gt;&lt;td&gt;164,929&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;166,793&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;158,538&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2320 一年或一營業週期內到期長期負債(附註六(十四))&lt;/td&gt;&lt;td&gt;4,323,259&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;4,103,808&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;1,826,565&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2399 其他流動負債－其他(附註六(二十二)及七)&lt;/td&gt;&lt;td&gt;1,659,929&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,628,518&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,643,785&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;27,195,951&lt;/td&gt;&lt;td&gt;20&lt;/td&gt;&lt;td&gt;24,470,707&lt;/td&gt;&lt;td&gt;17&lt;/td&gt;&lt;td&gt;21,681,879&lt;/td&gt;&lt;td&gt;16&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;非流動負債：&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2530 應付公司債(附註六(十五))&lt;/td&gt;&lt;td&gt;3,100,000&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;3,100,000&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;3,100,000&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2540 長期借款(附註六(十四))&lt;/td&gt;&lt;td&gt;15,242,429&lt;/td&gt;&lt;td&gt;11&lt;/td&gt;&lt;td&gt;15,334,304&lt;/td&gt;&lt;td&gt;11&lt;/td&gt;&lt;td&gt;16,569,715&lt;/td&gt;&lt;td&gt;12&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2570 遞延所得稅負債&lt;/td&gt;&lt;td&gt;5,202,955&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;5,429,621&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;5,708,360&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2580 租賃負債－非流動(附註六(十六))&lt;/td&gt;&lt;td&gt;469,715&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;525,855&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;586,183&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2640 淨確定福利負債－非流動&lt;/td&gt;&lt;td&gt;22,238&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;22,530&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;21,298&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2670 其他非流動負債－其他(附註七)&lt;/td&gt;&lt;td&gt;140,632&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;229,187&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;175,887&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;24,177,969&lt;/td&gt;&lt;td&gt;17&lt;/td&gt;&lt;td&gt;24,641,497&lt;/td&gt;&lt;td&gt;18&lt;/td&gt;&lt;td&gt;26,161,443&lt;/td&gt;&lt;td&gt;20&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;負債總計&lt;/b&gt;&lt;/td&gt;&lt;td&gt;51,373,920&lt;/td&gt;&lt;td&gt;37&lt;/td&gt;&lt;td&gt;49,112,204&lt;/td&gt;&lt;td&gt;35&lt;/td&gt;&lt;td&gt;47,843,322&lt;/td&gt;&lt;td&gt;36&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;歸屬母公司業主之權益：&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3100 股本(附註六(十九))&lt;/td&gt;&lt;td&gt;18,167,380&lt;/td&gt;&lt;td&gt;13&lt;/td&gt;&lt;td&gt;18,167,665&lt;/td&gt;&lt;td&gt;13&lt;/td&gt;&lt;td&gt;18,167,665&lt;/td&gt;&lt;td&gt;13&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3200 資本公積(附註六(十九))&lt;/td&gt;&lt;td&gt;1,864,317&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,864,386&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;1,806,650&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3300 保留盈餘(附註六(十九))&lt;/td&gt;&lt;td&gt;60,413,541&lt;/td&gt;&lt;td&gt;43&lt;/td&gt;&lt;td&gt;61,232,612&lt;/td&gt;&lt;td&gt;44&lt;/td&gt;&lt;td&gt;60,861,873&lt;/td&gt;&lt;td&gt;45&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3400 其他權益(附註六(十九))&lt;/td&gt;&lt;td&gt;1,218,661&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;(300,486)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(2,748,573)&lt;/td&gt;&lt;td&gt;(2)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3500 庫藏股票(附註六(十九))&lt;/td&gt;&lt;td&gt;(2,494,047)&lt;/td&gt;&lt;td&gt;(2)&lt;/td&gt;&lt;td&gt;(665,990)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(453,120)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;歸屬於母公司業主之權益合計&lt;/td&gt;&lt;td&gt;79,169,852&lt;/td&gt;&lt;td&gt;56&lt;/td&gt;&lt;td&gt;80,298,187&lt;/td&gt;&lt;td&gt;58&lt;/td&gt;&lt;td&gt;77,634,495&lt;/td&gt;&lt;td&gt;57&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;36XX 非控制權益(附註六(七)及(十九))&lt;/td&gt;&lt;td&gt;9,274,307&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;td&gt;9,510,977&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;td&gt;9,224,552&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;權益總計&lt;/b&gt;&lt;/td&gt;&lt;td&gt;88,444,159&lt;/td&gt;&lt;td&gt;63&lt;/td&gt;&lt;td&gt;89,809,164&lt;/td&gt;&lt;td&gt;65&lt;/td&gt;&lt;td&gt;86,859,047&lt;/td&gt;&lt;td&gt;64&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;負債及權益總計&lt;/b&gt;&lt;/td&gt;&lt;td&gt;$ 139,818,079&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;138,921,368&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;134,702,369&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+(請詳閱後附合併財務報告附註)
+
+董事長：許家彰
+
+家常
+
+經理人：趙令瑜
+
+後附詳閱請
+
+〜4〜
+
+會計主管：林丕淇
+
+林
+宝
+润
+
+奇美實業股份有限公司及子公司
+
+合併綜合損益表
+
+民國一一五年及一一四年一月一日至六月三十日
+
+單位：新台幣千元
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;&lt;/th&gt;&lt;th colspan=&quot;2&quot;&gt;115年1月至6月&lt;/th&gt;&lt;th colspan=&quot;2&quot;&gt;114年1月至6月&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;金额&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;th&gt;金额&lt;/th&gt;&lt;th&gt;%&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;4000&lt;/td&gt;&lt;td&gt;营业收入（附注六（二十二）及七）&lt;/td&gt;&lt;td&gt;$ 53,641,992&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;59,987,246&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;5000&lt;/td&gt;&lt;td&gt;营业成本（附注六（五））&lt;/td&gt;&lt;td&gt;49,745,568&lt;/td&gt;&lt;td&gt;93&lt;/td&gt;&lt;td&gt;55,342,802&lt;/td&gt;&lt;td&gt;92&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;营业毛利&lt;/td&gt;&lt;td&gt;3,896,424&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;td&gt;4,644,444&lt;/td&gt;&lt;td&gt;8&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;营业费用：（附注六（二十三）及七）&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;6100&lt;/td&gt;&lt;td&gt;推销费用&lt;/td&gt;&lt;td&gt;2,208,018&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;2,410,361&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;6200&lt;/td&gt;&lt;td&gt;管理费用&lt;/td&gt;&lt;td&gt;1,086,748&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;1,137,548&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;6300&lt;/td&gt;&lt;td&gt;研究发展费用&lt;/td&gt;&lt;td&gt;571,732&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;622,061&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;3,866,498&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;td&gt;4,169,970&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;营业净利&lt;/td&gt;&lt;td&gt;29,926&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;474,474&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;营业外收入及支出：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;7100&lt;/td&gt;&lt;td&gt;利息收入（附注六（二十四））&lt;/td&gt;&lt;td&gt;290,137&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;280,256&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;7010&lt;/td&gt;&lt;td&gt;其他收入（附注六（二十四）及七）&lt;/td&gt;&lt;td&gt;100,192&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;66,383&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;7020&lt;/td&gt;&lt;td&gt;其他利益及损失（附注六（二十四）及七）&lt;/td&gt;&lt;td&gt;302,407&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;(176,989)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;7050&lt;/td&gt;&lt;td&gt;财务成本（附注六（八）、（二十四）及七）&lt;/td&gt;&lt;td&gt;(346,982)&lt;/td&gt;&lt;td&gt;(1)&lt;/td&gt;&lt;td&gt;(252,047)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;7060&lt;/td&gt;&lt;td&gt;采用权益法认列之关联企业及合资损益之份额（附注六（六））&lt;/td&gt;&lt;td&gt;64,960&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;44,428&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;410,714&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;(37,969)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;7900&lt;/td&gt;&lt;td&gt;税前净利&lt;/td&gt;&lt;td&gt;440,640&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;436,505&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;7950&lt;/td&gt;&lt;td&gt;减：所得税费用（利益）（附注四及六（十八））&lt;/td&gt;&lt;td&gt;4,882&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(39,091)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8200&lt;/td&gt;&lt;td&gt;本期净利&lt;/td&gt;&lt;td&gt;435,758&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;475,596&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;其他综合损益：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8310&lt;/td&gt;&lt;td&gt;不重分类至损益之项目&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8316&lt;/td&gt;&lt;td&gt;透过其他综合损益按公允价值衡量之权益工具投资未实现评价（损）益&lt;/td&gt;&lt;td&gt;34,088&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(100,439)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8349&lt;/td&gt;&lt;td&gt;减：与不重分类之项目相关之所得税&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;34,088&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(100,439)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8360&lt;/td&gt;&lt;td&gt;后续可能重分类至损益之项目&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8361&lt;/td&gt;&lt;td&gt;国外营运机构财务报表换算之兑换差额&lt;/td&gt;&lt;td&gt;1,866,442&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;(3,794,334)&lt;/td&gt;&lt;td&gt;(6)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8370&lt;/td&gt;&lt;td&gt;采用权益法认列之关联企业及合资之其他综合损益之份额&lt;/td&gt;&lt;td&gt;13,313&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(24,989)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8399&lt;/td&gt;&lt;td&gt;减：与可能重分类之项目相关之所得税&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;1,879,755&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;(3,819,323)&lt;/td&gt;&lt;td&gt;(6)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;本期其他综合（损）益（税后净额）&lt;/td&gt;&lt;td&gt;1,913,843&lt;/td&gt;&lt;td&gt;3&lt;/td&gt;&lt;td&gt;(3,919,762)&lt;/td&gt;&lt;td&gt;(6)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8500&lt;/td&gt;&lt;td&gt;本期综合损益总额&lt;/td&gt;&lt;td&gt;$ 2,349,601&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;(3,444,166)&lt;/td&gt;&lt;td&gt;(5)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;本期净利（损）归属：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8610&lt;/td&gt;&lt;td&gt;母公司业主&lt;/td&gt;&lt;td&gt;$ 975,122&lt;/td&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;531,006&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8620&lt;/td&gt;&lt;td&gt;非控制权益&lt;/td&gt;&lt;td&gt;(539,364)&lt;/td&gt;&lt;td&gt;(1)&lt;/td&gt;&lt;td&gt;(55,410)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;$ 435,758&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;475,596&lt;/td&gt;&lt;td&gt;1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;综合损益总额归属：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8710&lt;/td&gt;&lt;td&gt;母公司业主&lt;/td&gt;&lt;td&gt;$ 2,494,269&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;(2,577,320)&lt;/td&gt;&lt;td&gt;(4)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;8720&lt;/td&gt;&lt;td&gt;非控制权益&lt;/td&gt;&lt;td&gt;(144,668)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(866,846)&lt;/td&gt;&lt;td&gt;(1)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;$ 2,349,601&lt;/td&gt;&lt;td&gt;4&lt;/td&gt;&lt;td&gt;(3,444,166)&lt;/td&gt;&lt;td&gt;(5)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;基本每股盈余（元）（附注六（二十一））&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;9750&lt;/td&gt;&lt;td&gt;基本每股盈余（单位：新台币元）&lt;/td&gt;&lt;td&gt;$&lt;/td&gt;&lt;td&gt;0.55&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;0.29&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;9850&lt;/td&gt;&lt;td&gt;稀释每股盈余（单位：新台币元）&lt;/td&gt;&lt;td&gt;$&lt;/td&gt;&lt;td&gt;0.55&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;0.29&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+董事長：許家彰
+
+朝鮮家章
+
+(請詳閱後附合併財務報告附註)
+
+經理人：趙令瑜
+
+務報告書
+平明
+二爺
+
+會計主管：林丕淇
+
+王凝
+
+〜5〜
+
+奇美實業股份有限公司及子公司
+
+合併權益變動表
+
+民國一一五年及一一四年一月一日至六月三十日
+
+單位：新台幣千元
+
+&lt;u&gt;歸屬於母公司業主之權益&lt;/u&gt;
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th colspan=&quot;2&quot;&gt;股本&lt;/th&gt;&lt;th colspan=&quot;3&quot;&gt;保留盈餘&lt;/th&gt;&lt;th colspan=&quot;4&quot;&gt;其他權益項目&lt;/th&gt;&lt;th colspan=&quot;3&quot;&gt;&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;普通股本&lt;/th&gt;&lt;th&gt;资本公积&lt;/th&gt;&lt;th&gt;法定盈余公积&lt;/th&gt;&lt;th&gt;特别盈余公积&lt;/th&gt;&lt;th&gt;未分配盈余&lt;/th&gt;&lt;th&gt;国外营运机构财务报表换算之兑换差额&lt;/th&gt;&lt;th&gt;透过其他综合损益按公允价值衡量之金融资产未实现损益&lt;/th&gt;&lt;th&gt;员工未赚得酬劳&lt;/th&gt;&lt;th&gt;库藏股票&lt;/th&gt;&lt;th&gt;归属于母公司业主权益总计&lt;/th&gt;&lt;th&gt;非控制权益&lt;/th&gt;&lt;th&gt;权益总额&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;民国一一四年一月一日余额&lt;/td&gt;&lt;td&gt;$ 18,176,546&lt;/td&gt;&lt;td&gt;1,796,513&lt;/td&gt;&lt;td&gt;17,220,412&lt;/td&gt;&lt;td&gt;1,200,585&lt;/td&gt;&lt;td&gt;43,719,517&lt;/td&gt;&lt;td&gt;670,312&lt;/td&gt;&lt;td&gt;(309,692)&lt;/td&gt;&lt;td&gt;(1,763)&lt;/td&gt;&lt;td&gt;(163,456)&lt;/td&gt;&lt;td&gt;82,308,974&lt;/td&gt;&lt;td&gt;10,103,854&lt;/td&gt;&lt;td&gt;92,412,828&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;营业净利&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;531,006&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;531,006&lt;/td&gt;&lt;td&gt;(55,410)&lt;/td&gt;&lt;td&gt;475,596&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;本期其他综合损益&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(3,007,887)&lt;/td&gt;&lt;td&gt;(100,439)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(3,108,326)&lt;/td&gt;&lt;td&gt;(811,436)&lt;/td&gt;&lt;td&gt;(3,919,762)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;本期综合损益总额&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;531,006&lt;/td&gt;&lt;td&gt;(3,007,887)&lt;/td&gt;&lt;td&gt;(100,439)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(2,577,320)&lt;/td&gt;&lt;td&gt;(866,846)&lt;/td&gt;&lt;td&gt;(3,444,166)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;盈余指拨及分配：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;提列法定盈余公积&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;95,906&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(95,906)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;特别盈余公积迴转&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,200,585)&lt;/td&gt;&lt;td&gt;1,200,585&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;普通股现金股利&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,809,647)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,809,647)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,809,647)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;库藏股买回&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(289,664)&lt;/td&gt;&lt;td&gt;(289,664)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(289,664)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;对子公司所有权益变动&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;1,256&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;1,256&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;1,256&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;股份基础给付交易&lt;/td&gt;&lt;td&gt;(8,881)&lt;/td&gt;&lt;td&gt;8,881&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;896&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;896&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;896&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;非控制权益增减&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(12,456)&lt;/td&gt;&lt;td&gt;(12,456)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;民国一一四年六月三十日余额&lt;/td&gt;&lt;td&gt;$ 18,167,665&lt;/td&gt;&lt;td&gt;1,806,650&lt;/td&gt;&lt;td&gt;17,316,318&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;43,545,555&lt;/td&gt;&lt;td&gt;(2,337,575)&lt;/td&gt;&lt;td&gt;(410,131)&lt;/td&gt;&lt;td&gt;(867)&lt;/td&gt;&lt;td&gt;(453,120)&lt;/td&gt;&lt;td&gt;77,634,495&lt;/td&gt;&lt;td&gt;9,224,552&lt;/td&gt;&lt;td&gt;86,859,047&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;民国一一五年一月一日余额&lt;/td&gt;&lt;td&gt;$ 18,167,665&lt;/td&gt;&lt;td&gt;1,864,386&lt;/td&gt;&lt;td&gt;17,316,318&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;43,916,294&lt;/td&gt;&lt;td&gt;(44,627)&lt;/td&gt;&lt;td&gt;(255,679)&lt;/td&gt;&lt;td&gt;(180)&lt;/td&gt;&lt;td&gt;(665,990)&lt;/td&gt;&lt;td&gt;80,298,187&lt;/td&gt;&lt;td&gt;9,510,977&lt;/td&gt;&lt;td&gt;89,809,164&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;营业净利&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;975,122&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;975,122&lt;/td&gt;&lt;td&gt;(539,364)&lt;/td&gt;&lt;td&gt;435,758&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;本期其他综合损益&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;1,485,059&lt;/td&gt;&lt;td&gt;34,088&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;1,519,147&lt;/td&gt;&lt;td&gt;394,696&lt;/td&gt;&lt;td&gt;1,913,843&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;本期综合损益总额&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;975,122&lt;/td&gt;&lt;td&gt;1,485,059&lt;/td&gt;&lt;td&gt;34,088&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;2,494,269&lt;/td&gt;&lt;td&gt;(144,668)&lt;/td&gt;&lt;td&gt;2,349,601&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;盈余指拨及分配：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;提列法定盈余公积&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;90,174&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(90,174)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;提列特别盈余公积&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;300,306&lt;/td&gt;&lt;td&gt;(300,306)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;普通股现金股利&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,794,193)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,794,193)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,794,193)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;库藏股买回&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,828,057)&lt;/td&gt;&lt;td&gt;(1,828,057)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,828,057)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;对子公司所有权益变动&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;927&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;927&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;927&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;股份基础给付交易&lt;/td&gt;&lt;td&gt;(285)&lt;/td&gt;&lt;td&gt;(996)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,281)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(1,281)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;非控制权益增减&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;(92,002)&lt;/td&gt;&lt;td&gt;(92,002)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;民国一一五年六月三十日余额&lt;/td&gt;&lt;td&gt;$ 18,167,380&lt;/td&gt;&lt;td&gt;1,864,317&lt;/td&gt;&lt;td&gt;17,406,492&lt;/td&gt;&lt;td&gt;300,306&lt;/td&gt;&lt;td&gt;42,706,743&lt;/td&gt;&lt;td&gt;1,440,432&lt;/td&gt;&lt;td&gt;(221,591)&lt;/td&gt;&lt;td&gt;(180)&lt;/td&gt;&lt;td&gt;(2,494,047)&lt;/td&gt;&lt;td&gt;79,169,852&lt;/td&gt;&lt;td&gt;9,274,307&lt;/td&gt;&lt;td&gt;88,444,159&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+家章
+
+董事長：許家彰
+
+詳閱後附
+
+(請詳閱後附合併財務報告附註)
+
+經理人：趙令瑜
+
+王漢
+
+會計主管：林丕淇
+
+〜6〜
+
+奇美實業股份有限公司及子公司
+
+合併現金流量表
+
+民國一一五年及一一四年一月一日至六月三十日
+
+單位：新台幣千元
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;115年1月至6月&lt;/th&gt;&lt;th&gt;114年1月至6月&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;營業活動之現金流量：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;本期稅前淨利(損)&lt;/td&gt;&lt;td&gt;$ 440,640&lt;/td&gt;&lt;td&gt;436,505&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;調整項目：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;收益費損項目&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;折舊費用&lt;/td&gt;&lt;td&gt;3,365,863&lt;/td&gt;&lt;td&gt;2,920,644&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;攤銷費用&lt;/td&gt;&lt;td&gt;217,391&lt;/td&gt;&lt;td&gt;180,814&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;利息費用&lt;/td&gt;&lt;td&gt;346,982&lt;/td&gt;&lt;td&gt;252,047&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;利息收入&lt;/td&gt;&lt;td&gt;(290,137)&lt;/td&gt;&lt;td&gt;(280,256)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;股利收入&lt;/td&gt;&lt;td&gt;(67,985)&lt;/td&gt;&lt;td&gt;(47,179)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;員工酬勞成本&lt;/td&gt;&lt;td&gt;(1,281)&lt;/td&gt;&lt;td&gt;896&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;採用權益法認列之關聯企業及合資利益之份額&lt;/td&gt;&lt;td&gt;(64,960)&lt;/td&gt;&lt;td&gt;(44,428)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;處分及報廢不動產、廠房及設備利益&lt;/td&gt;&lt;td&gt;(21,576)&lt;/td&gt;&lt;td&gt;(723,232)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;處分投資利益&lt;/td&gt;&lt;td&gt;(21,080)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他&lt;/td&gt;&lt;td&gt;78,905&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;收益費損項目合計&lt;/td&gt;&lt;td&gt;3,542,122&lt;/td&gt;&lt;td&gt;2,259,306&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之資產／負債變動數：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之資產之淨變動：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;強制透過損益按公允價值衡量之金融資產&lt;/td&gt;&lt;td&gt;(56,591)&lt;/td&gt;&lt;td&gt;558,626&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;應收票據及帳款&lt;/td&gt;&lt;td&gt;(279,209)&lt;/td&gt;&lt;td&gt;289,649&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;存貨&lt;/td&gt;&lt;td&gt;(6,494,358)&lt;/td&gt;&lt;td&gt;(800,529)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他流動資產&lt;/td&gt;&lt;td&gt;(594,360)&lt;/td&gt;&lt;td&gt;(1,210,378)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之資產之淨變動合計&lt;/td&gt;&lt;td&gt;(7,424,518)&lt;/td&gt;&lt;td&gt;(1,162,632)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之負債之淨變動：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;應付票據及帳款&lt;/td&gt;&lt;td&gt;107,091&lt;/td&gt;&lt;td&gt;(284,038)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他應付款&lt;/td&gt;&lt;td&gt;(652,279)&lt;/td&gt;&lt;td&gt;176,764&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他流動負債&lt;/td&gt;&lt;td&gt;40,125&lt;/td&gt;&lt;td&gt;(41,958)&lt;/td&gt;&lt;/tr
+…（截尾）</pre></details></section>
+</main>
+<footer>由 build_sources.py 產出｜2026-10-21</footer>
+</body>
+</html>

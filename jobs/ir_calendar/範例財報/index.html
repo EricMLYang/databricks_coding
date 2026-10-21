@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>範例財報｜財報＋法說整合報告 × 兩種資料來源</title><style>
+*{box-sizing:border-box}body{margin:0;background:#edf7fc;color:#111111;font:15px/1.7 system-ui,'Noto Sans TC','Microsoft JhengHei',sans-serif}
+header{background:linear-gradient(110deg,#0066B3,#26A9E0);color:white;padding:34px max(22px,calc((100vw - 1100px)/2))}h1{margin:0}header p{margin:6px 0 0}
+main{max-width:1100px;margin:auto;padding:20px}
+.band{background:#7752A8;color:white;padding:12px 20px;border-radius:10px;margin:26px 0 14px;font-size:20px;font-weight:bold}
+section{background:white;border:1px solid #cbe7f6;border-radius:15px;padding:22px;margin:15px 0;box-shadow:0 5px 20px #0066b318}
+h2{margin:0 0 12px;color:#0066B3;font-size:20px}h3{color:#7752A8}
+table{border-collapse:collapse;width:100%;min-width:670px}th,td{text-align:left;border-bottom:1px solid #cbe7f6;padding:9px 11px;vertical-align:top}th{background:#def3fb;color:#0066B3}
+.scroll{overflow:auto}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:#def3fb;border-top:4px solid #26A9E0;border-radius:11px;padding:13px}.kpi:nth-child(2){border-color:#F5C400}.kpi:nth-child(3){border-color:#40A86B}.kpi:nth-child(4){border-color:#7752A8}
+.kpi b{display:block;font-size:23px;color:#111111}.kpi small,.mini{font-size:12px;color:#111111}
+.note{background:#fff9d9;border-left:4px solid #F5C400;padding:12px;margin:12px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{padding:14px;background:#f2eefa;border:1px solid #d9cbed;border-radius:10px}
+a{color:#0066B3}footer{padding:15px}
+.delta-positive{color:#238451;font-weight:700}.delta-negative{color:#C62828;font-weight:700}
+.trend-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:26px;margin-top:26px}
+.trend-card{border:1px solid #cbe7f6;border-radius:12px;padding:22px 24px;background:#fff;overflow:hidden}.trend-card h3{margin:0 0 12px;color:#7752A8;font-size:20px}.trend-card small{font-weight:normal;color:#444}
+.svgchart{width:100%;height:auto;display:block}.svgchart .ax{font-size:13px;fill:#444}.svgchart .val{font-size:14px;font-weight:700;fill:#111}.svgchart .ttl{font-size:14px;font-weight:700;fill:#333}.svgchart .miss{font-size:11px;fill:#7752A8}
+.chart-missing{padding:30px 12px;text-align:center;color:#444;background:#f7fbfe;border:1px dashed #cbe7f6;border-radius:10px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.three .card h3{margin:0 0 8px;font-size:16px}.three ul{margin:0;padding-left:18px}
+ul.qa{padding-left:18px}ul.qa li{margin-bottom:10px}
+details{margin:10px 0}summary{cursor:pointer;color:#0066B3}
+@media(max-width:720px){.three{grid-template-columns:1fr}}
+mark{background:#fff3b0;color:inherit;padding:0 3px;border-radius:3px}
+code{font-size:12px;background:#f2f6fa;padding:1px 4px;border-radius:4px}
+@media(max-width:720px){.grid,.two{grid-template-columns:1fr 1fr}}@media(max-width:480px){.grid,.two{grid-template-columns:1fr}}
+@media print{body{background:#fff}section{box-shadow:none;break-inside:avoid}mark{background:none}}
+</style></head>
+<body>
+<header><h1>供應商 財報＋法說整合報告 × 兩種資料來源</h1>
+<p>每家一個資料夾：<b>報告</b>（依 v20261007 版型產出）、<b>原始資料</b>（Databricks silver bundle，報告的輸入）、<b>爬蟲資料</b>（bronze payload：正式批次＝已進 Databricks；新版實測＝2026-10-21 爬蟲新版 dev 批次）</p>
+<p class="mini" style="color:#d8e8f7">產出日期：2026-10-21｜版本：v4</p></header>
+<main>
+<section><h2>五家供應商</h2>
+<div class="scroll"><table><tr><th>公司</th><th>bundle 期別</th><th>法說場次（行事曆＋爬蟲）</th><th>法說彙整</th><th>正式批次 bronze 對報告的幫助</th><th>新版爬蟲實測對報告的幫助</th><th>黃底數</th><th>頁面</th></tr>
+<tr><td><b>Corning</b><div class="mini">NYSE:GLW</div></td><td>2026Q2</td><td>2026-07-28（簡報／新聞稿，EDGAR）</td><td>無＋新版 1 場</td><td>無新增（與 bundle 相同）</td><td><b>有</b>：財報 +13 欄 → 速動比／應收付天數／母公司淨利率；法說 01–05 全填（management_views）、Q&amp;A 5 條、事業群 5 列、採購觀察 08</td><td>2<div class="mini">舊版 10</div></td><td><a href="Corning/Corning.html">報告</a>｜<a href="Corning/Corning_原始資料.html">原始資料</a>｜<a href="Corning/Corning_爬蟲資料.html">爬蟲資料 2026Q2</a>｜<a href="Corning/Corning_爬蟲資料_新版實測.html">爬蟲資料 2026Q2（新版）</a></td></tr><tr><td><b>南亞塑膠工業</b><div class="mini">TPE:1303</div></td><td>2026Q3</td><td>2026-08-21（簡報／新聞稿，MOPS）／2026-09-24（ONLINE，TWSE）／2026-10-13（ONLINE，TWSE）</td><td>2026Q3（2026-10-13）＋新版 2 場</td><td><b>有</b>：多一份 2026Q2 法說彙整＋兩場法說場次，已併入法說節</td><td><b>有</b>：財報 +20 欄 → 速動比／應收付天數／母公司淨利率；法說 01–05 全填（management_views）、Q&amp;A 0 條、事業群 4 列、採購觀察 08</td><td>5<div class="mini">舊版 12</div></td><td><a href="南亞塑膠工業/南亞塑膠工業.html">報告</a>｜<a href="南亞塑膠工業/南亞塑膠工業_原始資料.html">原始資料</a>｜<a href="南亞塑膠工業/南亞塑膠工業_爬蟲資料.html">爬蟲資料 2026Q2</a>｜<a href="南亞塑膠工業/南亞塑膠工業_爬蟲資料_Q3.html">爬蟲資料 2026Q3</a>｜<a href="南亞塑膠工業/南亞塑膠工業_爬蟲資料_新版實測.html">爬蟲資料 2026Q2（新版）</a>｜<a href="南亞塑膠工業/南亞塑膠工業_爬蟲資料_Q3_新版實測.html">爬蟲資料 2026Q3（新版）</a></td></tr><tr><td><b>奇美實業</b><div class="mini">TPE:1763</div></td><td>2026Q2</td><td>無</td><td>無</td><td>無新增；確認來源端就無法說</td><td><b>有</b>：財報 +20 欄 → 速動比／應收付天數／母公司淨利率；仍無法說（missing presentation）</td><td>14<div class="mini">舊版 21</div></td><td><a href="奇美實業/奇美實業.html">報告</a>｜<a href="奇美實業/奇美實業_原始資料.html">原始資料</a>｜<a href="奇美實業/奇美實業_爬蟲資料.html">爬蟲資料 2026Q2</a>｜<a href="奇美實業/奇美實業_爬蟲資料_新版實測.html">爬蟲資料 2026Q2（新版）</a></td></tr><tr><td><b>臺灣永光化學工業</b><div class="mini">TPE:1711</div></td><td>2026Q2</td><td>無</td><td>無</td><td>無新增；確認來源端就無法說</td><td><b>有</b>：財報 +20 欄 → 速動比／應收付天數／母公司淨利率；仍無法說（missing presentation）</td><td>13<div class="mini">舊版 20</div></td><td><a href="臺灣永光化學工業/臺灣永光化學工業.html">報告</a>｜<a href="臺灣永光化學工業/臺灣永光化學工業_原始資料.html">原始資料</a>｜<a href="臺灣永光化學工業/臺灣永光化學工業_爬蟲資料.html">爬蟲資料 2026Q2</a>｜<a href="臺灣永光化學工業/臺灣永光化學工業_爬蟲資料_新版實測.html">爬蟲資料 2026Q2（新版）</a></td></tr><tr><td><b>長興材料工業</b><div class="mini">TPE:1717</div></td><td>2026Q2</td><td>2026-08-13（法說會，新版實測 DEV_SAMPLE）</td><td>2026Q2（2026-09-21）＋新版 1 場</td><td>無新增；發現 8-13 法說場次未進行事曆</td><td><b>有</b>：財報 +20 欄 → 速動比／應收付天數／母公司淨利率；法說 01–05 全填（management_views）、Q&amp;A 1 條、事業群 4 列、採購觀察 08</td><td>3<div class="mini">舊版 15</div></td><td><a href="長興材料工業/長興材料工業.html">報告</a>｜<a href="長興材料工業/長興材料工業_原始資料.html">原始資料</a>｜<a href="長興材料工業/長興材料工業_爬蟲資料.html">爬蟲資料 2026Q2</a>｜<a href="長興材料工業/長興材料工業_爬蟲資料_新版實測.html">爬蟲資料 2026Q2（新版）</a></td></tr></table></div>
+<div class="note">黃底 <mark>資料缺</mark> 為資料集給不出的欄位；「舊版」黃底數＝只用 bundle＋正式批次時的數字。覆蓋度結論與對 pipeline 的建議見 <code>模板覆蓋度評估.md</code>。</div>
+</section>
+</main>
+<footer class="mini">範例財報｜2026-10-21｜Version v4</footer>
+</body></html>

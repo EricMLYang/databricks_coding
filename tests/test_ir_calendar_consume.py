@@ -176,7 +176,11 @@ SUMMARY = {
                 # 2026-10 新增的五個選填欄位
                 "headline_metrics": [{"metric": "營收", "period": "2026Q2", "value": "NT$87.56 億", "yoy": "-3.78%", "note": ""}],
                 "management_views": [{"topic": "本業需求", "view": "下半年回溫"}],
-                "positive_signals": ["p1"], "watch_items": ["w1", "w2"], "open_questions": []},
+                "positive_signals": ["p1"], "watch_items": ["w1", "w2"], "open_questions": [],
+                # 2026-10-21 爬蟲新版三個鍵
+                "reported_period": "2026 H1",
+                "business_segments": [{"segment": "電視", "revenue": "HK$10 億", "revenue_yoy": "+5%", "operating_margin": None, "opm_yoy": None, "note": "n"}],
+                "qa_highlights": [{"question": "q1", "answer": "a1"}]},
 }  # fmt: skip
 DOC_FILE = {
     "path": "docs/HK_1070/2026Q2/TCL-Electronics_Q2CY26_Financial_Statements.pdf",
@@ -364,6 +368,9 @@ def test_transform_summary(mod, df_bronze):
     assert r["headline_metrics"][0].asDict() == {"metric": "營收", "period": "2026Q2", "value": "NT$87.56 億",
                                                  "yoy": "-3.78%", "note": ""}
     assert r["management_views"][0]["topic"] == "本業需求"
+    assert r["reported_period"] == "2026 H1"
+    assert r["business_segments"][0].asDict() == {"segment": "電視", "revenue": "HK$10 億", "revenue_yoy": "+5%", "operating_margin": None, "opm_yoy": None, "note": "n"}
+    assert r["qa_highlights"][0].asDict() == {"question": "q1", "answer": "a1"}
     assert (r["positive_signals"], r["watch_items"], r["open_questions"]) == (["p1"], ["w1", "w2"], [])
 
 
@@ -377,7 +384,8 @@ def test_transform_summary_old_shape_new_fields_null(mod, spark):
                                schema=mod.BRONZE_SCHEMA)
     r = mod.transform_summary(df).collect()[0]
     assert r["core_points"] == ["a", "b"]
-    assert all(r[c] is None for c in ("headline_metrics", "management_views", "positive_signals", "watch_items", "open_questions"))
+    assert all(r[c] is None for c in ("headline_metrics", "management_views", "positive_signals", "watch_items", "open_questions",
+                                      "reported_period", "business_segments", "qa_highlights"))
 
 
 def test_transform_document_file_latest_wins(mod, df_bronze):
@@ -500,6 +508,11 @@ FIN_TW = {
          "current_assets": 1, "total_assets": 1000, "current_liabilities": 1, "total_liabilities": 450.7, "equity": 549.3,
          "operating_cash_flow": 300, "capex": -50, "investing_cash_flow": -80,
          "gross_margin": 9.86, "operating_margin": 2.47, "net_margin": 1.97, "debt_ratio": 45.07, "current_ratio": 1.0,
+         # 2026-10-21 爬蟲新版欄位（交代文件 20261021 §1.1）
+         "cash": 100, "fin_assets_fvtpl_current": 10, "fin_assets_fvoci_current": None, "fin_assets_amortized_current": None,
+         "notes_receivable": 5, "accounts_receivable": 200, "accounts_receivable_related": 2, "inventory": 300,
+         "notes_payable": None, "accounts_payable": 150, "accounts_payable_related": 1, "equity_parent": 540,
+         "pretax_margin": 2.22, "net_margin_parent": 1.92, "quick_assets": 317, "quick_ratio": 317.0, "dso_days": 3.6, "dpo_days": 2.9, "days_basis": "end",
          "source_urls": ["https://mops/is", "https://mops/bs", "https://mops/cf"]},
     ],
     "quarterly": [
@@ -507,7 +520,9 @@ FIN_TW = {
          "total_assets": 1000, "operating_cash_flow_ytd": 300, "capex_ytd": -50,
          "derived": ["revenue", "net_income"], "source_urls": ["https://mops/is"]},
         {"period": "2025Q3", "period_end": "2025-09-30", "revenue": 5100000, "eps": 0.3, "revenue_ytd": 15284221,
-         "net_income_ytd": 300000, "operating_cash_flow_ytd": 200, "capex_ytd": -30, "source_urls": []},
+         "net_income_ytd": 300000, "operating_cash_flow_ytd": 200, "capex_ytd": -30, "investing_cash_flow_ytd": -60,
+         "operating_cash_flow": 120, "capex": -20, "investing_cash_flow": -40, "quick_ratio": 0.9,
+         "derived": ["operating_cash_flow", "capex", "investing_cash_flow"], "source_urls": []},
     ],
     "generated_at": "2026-10-10T09:00:00",
 }  # fmt: skip
@@ -538,9 +553,16 @@ def test_transform_financials(mod, spark):
     assert (fy.period_type, fy.fiscal_year, fy.period_end) == ("annual", 2025, date(2025, 12, 31))
     assert (fy.currency, fy.unit, fy.revenue, fy.eps, fy.debt_ratio) == ("TWD", "thousand", 20284221.0, -0.98, 45.07)
     assert fy.capex == -50 and fy.investing_cash_flow == -80 and len(fy.source_urls) == 3 and fy.derived is None
+    assert (fy.cash, fy.accounts_receivable, fy.accounts_payable, fy.inventory, fy.equity_parent) == (100, 200, 150, 300, 540)
+    assert (fy.quick_ratio, fy.dso_days, fy.dpo_days, fy.days_basis, fy.net_margin_parent) == (317.0, 3.6, 2.9, "end", 1.92)
+    assert fy.fin_assets_fvoci_current is None and fy.notes_payable is None
     q4 = out[("TPE:2353", "2025Q4")]
     assert (q4.period_type, q4.fiscal_year, q4.eps, q4.derived) == ("quarterly", None, None, ["revenue", "net_income"])
-    assert out[("TPE:2353", "2025Q3")].revenue_ytd == 15284221
+    q3 = out[("TPE:2353", "2025Q3")]
+    assert q3.revenue_ytd == 15284221 and q3.investing_cash_flow_ytd == -60
+    assert (q3.operating_cash_flow, q3.capex, q3.investing_cash_flow, q3.quick_ratio) == (120, -20, -40, 0.9)   # 新版：季別單季推算值
+    assert q3.derived == ["operating_cash_flow", "capex", "investing_cash_flow"] and q3.days_basis is None
+    assert q4.cash is None and q4.quick_ratio is None                                                       # 舊形狀的列：新欄 NULL
     us = out[("NYSE:MMM", "2025FY")]
     assert (us.unit, us.revenue, us.derived) == ("one", 24575000000.0, ["gross_profit"])    # 超過 INT 範圍
     assert us.batch_path == "financials/NYSE_MMM.json" and us.seq == 10

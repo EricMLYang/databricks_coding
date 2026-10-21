@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>南亞塑膠工業｜原始資料（silver bundle）</title>
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(22px,3.5vw,36px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.mt{margin-top:16px}
+.note,.small{font-size:12px;color:var(--muted)}
+h2{font-size:20px;margin:6px 0 14px}
+h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.kv td:first-child{color:var(--muted);white-space:nowrap;width:220px}
+.kv{table-layout:fixed}.kv td{overflow-wrap:anywhere}.kv td table{table-layout:fixed;width:100%}.kv td table td:first-child{white-space:normal;width:auto;color:inherit}
+.null{color:#b0b8c4;font-style:italic}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.t-ir_conference{background:#1f5aa6}.t-ir_summary{background:#16835d}.t-ir_document{background:#bd7300}.t-ir_document_file{background:#8a6d3b}.t-ir_financials{background:#20a4b7}.t-app_company{background:#65738a}
+pre{background:#0b1f3a;color:#e6eefc;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;max-height:520px}
+details summary{cursor:pointer;color:var(--blue);font-size:13px;margin:6px 0}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:12px 16px;border-radius:8px;margin-top:12px;font-size:13px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--blue);word-break:break-all}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.toc a{margin-right:14px;font-size:13px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}pre{max-height:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="badge">ir_calendar｜來源檢視｜silver bundle</div>
+  <h1>南亞塑膠工業｜原始資料（silver bundle）</h1>
+  <p>來源檔：南亞塑膠工業.md｜company_key TPE:1303｜period 2026Q3｜產出日期：2026-10-21</p>
+</header>
+<main class="wrap">
+
+<section class="card">
+  <h2>這是什麼</h2>
+  <p>把 Databricks silver 各表以 <code>company_key</code>（＋ <code>period</code>）join 後包成一個 JSON，
+  形狀 = <code>build_supplier_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>南亞塑膠工業.md</code> 就是這個 JSON，
+  <code>build_report.py</code> 讀它產出財務體質報告。period = <b>2026Q3</b>。</p>
+  <table><thead><tr><th>鍵</th><th>來源 silver 表</th><th>內容</th></tr></thead><tbody>
+  <tr><td><a href='#company'><code>company</code></a></td><td><code>s_ir_calendar_company</code></td><td>公司主檔一列</td></tr><tr><td><a href='#fin_rows'><code>fin_rows</code></a></td><td><code>s_ir_calendar_financials</code></td><td>11 列（年度 5、季別 6）</td></tr><tr><td><a href='#summary'><code>summary</code></a></td><td><code>s_ir_calendar_summary</code></td><td>2026Q3 彙整一列（crawled_at 2026-10-13 11:30:30）</td></tr><tr><td><a href='#conference'><code>conference</code></a></td><td><code>s_ir_calendar_conference</code></td><td>2026-10-13 ONLINE</td></tr><tr><td><a href='#docs'><code>docs</code></a></td><td><code>s_ir_calendar_document_text</code></td><td>1 份（Presentation）</td></tr>
+  </tbody></table>
+  <div class="callout">silver 是從 bronze payload 轉出來的（<code>consume_batches</code> [c06]），欄位已攤平、型別已轉；
+  要看爬蟲原文請看同資料夾的 <code>南亞塑膠工業_爬蟲資料.html</code>。</div>
+</section><section class="card mt" id="company"><h2>company（公司主檔）</h2><table class="kv"><tbody><tr><td>company_key</td><td>TPE:1303</td></tr><tr><td>company_name</td><td>南亞塑膠工業</td></tr><tr><td>english_name</td><td>Nan Ya Plastics Corp.</td></tr><tr><td>stock_code</td><td>1303</td></tr><tr><td>market</td><td>TPE</td></tr><tr><td>market_type</td><td>LISTED</td></tr><tr><td>category_name</td><td>SUPPLIER</td></tr><tr><td>industry</td><td>塑膠工業</td></tr><tr><td>website_url</td><td><a href="http://www.npc.com.tw">http://www.npc.com.tw</a></td></tr><tr><td>ir_url</td><td><a href="http://www.npc.com.tw">http://www.npc.com.tw</a></td></tr><tr><td>aliases</td><td><pre style="max-height:240px;margin:0">[
+  &quot;Nan Ya Plastics Corp.&quot;
+]</pre></td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>remark</td><td><span class="null">null</span></td></tr><tr><td>is_active</td><td>true</td></tr><tr><td>profile_source</td><td>TWSE/TPEx OpenAPI 公司基本資料</td></tr><tr><td>file_slug</td><td>Nan-Ya-Plastics</td></tr><tr><td>master_generated_at</td><td>2026-10-15 02:44:50</td></tr><tr><td>batch_id</td><td>000026_20261015T104450</td></tr><tr><td>seq</td><td>26</td></tr><tr><td>batch_path</td><td>master/company.json</td></tr><tr><td>updated_at</td><td>2026-10-20 08:57:38.454146</td></tr></tbody></table></section><section class="card mt" id="fin_rows"><h2>fin_rows（財報數據，11 列）</h2><div style="overflow:auto"><table><thead><tr><th class="num">類型</th><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num">annual</td><td class="num">2021FY</td><td class="num">2021</td><td class="num">2021-12-31</td><td class="num">411,670,391</td><td class="num"><span class="null">—</span></td><td class="num">103,845,308</td><td class="num">81,000,040</td><td class="num">103,463,955</td><td class="num">84,832,825</td><td class="num"><span class="null">—</span></td><td class="num">10.25</td><td class="num">78,876,308</td><td class="num"><span class="null">—</span></td><td class="num">-29,178,142</td><td class="num"><span class="null">—</span></td><td class="num">-33,307,906</td><td class="num">668,695,386</td><td class="num">239,954,616</td><td class="num">428,740,770</td><td class="num">25.23</td><td class="num">19.68</td><td class="num"><span class="null">—</span></td><td class="num">20.61</td><td class="num"><span class="null">—</span></td><td class="num">35.88</td><td class="num">2.25</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2022FY</td><td class="num">2022</td><td class="num">2022-12-31</td><td class="num">355,183,300</td><td class="num"><span class="null">—</span></td><td class="num">53,908,401</td><td class="num">32,029,840</td><td class="num">47,550,832</td><td class="num">38,484,719</td><td class="num"><span class="null">—</span></td><td class="num">4.05</td><td class="num">75,296,335</td><td class="num"><span class="null">—</span></td><td class="num">-31,241,870</td><td class="num"><span class="null">—</span></td><td class="num">-41,375,201</td><td class="num">665,316,156</td><td class="num">271,214,726</td><td class="num">394,101,430</td><td class="num">15.18</td><td class="num">9.02</td><td class="num"><span class="null">—</span></td><td class="num">10.84</td><td class="num"><span class="null">—</span></td><td class="num">40.76</td><td class="num">1.43</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2023FY</td><td class="num">2023</td><td class="num">2023-12-31</td><td class="num">259,755,344</td><td class="num"><span class="null">—</span></td><td class="num">19,226,303</td><td class="num">1,983,852</td><td class="num">9,130,315</td><td class="num">8,110,047</td><td class="num"><span class="null">—</span></td><td class="num">0.80</td><td class="num">35,677,698</td><td class="num"><span class="null">—</span></td><td class="num">-23,957,751</td><td class="num"><span class="null">—</span></td><td class="num">-31,407,694</td><td class="num">648,527,953</td><td class="num">271,443,894</td><td class="num">377,084,059</td><td class="num">7.40</td><td class="num">0.76</td><td class="num"><span class="null">—</span></td><td class="num">3.12</td><td class="num"><span class="null">—</span></td><td class="num">41.86</td><td class="num">1.69</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2024FY</td><td class="num">2024</td><td class="num">2024-12-31</td><td class="num">259,608,483</td><td class="num"><span class="null">—</span></td><td class="num">18,574,037</td><td class="num">447,534</td><td class="num">4,523,470</td><td class="num">3,307,170</td><td class="num"><span class="null">—</span></td><td class="num">0.42</td><td class="num">18,785,832</td><td class="num"><span class="null">—</span></td><td class="num">-12,640,451</td><td class="num"><span class="null">—</span></td><td class="num">-17,900,172</td><td class="num">617,473,497</td><td class="num">254,870,192</td><td class="num">362,603,305</td><td class="num">7.15</td><td class="num">0.17</td><td class="num"><span class="null">—</span></td><td class="num">1.27</td><td class="num"><span class="null">—</span></td><td class="num">41.28</td><td class="num">1.32</td><td class="num"></td></tr><tr><td class="num">annual</td><td class="num">2025FY</td><td class="num">2025</td><td class="num">2025-12-31</td><td class="num">259,911,744</td><td class="num"><span class="null">—</span></td><td class="num">21,599,221</td><td class="num">3,703,579</td><td class="num">6,458,894</td><td class="num">5,065,640</td><td class="num"><span class="null">—</span></td><td class="num">0.57</td><td class="num">8,649,366</td><td class="num"><span class="null">—</span></td><td class="num">-11,329,334</td><td class="num"><span class="null">—</span></td><td class="num">-11,332,463</td><td class="num">610,598,465</td><td class="num">238,799,500</td><td class="num">371,798,965</td><td class="num">8.31</td><td class="num">1.42</td><td class="num"><span class="null">—</span></td><td class="num">1.95</td><td class="num"><span class="null">—</span></td><td class="num">39.11</td><td class="num">1.32</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q1</td><td class="num"></td><td class="num">2025-03-31</td><td class="num">65,551,631</td><td class="num"><span class="null">—</span></td><td class="num">4,625,055</td><td class="num">35,832</td><td class="num">814,012</td><td class="num">493,869</td><td class="num"><span class="null">—</span></td><td class="num">0.06</td><td class="num"><span class="null">—</span></td><td class="num">1,364,094</td><td class="num"><span class="null">—</span></td><td class="num">-2,630,313</td><td class="num"><span class="null">—</span></td><td class="num">618,904,591</td><td class="num">258,976,053</td><td class="num">359,928,538</td><td class="num">7.06</td><td class="num">0.05</td><td class="num"><span class="null">—</span></td><td class="num">0.75</td><td class="num"><span class="null">—</span></td><td class="num">41.84</td><td class="num">1.49</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q2</td><td class="num"></td><td class="num">2025-06-30</td><td class="num">65,715,970</td><td class="num"><span class="null">—</span></td><td class="num">5,682,675</td><td class="num">1,302,179</td><td class="num">-4,194,291</td><td class="num">-4,205,478</td><td class="num"><span class="null">—</span></td><td class="num">-0.52</td><td class="num"><span class="null">—</span></td><td class="num">6,637,302</td><td class="num"><span class="null">—</span></td><td class="num">-4,700,704</td><td class="num"><span class="null">—</span></td><td class="num">580,481,384</td><td class="num">249,920,410</td><td class="num">330,560,974</td><td class="num">8.65</td><td class="num">1.98</td><td class="num"><span class="null">—</span></td><td class="num">-6.40</td><td class="num"><span class="null">—</span></td><td class="num">43.05</td><td class="num">1.50</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q3</td><td class="num"></td><td class="num">2025-09-30</td><td class="num">64,177,490</td><td class="num"><span class="null">—</span></td><td class="num">5,321,458</td><td class="num">1,036,358</td><td class="num">3,995,337</td><td class="num">3,474,519</td><td class="num"><span class="null">—</span></td><td class="num">0.41</td><td class="num"><span class="null">—</span></td><td class="num">14,460,968</td><td class="num"><span class="null">—</span></td><td class="num">-7,516,929</td><td class="num"><span class="null">—</span></td><td class="num">588,213,361</td><td class="num">243,647,296</td><td class="num">344,566,065</td><td class="num">8.29</td><td class="num">1.61</td><td class="num"><span class="null">—</span></td><td class="num">5.41</td><td class="num"><span class="null">—</span></td><td class="num">41.42</td><td class="num">1.16</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2025Q4</td><td class="num"></td><td class="num">2025-12-31</td><td class="num">64,466,653</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">5,302,730</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">8,649,366</td><td class="num"><span class="null">—</span></td><td class="num">-11,329,334</td><td class="num"><span class="null">—</span></td><td class="num">610,598,465</td><td class="num">238,799,500</td><td class="num">371,798,965</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">8.23</td><td class="num"><span class="null">—</span></td><td class="num">39.11</td><td class="num">1.32</td><td class="num">revenue、net_income</td></tr><tr><td class="num">quarterly</td><td class="num">2026Q1</td><td class="num"></td><td class="num">2026-03-31</td><td class="num">68,596,393</td><td class="num"><span class="null">—</span></td><td class="num">8,186,597</td><td class="num">3,741,833</td><td class="num">16,080,166</td><td class="num">14,674,818</td><td class="num">14,254,717</td><td class="num">1.80</td><td class="num"><span class="null">—</span></td><td class="num">158,451</td><td class="num"><span class="null">—</span></td><td class="num">-4,312,210</td><td class="num"><span class="null">—</span></td><td class="num">647,743,623</td><td class="num">247,168,932</td><td class="num">400,574,691</td><td class="num">11.93</td><td class="num">5.45</td><td class="num"><span class="null">—</span></td><td class="num">21.39</td><td class="num"><span class="null">—</span></td><td class="num">38.16</td><td class="num">1.47</td><td class="num"></td></tr><tr><td class="num">quarterly</td><td class="num">2026Q2</td><td class="num"></td><td class="num">2026-06-30</td><td class="num">83,646,883</td><td class="num"><span class="null">—</span></td><td class="num">15,808,278</td><td class="num">11,357,281</td><td class="num">30,763,883</td><td class="num">27,550,181</td><td class="num">26,753,199</td><td class="num">3.37</td><td class="num"><span class="null">—</span></td><td class="num">3,278,205</td><td class="num"><span class="null">—</span></td><td class="num">-7,776,074</td><td class="num"><span class="null">—</span></td><td class="num">723,033,450</td><td class="num">225,379,100</td><td class="num">497,654,350</td><td class="num">18.90</td><td class="num">13.58</td><td class="num"><span class="null">—</span></td><td class="num">32.94</td><td class="num"><span class="null">—</span></td><td class="num">31.17</td><td class="num">1.78</td><td class="num"></td></tr></tbody></table></div><div class="note">金額為原始單位（currency / unit 見第一列：台股 TWD 仟元、美股 USD 元）。</div></section><section class="card mt" id="summary"><h2>summary（法說彙整）</h2><table class="kv"><tbody><tr><td>company_key</td><td>TPE:1303</td></tr><tr><td>company_name</td><td>南亞塑膠工業</td></tr><tr><td>stock_code</td><td>1303</td></tr><tr><td>market</td><td>TPE</td></tr><tr><td>category</td><td>SUPPLIER</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>fiscal_period</td><td>2026Q3</td></tr><tr><td>conference_date</td><td>2026-10-13</td></tr><tr><td>fallback</td><td>false</td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>crawled_at</td><td>2026-10-13 11:30:30</td></tr><tr><td>batch_id</td><td>000024_20261013T193001</td></tr><tr><td>seq</td><td>24</td></tr><tr><td>batch_path</td><td>summaries/2026-10-13_TPE1303_2026Q3.json</td></tr><tr><td>updated_at</td><td>2026-10-20 08:57:49.733309</td></tr></tbody></table><h3>彙整內容</h3><table class="kv"><tbody><tr><td>found</td><td>true</td></tr><tr><td>reported_period（報告期間）</td><td><mark>原文沒有此鍵</mark></td></tr><tr><td>core_points（重點）</td><td><ul><li>2026 Q3 成長主軸為電子材料、聚酯膜及環氧樹脂；AI 應用推升載板材料需求，中高階基板與消費電子材料供應偏緊，電子材料產線維持高開動率。</li><li>化工、聚酯產品進入傳統淡季，且受中東戰事與原物料供應不確定性影響，行情波動、市況偏弱，部分產線安排停車。</li><li>塑膠產品受惠電子產業與工程建案動工，建材相關需求維持穩定。</li></ul></td></tr><tr><td>guidance（展望）</td><td>公司對2026 Q3（2026年7～9月）的展望為電子材料產品價量皆揚；化工及聚酯產品則因淡季、中東衝突與原料供應不確定性而採較保守的營運安排。</td></tr><tr><td>key_numbers（關鍵數字）</td><td><ul><li>2026 H1（2026年1～6月）合併營收 NT$1,522.4 億，2025 H1 為 NT$1,312.7 億。</li><li>2026 H1 營業利益 NT$151.0 億，2025 H1 為 NT$13.4 億。</li><li>2026 H1 稅前淨利 NT$468.4 億，2025 H1 為 -NT$33.8 億。</li><li>2026 H1 EPS NT$5.17，2025 H1 為 -NT$0.46；2026 Q2 EPS NT$3.37。</li><li>2026 H1 營收結構：電子材料 52.7%、化工產品 16.9%、聚酯產品 15.8%、塑膠產品 12.7%。</li><li>2026 Q2 電子材料產品營業利益率 19.9%，化工產品 2.1%，聚酯產品 5.3%，塑膠加工產品 9.7%。</li><li>2026 Q3 擴建計畫包括台灣離型膜第5、6套預計於2026/10投產；電子級液態CO2預計2027/3投產；中國大陸銅箔擴建預計2028/1投產。</li></ul></td></tr><tr><td>risks（風險）</td><td><ul><li>化工及聚酯產品終端需求尚未回升，且同業新增產能使供過於求情況加劇。</li><li>中東衝突造成荷姆茲海峽原料供應受限，導致部分產品降產或停產。</li><li>原物料及產品行情波動可能影響客戶下單意願及產線稼動率。</li></ul></td></tr><tr><td>headline_metrics（法說揭露的重點數字）</td><td><span class="null">[]（新版有此鍵但本場沒內容）</span></td></tr><tr><td>business_segments（事業群）</td><td><mark>原文沒有此鍵：舊版爬蟲尚未產出</mark></td></tr><tr><td>management_views（管理層觀點，固定五類＝模板法說 01–05）</td><td><span class="null">[]（新版有此鍵但本場沒內容）</span></td></tr><tr><td>qa_highlights（Q&amp;A）</td><td><mark>原文沒有此鍵：舊版爬蟲尚未產出</mark></td></tr><tr><td>positive_signals（正向訊號）</td><td><span class="null">[]（新版有此鍵但本場沒內容）</span></td></tr><tr><td>watch_items（觀察項）</td><td><span class="null">[]（新版有此鍵但本場沒內容）</span></td></tr><tr><td>open_questions（未答問題）</td><td><span class="null">[]（新版有此鍵但本場沒內容）</span></td></tr><tr><td>notes（彙整備註）</td><td>本場為2026/10/13受邀參加摩根大通舉辦的線上法人說明會；官方資料標題為「2026年上半年營運概況」，內容包含2026 Q3市場展望，未提供2026 Q3實際財務結果或逐字稿。</td></tr><tr><td>sources（來源）</td><td><ul><li><a href="https://www.npc.com.tw/j2npc/zhtw/investor/Earnings%20Conference">南亞塑膠法人說明會資料：2026年上半年營運概況（JPMorgan Institutional Investors Conference）</a>｜南亞塑膠官方投資人關係網站</li><li><a href="https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf">南亞塑膠工業股份有限公司 2026年上半年營運概況簡報</a>｜公開資訊觀測站／南亞塑膠官方簡報</li><li><a href="https://ww2.money-link.com.tw/RealtimeNews/NewsContent.aspx?PU=0010&amp;SN=6328520001">《塑膠股》南亞10月13日受邀參加摩根大通舉辦線上法說會</a>｜富聯網／時報新聞</li></ul></td></tr></tbody></table><details><summary>summary_json 原文</summary><pre>{&quot;found&quot;:true,&quot;core_points&quot;:[&quot;2026 Q3 成長主軸為電子材料、聚酯膜及環氧樹脂；AI 應用推升載板材料需求，中高階基板與消費電子材料供應偏緊，電子材料產線維持高開動率。&quot;,&quot;化工、聚酯產品進入傳統淡季，且受中東戰事與原物料供應不確定性影響，行情波動、市況偏弱，部分產線安排停車。&quot;,&quot;塑膠產品受惠電子產業與工程建案動工，建材相關需求維持穩定。&quot;],&quot;guidance&quot;:&quot;公司對2026 Q3（2026年7～9月）的展望為電子材料產品價量皆揚；化工及聚酯產品則因淡季、中東衝突與原料供應不確定性而採較保守的營運安排。&quot;,&quot;key_numbers&quot;:[&quot;2026 H1（2026年1～6月）合併營收 NT$1,522.4 億，2025 H1 為 NT$1,312.7 億。&quot;,&quot;2026 H1 營業利益 NT$151.0 億，2025 H1 為 NT$13.4 億。&quot;,&quot;2026 H1 稅前淨利 NT$468.4 億，2025 H1 為 -NT$33.8 億。&quot;,&quot;2026 H1 EPS NT$5.17，2025 H1 為 -NT$0.46；2026 Q2 EPS NT$3.37。&quot;,&quot;2026 H1 營收結構：電子材料 52.7%、化工產品 16.9%、聚酯產品 15.8%、塑膠產品 12.7%。&quot;,&quot;2026 Q2 電子材料產品營業利益率 19.9%，化工產品 2.1%，聚酯產品 5.3%，塑膠加工產品 9.7%。&quot;,&quot;2026 Q3 擴建計畫包括台灣離型膜第5、6套預計於2026/10投產；電子級液態CO2預計2027/3投產；中國大陸銅箔擴建預計2028/1投產。&quot;],&quot;risks&quot;:[&quot;化工及聚酯產品終端需求尚未回升，且同業新增產能使供過於求情況加劇。&quot;,&quot;中東衝突造成荷姆茲海峽原料供應受限，導致部分產品降產或停產。&quot;,&quot;原物料及產品行情波動可能影響客戶下單意願及產線稼動率。&quot;],&quot;sources&quot;:[{&quot;title&quot;:&quot;南亞塑膠法人說明會資料：2026年上半年營運概況（JPMorgan Institutional Investors Conference）&quot;,&quot;url&quot;:&quot;https://www.npc.com.tw/j2npc/zhtw/investor/Earnings%20Conference&quot;,&quot;media&quot;:&quot;南亞塑膠官方投資人關係網站&quot;},{&quot;title&quot;:&quot;南亞塑膠工業股份有限公司 2026年上半年營運概況簡報&quot;,&quot;url&quot;:&quot;https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf&quot;,&quot;media&quot;:&quot;公開資訊觀測站／南亞塑膠官方簡報&quot;},{&quot;title&quot;:&quot;《塑膠股》南亞10月13日受邀參加摩根大通舉辦線上法說會&quot;,&quot;url&quot;:&quot;https://ww2.money-link.com.tw/RealtimeNews/NewsContent.aspx?PU=0010&amp;SN=6328520001&quot;,&quot;media&quot;:&quot;富聯網／時報新聞&quot;}],&quot;notes&quot;:&quot;本場為2026/10/13受邀參加摩根大通舉辦的線上法人說明會；官方資料標題為「2026年上半年營運概況」，內容包含2026 Q3市場展望，未提供2026 Q3實際財務結果或逐字稿。&quot;}</pre></details></section><section class="card mt" id="conference"><h2>conference（法說場次）</h2><table class="kv"><tbody><tr><td>company_key</td><td>TPE:1303</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>conference_date</td><td>2026-10-13</td></tr><tr><td>conference_type</td><td>ONLINE</td></tr><tr><td>source</td><td>TWSE</td></tr><tr><td>revision</td><td>1</td></tr></tbody></table></section><section class="card mt" id="docs"><h2>docs（解析後文件，1 份）</h2><h3>docs[0]：Nan-Ya-Plastics_Q3CY26_Presentation.pdf（Presentation）</h3><table class="kv"><tbody><tr><td>volume_path</td><td>/Volumes/micenter/mi3_datahub_prod/micenterfile_ext/unstructured_data_file/supplier/Nan-Ya-Plastics/Nan-Ya-Plastics_Q3CY26_Presentation.pdf</td></tr><tr><td>file_name</td><td>Nan-Ya-Plastics_Q3CY26_Presentation.pdf</td></tr><tr><td>doc_kind</td><td>Presentation</td></tr><tr><td>sha256</td><td>ed8c44e1b807c58fcb9102c6987093f88d916919cf97713a8faa6cf5b3abdf1d</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>text_chars</td><td>9518</td></tr><tr><td>page_count</td><td>15</td></tr><tr><td>parse_status</td><td>success</td></tr><tr><td>source_url</td><td><a href="https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf">https://mopsov.twse.com.tw/nas/STR/130320261012M001.pdf</a></td></tr></tbody></table><details><summary>text_md 全文（9,518 字）</summary><pre style="white-space:pre-wrap;max-height:720px">南亞塑膠工業股份有限公司
+
+2026年上半年
+營運概況
+
+A pixelated white geometric logo on a dark blue background featuring a central cross within a diamond shape.
+
+2026年9月
+
+議程
+
+• 公司概況
+• 財務狀況
+• 2026年第三季市場展望
+• 擴建計劃
+• 問與答
+
+A pixelated white geometric logo featuring a central cross within a diamond shape on a blue background.
+
+公司概況
+事業簡述
+
+■ 市值新台幣約20,263億元(2026年9月)
+
+市值
+營業額
+全球佈局
+
+■ 新台幣 2,599億元
+(2025年，
+不含南亞科技公司)
+■ 主要產品營收佔比
+-塑膠加工 14%
+-化工產品 22%
+-電子材料 46%
+-聚酯產品 16%
+
+■ 全球99個生產廠
+-台灣 57個
+-中國大陸 34個
+-美國 8個
+■ 員工人數28,616人
+(生產廠及員工人數包含合併財務報告公司)
+
+A pixelated white geometric logo on a dark blue background featuring a central cross within a diamond shape.
+
+1
+
+公司概況
+
+主要產品市場地位(全球排名)
+
+1 2 3 4 5
+
+■ 塑膠加工 ■ 電子級玻纖絲 ■ 銅箔基板 ■ 乙二醇 ■ 環氧樹脂■ 玻纖布 ■ 丙二酚
+
+A pixelated white geometric logo on a blue background featuring a central cross within a diamond shape.
+
+註：相關產能資料截至2025年度
+
+2
+
+公司概況
+產業發展歷程
+
+• 南亞公司自成立以來歷經多次產業轉型，陸續佈局「塑膠加工」、「聚酯纖維」、
+「化工產品」及「電子材料」(含印刷電路板及半導體)等不同產業。
+• 目前電子產品及材料營收約佔總營收的五成以上，轉型以電子為核心的公司。
+• 近年來，南亞秉持「多元佈局、創新發展」的理念，積極投入醫療材料、複合
+材料及電力工程等新事業，持續培育新成長動能，厚植企業永續發展根基。
+• 經過多年深耕與佈局，南亞不僅建構多元化的事業版圖，也已在台灣、大陸、美國
+、越南等地區建立完整上下游垂直整合的生產據點，為日後經營奠定厚實基礎。
+
+4 4 4 4
+
+塑膠加工事業
+1958
+
+A circular image displays three computer processors, showing their top surfaces with gold contacts and a bottom view with a grid of pins.
+
+印刷電路板事業
+1984
+
+nanya eMCP
+
+半導體事業
+1995
+
+A close-up view of a medical IV drip system with tubing and a connector against a blue background.
+
+醫材專案
+2021
+
+1968
+聚酯事業
+
+1985
+電子材料事業
+
+1996
+化工事業
+
+2026
+複材專案 電力工程事業
+
+A circular image showing a white cylindrical object with a metallic top against a dark and blue background.
+
+A circular crop showing a copper-colored sheet resting on a stack of white corrugated material.
+
+A gloved hand holds a conical flask containing clear liquid in a laboratory setting.
+
+Four conical flasks containing green, blue, red, and yellow granular substances arranged in a row.
+
+A large industrial machine with a control panel and two circular components, set against a light blue circular background.
+
+多元佈局
+創新發展
+
+A pixelated white geometric logo featuring a central cross within a diamond shape, set against a dark blue background.
+
+3
+
+公司概況
+產業結構
+
+資料來源：2025年營收佔比%
+
+A circular blue logo featuring a white abstract geometric shape resembling a stylized bar chart or building.
+
+14%
+塑膠加工
+
+軟質膠布、硬質膠布、
+PU合成皮、塑膠管及
+接頭、塑鋼門窗、膠膜、
+工程塑膠、PP合成紙
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;大陆&lt;/th&gt;&lt;td&gt;24%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;美国&lt;/th&gt;&lt;td&gt;15%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;台湾&lt;/th&gt;&lt;td&gt;61%&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+A blue circular icon featuring three laboratory glassware items containing orange and yellow liquids.
+
+22%
+化工產品
+
+乙二醇(EG)、丙二酚(BPA)、
+丁二醇(1,4BG)、可塑劑、
+酜酸酐(PA)、異辛醇(2EH)、
+異壬醇(INA)、馬來酐(MA)
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;大陸&lt;/th&gt;&lt;td&gt;15%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;美國&lt;/th&gt;&lt;td&gt;27%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;台灣&lt;/th&gt;&lt;td&gt;58%&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+A green circular icon featuring a stylized circuit board pattern with dark traces and orange connection points.
+
+46%
+電子材料
+
+玻 纖 絲 、 玻 纖 布 、
+環 氧 樹 脂 、 銅 箔 、
+銅箔基板及印刷電路板
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;大陆&lt;/th&gt;&lt;td&gt;57%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;台湾&lt;/th&gt;&lt;td&gt;43%&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+A yellow t-shirt icon centered within a blue circle against a white background.
+
+16%
+聚酯產品
+
+聚 酯 棉 、 聚 酯 粒 、
+聚酯加工絲及聚酯薄膜
+等製品
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;大陆&lt;/th&gt;&lt;td&gt;5%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;美国&lt;/th&gt;&lt;td&gt;56%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;台湾&lt;/th&gt;&lt;td&gt;39%&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+A pixelated white geometric logo on a dark blue background featuring a central cross within a diamond shape.
+
+4
+
+財務狀況
+合併營業收入(IFRS)
+
+(新台幣億元)
+
+{
+  &quot;title&quot;: &quot;None&quot;,
+  &quot;values&quot;: {
+    &quot;1H25&quot;: 1312.7,
+    &quot;1H26&quot;: 1522.4,
+    &quot;1Q26&quot;: 686.0,
+    &quot;2Q26&quot;: 836.5
+  },
+  &quot;additional_info&quot;: &quot;None&quot;
+}
+
+■ 2026年上半年營收較2025年上半年增加:
+
+電子材料產品為營收成長的核心動能，隨著AI急速發展，雲端巨擘對未來
+算力需求樂觀，以驚人的速度擴張資本支出，本公司因應產業發展，積極
+切入AI及周邊供應鏈，收穫已逐漸放大，同時結合既有的產能領先條件，
+兼顧廣大消費型產品的市占率，電子材料產品營收大幅成長占比達5成以上。
+
+■ 2026年第二季營收較2026年第一季增加:
+
+ABF載板、銅箔基板、銅箔、玻纖布等電子材料產品供需缺口再擴大，
+本公司AI供應鏈高階材料的認證與銷售，進展順利，消費型材料也不斷
+升級、提高售價，營收攀升。此外，聚酯產品適逢瓶用粒旺季、塑膠建材
+產品訂單也隨各地工程增加，營收較第1季成長。
+
+A pixelated white geometric logo on a blue background featuring a central cross within a diamond shape.
+
+5
+
+財務狀況
+營業利益(IFRS)
+
+(新台幣億元)
+
+{
+  &quot;title&quot;: &quot;None&quot;,
+  &quot;values&quot;: {
+    &quot;1H25&quot;: 13.4,
+    &quot;1H26&quot;: 151.0,
+    &quot;1Q26&quot;: 37.4,
+    &quot;2Q26&quot;: 113.6
+  },
+  &quot;additional_info&quot;: &quot;None&quot;
+}
+
+■ 2026年上半年營業利益較2025年上半年大幅成長：
+
+電子材料產品致力於產品升級與提高產能利用率，獲利大幅提升；化工產品
+售價普遍提高，營運好轉；聚酯產品因發展電子、光學用膜成效佳，獲利
+改善；塑膠加工產品經營穩定，產品利益隨市況溫和成長。
+
+■ 2026年第二季營業利益較2026年第一季增加:
+
+電子材料產品積極發展AI伺服器、高效運算、高階網通用材料，並提高產能
+利用率、調漲產品售價，獲利大幅成長、化工產品在美伊衝突下，除依行情
+提高產品報價，並享有庫存利益以外，美國EG產線也全能運轉，轉虧為盈；
+聚酯產品因瓶用粒旺季及美國增加在地採購，擺脫虧損開始獲利；塑膠加工
+產品穩定貢獻，各產品營業淨利率逐季上升。
+
+A pixelated white geometric logo on a dark blue background featuring a central cross within a diamond shape.
+
+6
+
+財務狀況
+稅前淨利(IFRS)
+
+{
+  &quot;title&quot;: &quot;None&quot;,
+  &quot;values&quot;: {
+    &quot;1H25&quot;: {
+      &quot;-33.8&quot;: -33.8
+    },
+    &quot;1H26&quot;: {
+      &quot;468.4&quot;: 468.4
+    },
+    &quot;1Q26&quot;: {
+      &quot;160.8&quot;: 160.8
+    },
+    &quot;2Q26&quot;: {
+      &quot;307.6&quot;: 307.6
+    }
+  },
+  &quot;additional_info&quot;: &quot;(新台幣億元)&quot;
+}
+
+■ 2026年上半年税前淨利较2025年上半年大幅增加:
+
+1.營業利益增加新台幣137.6億元，主要是電子材料增加118.4億元。
+2.權益法投資收益增加337.5億元 :
+(1)南亞科技增加230.4億元 (2)台塑石化增加104.0億元
+
+■ 2026年第二季稅前淨利較2026年第一季增加:
+
+1.營業利益增加新台幣76.2億元，電子材料增加40.0億元、化工產品增加20.9億元。
+2.權益法投資收益增加69.7億元 :
+(1)南亞科技增加60.1億元 (2)台塑烯烴(美國)增加5.8億元 (3)麥寮汽電增加3.1億元
+
+A pixelated white geometric logo featuring a central cross within a diamond shape on a blue background.
+
+7
+
+財務狀況
+每股盈餘(IFRS)
+
+{
+  &quot;title&quot;: &quot;None&quot;,
+  &quot;values&quot;: {
+    &quot;1H25&quot;: {
+      &quot;-0.46&quot;: -0.46
+    },
+    &quot;1H26&quot;: {
+      &quot;5.17&quot;: 5.17
+    },
+    &quot;1Q26&quot;: {
+      &quot;1.80&quot;: 1.80
+    },
+    &quot;2Q26&quot;: {
+      &quot;3.37&quot;: 3.37
+    }
+  },
+  &quot;additional_info&quot;: &quot;(新台幣元)&quot;
+}
+
+■ 2026年上半年每股盈餘較2025年上半年大幅成長：
+
+除電子材料產品獲利跳躍式成長外，化工產品因中東戰爭拉抬產品報價與庫存
+利益，營運顯著改善；聚酯產品因美國市場增加就地採購，獲利增加；塑膠
+加工產品則因工程建材市況增溫，利益成長；此外，南亞科技與台塑石化也
+貢獻了高額的投資收益，使南亞本業及投資利益同步攀高，上半年EPS 5.17元
+，相較於去年同期不但跳脫虧損，更大幅躍進、創下歷史新高。
+
+■ 2026年第二季每股盈餘較2026年第一季增加：
+
+本公司電子材料產品藉由先進樹脂、特殊玻纖、高階銅箔的相互技術整合，持續
+優化銅箔基板等產品的最適配方，徹底發揮垂直整合優勢，獲利大增、化工及
+聚酯產品也因產品行情上揚、產銷量增加，第二季轉虧為盈。轉投資方面，南亞
+科技受惠於記憶體供需缺口再擴大，利益急速成長，台塑石化收益也較上季略增，
+本公司在本業與業外收益皆得到了豐碩成果，單季EPS 3.37元，站上營運高峰。
+8
+
+A pixelated white geometric logo on a dark blue background featuring a central cross within a diamond shape.
+
+財務狀況
+營業收入結構
+
+2025年上半年營業收入
+新台幣1,312.7億元
+
+{
+  &quot;title&quot;: &quot;None&quot;,
+  &quot;values&quot;: {
+    &quot;電子材料&quot;: 44.1,
+    &quot;化工產品&quot;: 23.2,
+    &quot;聚酯產品&quot;: 17.0,
+    &quot;塑膠產品&quot;: 13.9,
+    &quot;其他&quot;: 1.8
+  },
+  &quot;additional_info&quot;: &quot;None&quot;
+}
+
+2026年上半年營業收入
+新台幣1,522.4億元
+
+{
+  &quot;title&quot;: &quot;None&quot;,
+  &quot;values&quot;: {
+    &quot;電子材料&quot;: 52.7,
+    &quot;化工產品&quot;: 16.9,
+    &quot;聚酯產品&quot;: 15.8,
+    &quot;塑膠產品&quot;: 12.7,
+    &quot;其他&quot;: 1.9
+  },
+  &quot;additional_info&quot;: &quot;None&quot;
+}
+
+■ 電子材料產品：產能排擠效應導致玻纖布(絲)、銅箔、銅箔基板、ABF載板等上、下游材料出現全面性供應緊缺的現象，缺貨及漲價潮蔓延至中階與基本材料，本公司以產能優勢，自用、外售並重，且兼顧了高、中階與基本產品，現階段銅箔基板等產品產能利用率維持9成以上，價、量齊揚使電子材料產品營收大幅提升，成為本公司核心營運動能。■ 化工產品：終端需求尚未回升，同業新增產能持續開出，供過於求的情況加劇，且第二季因中東戰爭，荷姆茲海峽遭到封鎖，原料供應受限，各項產品降產或停產因應，整體量差不利，營收佔比下降。
+
+A pixelated white geometric logo on a dark blue background featuring a central cross within a diamond shape.
+
+9
+
+財務狀況
+
+產業別營業利益結構
+
+■ 產品別營業利益佔比
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;產品別&lt;/th&gt;&lt;th&gt;2Q25&lt;/th&gt;&lt;th&gt;3Q25&lt;/th&gt;&lt;th&gt;4Q25&lt;/th&gt;&lt;th&gt;1Q26&lt;/th&gt;&lt;th&gt;2Q26&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;電子材料產品&lt;/td&gt;&lt;td&gt;91.8%&lt;/td&gt;&lt;td&gt;108.5%&lt;/td&gt;&lt;td&gt;187.0%&lt;/td&gt;&lt;td&gt;127.2%&lt;/td&gt;&lt;td&gt;77.1%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;化工產品&lt;/td&gt;&lt;td&gt;-63.5%&lt;/td&gt;&lt;td&gt;-103.8%&lt;/td&gt;&lt;td&gt;-152.2%&lt;/td&gt;&lt;td&gt;-47.9%&lt;/td&gt;&lt;td&gt;2.7%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;聚酯產品&lt;/td&gt;&lt;td&gt;7.9%&lt;/td&gt;&lt;td&gt;-35.0%&lt;/td&gt;&lt;td&gt;-23.2%&lt;/td&gt;&lt;td&gt;-6.3%&lt;/td&gt;&lt;td&gt;6.3%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;塑膠加工產品&lt;/td&gt;&lt;td&gt;56.3%&lt;/td&gt;&lt;td&gt;73.0%&lt;/td&gt;&lt;td&gt;60.1%&lt;/td&gt;&lt;td&gt;22.9%&lt;/td&gt;&lt;td&gt;8.7%&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+■ 產品別營業利益率變化
+
+&lt;table&gt;&lt;tr&gt;&lt;th&gt;產品別&lt;/th&gt;&lt;th&gt;2Q25&lt;/th&gt;&lt;th&gt;3Q25&lt;/th&gt;&lt;th&gt;4Q25&lt;/th&gt;&lt;th&gt;1Q26&lt;/th&gt;&lt;th&gt;2Q26&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;電子材料產品&lt;/td&gt;&lt;td&gt;4.0%&lt;/td&gt;&lt;td&gt;3.8%&lt;/td&gt;&lt;td&gt;7.6%&lt;/td&gt;&lt;td&gt;13.1%&lt;/td&gt;&lt;td&gt;19.9%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;化工產品&lt;/td&gt;&lt;td&gt;-5.6%&lt;/td&gt;&lt;td&gt;-7.3%&lt;/td&gt;&lt;td&gt;-17.5%&lt;/td&gt;&lt;td&gt;-16.0%&lt;/td&gt;&lt;td&gt;2.1%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;聚酯產品&lt;/td&gt;&lt;td&gt;1.0%&lt;/td&gt;&lt;td&gt;-3.9%&lt;/td&gt;&lt;td&gt;-3.1%&lt;/td&gt;&lt;td&gt;-2.2%&lt;/td&gt;&lt;td&gt;5.3%&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;塑膠加工產品&lt;/td&gt;&lt;td&gt;7.9%&lt;/td&gt;&lt;td&gt;8.4%&lt;/td&gt;&lt;td&gt;8.9%&lt;/td&gt;&lt;td&gt;9.4%&lt;/td&gt;&lt;td&gt;9.7%&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+
+A pixelated white geometric logo on a dark blue background featuring a central cross within a diamond shape.
+
+10
+
+2026年第三季市場展望
+
+第三季的成長主軸，仍然圍繞在應用於電子科技領域的電子材料、聚酯膜
+、環氧樹脂等產品。
+化工、聚酯等大宗產品，則因進入傳統淡季，及中東戰事多變，原物料
+供應不確定性，行情波動大，影響客戶下單意願，市況偏弱。
+
+電子材料產品
+
+AI創新應用對載板材料的需求大幅提升，中高階基板需求強勁，終端
+消費性電子產品亦因規格升級，形成全面性的原材料緊缺，各產品
+產線維持高開動率，且銅價維持高位，支撐產品售價，價量皆揚。
+
+◆ 化工及聚酯產品
+
+中東衝突仍存在不確定性，原料及產品行情波動較大，產業較保守，
+部份產線安排停車。
+
+塑膠產品
+
+受惠於電子產業蓬勃發展，工程建案動工，建材相關塑膠產品需求
+穩定。
+
+A pixelated white geometric logo on a blue background featuring a central cross within a diamond shape.
+
+11
+
+擴建計畫
+
+&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th rowspan=&quot;2&quot;&gt;地 區&lt;/th&gt;&lt;th rowspan=&quot;2&quot;&gt;產 品&lt;/th&gt;&lt;th rowspan=&quot;2&quot;&gt;單 位&lt;/th&gt;&lt;th colspan=&quot;3&quot;&gt;年產能&lt;/th&gt;&lt;th rowspan=&quot;2&quot;&gt;預計&lt;br/&gt;投產日&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;th&gt;目前(註1)&lt;/th&gt;&lt;th&gt;擴建&lt;/th&gt;&lt;th&gt;增加%&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td rowspan=&quot;6&quot;&gt;台灣&lt;/td&gt;&lt;td&gt;聚合線改造生產共聚酯粒&lt;/td&gt;&lt;td&gt;千噸&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;36&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;2026/10&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;離型膜(第5套)&lt;/td&gt;&lt;td&gt;千米平方&lt;/td&gt;&lt;td&gt;360,000&lt;/td&gt;&lt;td&gt;144,000&lt;/td&gt;&lt;td&gt;40&lt;/td&gt;&lt;td&gt;2026/10&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;離型膜(第6套)&lt;/td&gt;&lt;td&gt;千米平方&lt;/td&gt;&lt;td&gt;360,000&lt;/td&gt;&lt;td&gt;144,000&lt;/td&gt;&lt;td&gt;40&lt;/td&gt;&lt;td&gt;2026/10&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;氟系塑膠PFA 管材、管件&lt;/td&gt;&lt;td&gt;噸&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;管材240/管件60&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;2028/1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;電子級液態CO&lt;sub&gt;2&lt;/sub&gt;&lt;/td&gt;&lt;td&gt;噸&lt;/td&gt;&lt;td&gt;0&lt;/td&gt;&lt;td&gt;36,000&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;2027/3&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;太陽能光電系統(註2)&lt;/td&gt;&lt;td&gt;KW&lt;/td&gt;&lt;td&gt;(註2)&lt;/td&gt;&lt;td&gt;56,266&lt;/td&gt;&lt;td&gt;100&lt;/td&gt;&lt;td&gt;2026/12&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;大陸&lt;/td&gt;&lt;td&gt;銅箔&lt;/td&gt;&lt;td&gt;噸&lt;/td&gt;&lt;td&gt;60,000&lt;/td&gt;&lt;td&gt;23,400&lt;/td&gt;&lt;td&gt;39&lt;/td&gt;&lt;td&gt;2028/1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;美國&lt;/td&gt;&lt;td&gt;軟質膠布&lt;/td&gt;&lt;td&gt;千噸&lt;/td&gt;&lt;td&gt;48&lt;/td&gt;&lt;td&gt;14&lt;/td&gt;&lt;td&gt;29&lt;/td&gt;&lt;td&gt;2026/10&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+
+A pixelated white geometric logo on a blue background featuring a central cross within a diamond shape.
+
+註1：年產能係指該地區產品別總產能。
+
+註2：截至2026年9月太陽能光電系統裝置容量為33,318.5KW，其餘將於2026年12月底前陸續完工。
+
+12
+
+A pixelated white geometric symbol on a dark blue background, featuring a central cross enclosed by a diamond shape.
+
+THE END</pre></details></section>
+</main>
+<footer>由 build_sources.py 產出｜2026-10-21</footer>
+</body>
+</html>

@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corning｜爬蟲資料（bronze payload，新版實測）</title>
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(22px,3.5vw,36px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.mt{margin-top:16px}
+.note,.small{font-size:12px;color:var(--muted)}
+h2{font-size:20px;margin:6px 0 14px}
+h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.kv td:first-child{color:var(--muted);white-space:nowrap;width:220px}
+.kv{table-layout:fixed}.kv td{overflow-wrap:anywhere}.kv td table{table-layout:fixed;width:100%}.kv td table td:first-child{white-space:normal;width:auto;color:inherit}
+.null{color:#b0b8c4;font-style:italic}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.t-ir_conference{background:#1f5aa6}.t-ir_summary{background:#16835d}.t-ir_document{background:#bd7300}.t-ir_document_file{background:#8a6d3b}.t-ir_financials{background:#20a4b7}.t-app_company{background:#65738a}
+pre{background:#0b1f3a;color:#e6eefc;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;max-height:520px}
+details summary{cursor:pointer;color:var(--blue);font-size:13px;margin:6px 0}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:12px 16px;border-radius:8px;margin-top:12px;font-size:13px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--blue);word-break:break-all}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.toc a{margin-right:14px;font-size:13px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}pre{max-height:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="badge">ir_calendar｜來源檢視｜bronze b_ir_calendar_record</div>
+  <h1>Corning｜爬蟲資料（bronze payload，新版實測）</h1>
+  <p>來源檔：Corning_爬蟲_新版實測.md｜company_key NYSE:GLW｜period 2026Q2｜產出日期：2026-10-21</p>
+</header>
+<main class="wrap">
+
+<section class="card">
+  <h2>這是什麼</h2>
+  <p>Databricks bronze 表 <code>b_ir_calendar_record</code> 裡，爬蟲（MI_Crawler VM）交付的每個 JSON 檔原樣存成一列（<code>payload</code> 欄）。
+  這一頁是 <code>Corning_爬蟲_新版實測.md</code> 的排版版：company_key = <b>NYSE:GLW</b>、period = <b>2026Q2</b>，共 6 檔；
+  同一 record_type ＋ batch_path 只留最新批次。<code>period</code> 為 null 的檔（財報數據）不分期別，一併列出。</p>
+  <table class="kv"><tbody>
+    <tr><td>爬蟲版本</td><td><b>新版實測</b>（批次 dev_20261021T103341）。新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>）跑出的 dev 批次，<b>尚未進 Databricks</b>；ir_conference 的 <code>source</code> 為 DEV_SAMPLE（測試時種的場次，不是行事曆爬到的）。</td></tr>
+    <tr><td>抓到的紀錄類型</td><td>法說場次 1 筆、文件清單（manifest） 1 筆、實體檔 2 筆、財報數據 1 筆、法說彙整 1 筆</td></tr>
+    <tr><td>沒有的紀錄類型</td><td>—</td></tr>
+    <tr><td>對應 silver 表</td><td>見各段「進 silver」；原文另存 <code>b_ir_calendar_record.payload</code></td></tr>
+  </tbody></table>
+  <div class="toc mt"><a href="#r0">法說場次（2026-07-28）</a> <a href="#r1">文件清單（manifest）（2026-10-21）</a> <a href="#r2">實體檔（2026-07-29）</a> <a href="#r3">實體檔（2026-07-28）</a> <a href="#r4">財報數據（2026-10-21）</a> <a href="#r5">法說彙整（2026-10-21）</a></div>
+</section><section class="card mt" id="r0"><span class="tag t-ir_conference">ir_conference</span><b>法說場次</b><div class="small">batch_path：<code>calendar/2026-07-28_NYSEGLW_2026Q2.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_conference</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>Corning Incorporated</td></tr><tr><td>period</td><td>2026Q2</td></tr><tr><td>fiscal_period</td><td>2026Q2</td></tr><tr><td>source_fiscal_period</td><td><span class="null">null</span></td></tr><tr><td>conference_date</td><td>2026-07-28</td></tr><tr><td>start_time</td><td><span class="null">null</span></td></tr><tr><td>end_time</td><td><span class="null">null</span></td></tr><tr><td>local_conference_date</td><td>2026-07-28</td></tr><tr><td>local_start_time</td><td><span class="null">null</span></td></tr><tr><td>conference_type</td><td><span class="null">null</span></td></tr><tr><td>location</td><td><span class="null">null</span></td></tr><tr><td>meeting_link</td><td><span class="null">null</span></td></tr><tr><td>document_url</td><td><span class="null">null</span></td></tr><tr><td>status</td><td>SCHEDULED</td></tr><tr><td>importance</td><td>5</td></tr><tr><td>source</td><td>DEV_SAMPLE</td></tr><tr><td>source_url</td><td><span class="null">null</span></td></tr><tr><td>confidence</td><td><span class="null">null</span></td></tr><tr><td>remark</td><td>[當地日 2026-07-28（America/New_York），時間未知，台北日可能為隔日]</td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>revision</td><td>0</td></tr><tr><td>crawled_at</td><td>2026-10-21T10:33:41+08:00</td></tr></tbody></table></div><details><summary>原始 JSON（903 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_conference&quot;,
+  &quot;company_key&quot;: &quot;NYSE:GLW&quot;,
+  &quot;company_name&quot;: &quot;Corning Incorporated&quot;,
+  &quot;english_name&quot;: &quot;Corning&quot;,
+  &quot;stock_code&quot;: &quot;GLW&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q2&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q2&quot;,
+  &quot;source_fiscal_period&quot;: null,
+  &quot;conference_date&quot;: &quot;2026-07-28&quot;,
+  &quot;start_time&quot;: null,
+  &quot;end_time&quot;: null,
+  &quot;time_basis&quot;: &quot;LOCAL_DATE_ONLY&quot;,
+  &quot;local_timezone&quot;: &quot;America/New_York&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-07-28&quot;,
+  &quot;local_start_time&quot;: null,
+  &quot;local_end_time&quot;: null,
+  &quot;conference_type&quot;: null,
+  &quot;location&quot;: null,
+  &quot;meeting_link&quot;: null,
+  &quot;document_url&quot;: null,
+  &quot;status&quot;: &quot;SCHEDULED&quot;,
+  &quot;importance&quot;: 5,
+  &quot;source&quot;: &quot;DEV_SAMPLE&quot;,
+  &quot;source_url&quot;: null,
+  &quot;confidence&quot;: null,
+  &quot;remark&quot;: &quot;[當地日 2026-07-28（America/New_York），時間未知，台北日可能為隔日]&quot;,
+  &quot;recipients&quot;: [
+    &quot;A00&quot;
+  ],
+  &quot;revision&quot;: 0,
+  &quot;crawled_at&quot;: &quot;2026-10-21T10:33:41+08:00&quot;
+}</pre></details></section><section class="card mt" id="r1"><span class="tag t-ir_document">ir_document</span><b>文件清單（manifest）</b><div class="small">batch_path：<code>docs/NYSE_GLW/2026Q2/manifest.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_document_file（展開 files[]）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>Corning Incorporated</td></tr><tr><td>period</td><td>2026Q2</td></tr><tr><td>conference_date</td><td>2026-07-28</td></tr><tr><td>status</td><td>DONE</td></tr><tr><td>wanted</td><td><pre style="max-height:240px;margin:0">[
+  &quot;presentation&quot;,
+  &quot;financial_report&quot;
+]</pre></td></tr><tr><td>missing</td><td><span class="null">[]</span></td></tr><tr><td>generated_at</td><td>2026-10-21T10:33:42+08:00</td></tr></tbody></table><h3>files[]</h3><table><thead><tr><th>type</th><th>title</th><th>doc_date</th><th>source</th><th class="num">bytes</th><th>file（連到來源）</th><th>fetched_at</th></tr></thead><tbody><tr><td>financial_report</td><td>10-Q filing 2026-07-29</td><td>2026-07-29</td><td>EDGAR</td><td class="num">1,754,476</td><td><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm">financial_report_20260729_8ec64114.htm</a></td><td>2026-10-21T10:28:09</td></tr><tr><td>presentation</td><td>8-K EX-99 2026-07-28</td><td>2026-07-28</td><td>EDGAR</td><td class="num">682,724</td><td><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm">presentation_20260728_c1c96c78.htm</a></td><td>2026-10-21T10:28:10</td></tr></tbody></table></div><details><summary>原始 JSON（1,539 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_document&quot;,
+  &quot;company_key&quot;: &quot;NYSE:GLW&quot;,
+  &quot;company_name&quot;: &quot;Corning Incorporated&quot;,
+  &quot;stock_code&quot;: &quot;GLW&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q2&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q2&quot;,
+  &quot;conference_date&quot;: &quot;2026-07-28&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-07-28&quot;,
+  &quot;status&quot;: &quot;DONE&quot;,
+  &quot;wanted&quot;: [
+    &quot;presentation&quot;,
+    &quot;financial_report&quot;
+  ],
+  &quot;missing&quot;: [],
+  &quot;files&quot;: [
+    {
+      &quot;type&quot;: &quot;financial_report&quot;,
+      &quot;file&quot;: &quot;financial_report_20260729_8ec64114.htm&quot;,
+      &quot;path&quot;: &quot;docs/NYSE_GLW/2026Q2/financial_report_20260729_8ec64114.htm&quot;,
+      &quot;source&quot;: &quot;EDGAR&quot;,
+      &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm&quot;,
+      &quot;title&quot;: &quot;10-Q filing 2026-07-29&quot;,
+      &quot;doc_date&quot;: &quot;2026-07-29&quot;,
+      &quot;sha256&quot;: &quot;8ec64114a483e82d5216eb4b5787c141f4e3ea3613f5000eb899d2f8cf8f0ef6&quot;,
+      &quot;bytes&quot;: 1754476,
+      &quot;fetched_at&quot;: &quot;2026-10-21T10:28:09+08:00&quot;
+    },
+    {
+      &quot;type&quot;: &quot;presentation&quot;,
+      &quot;file&quot;: &quot;presentation_20260728_c1c96c78.htm&quot;,
+      &quot;path&quot;: &quot;docs/NYSE_GLW/2026Q2/presentation_20260728_c1c96c78.htm&quot;,
+      &quot;source&quot;: &quot;EDGAR&quot;,
+      &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm&quot;,
+      &quot;title&quot;: &quot;8-K EX-99 2026-07-28&quot;,
+      &quot;doc_date&quot;: &quot;2026-07-28&quot;,
+      &quot;sha256&quot;: &quot;c1c96c78837d73fff5706a7768b48b9f1b39fef47622c39b7b0a534127eaa729&quot;,
+      &quot;bytes&quot;: 682724,
+      &quot;fetched_at&quot;: &quot;2026-10-21T10:28:10+08:00&quot;
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-10-21T10:33:42+08:00&quot;
+}</pre></details></section><section class="card mt" id="r2"><span class="tag t-ir_document_file">ir_document_file</span><b>實體檔</b><div class="small">batch_path：<code>docs/NYSE_GLW/2026Q2/Corning_Q2CY26_Financial_Statements.htm</code>｜批次：dev_20261021T103341<br>實體檔：<code>C:\Users\local_18060116\Temp\claude\C--Users-1806011-Projects-PM-Head-projects-MI-Crawler\dc1912fb-8cf2-4ebd-aefd-77450a8d4f13\scratchpad\ircal_sandbox\out\docs\NYSE_GLW\2026Q2\financial_report_20260729_8ec64114.htm</code><br>進 silver：s_ir_calendar_document_file ＋ Volume 實體檔 → parse_documents → s_ir_calendar_document_text</div><div class="mt"><table class="kv"><tbody><tr><td>company_slug</td><td>Corning</td></tr><tr><td>period</td><td>2026Q2</td></tr><tr><td>doc_kind</td><td>Financial_Statements</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>source_file</td><td>financial_report_20260729_8ec64114.htm</td></tr><tr><td>source_url</td><td><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm">https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm</a></td></tr><tr><td>doc_date</td><td>2026-07-29</td></tr><tr><td>bytes</td><td>1754476</td></tr><tr><td>sha256</td><td>8ec64114a483e82d5216eb4b5787c141f4e3ea3613f5000eb899d2f8cf8f0ef6</td></tr></tbody></table></div><details><summary>原始 JSON（569 字）</summary><pre>{
+  &quot;path&quot;: &quot;docs/NYSE_GLW/2026Q2/Corning_Q2CY26_Financial_Statements.htm&quot;,
+  &quot;record_type&quot;: &quot;ir_document_file&quot;,
+  &quot;sha256&quot;: &quot;8ec64114a483e82d5216eb4b5787c141f4e3ea3613f5000eb899d2f8cf8f0ef6&quot;,
+  &quot;bytes&quot;: 1754476,
+  &quot;company_key&quot;: &quot;NYSE:GLW&quot;,
+  &quot;company_slug&quot;: &quot;Corning&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q2&quot;,
+  &quot;doc_kind&quot;: &quot;Financial_Statements&quot;,
+  &quot;fiscal_label&quot;: null,
+  &quot;source_file&quot;: &quot;financial_report_20260729_8ec64114.htm&quot;,
+  &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm&quot;,
+  &quot;doc_date&quot;: &quot;2026-07-29&quot;
+}</pre></details></section><section class="card mt" id="r3"><span class="tag t-ir_document_file">ir_document_file</span><b>實體檔</b><div class="small">batch_path：<code>docs/NYSE_GLW/2026Q2/Corning_Q2CY26_Presentation.htm</code>｜批次：dev_20261021T103341<br>實體檔：<code>C:\Users\local_18060116\Temp\claude\C--Users-1806011-Projects-PM-Head-projects-MI-Crawler\dc1912fb-8cf2-4ebd-aefd-77450a8d4f13\scratchpad\ircal_sandbox\out\docs\NYSE_GLW\2026Q2\presentation_20260728_c1c96c78.htm</code><br>進 silver：s_ir_calendar_document_file ＋ Volume 實體檔 → parse_documents → s_ir_calendar_document_text</div><div class="mt"><table class="kv"><tbody><tr><td>company_slug</td><td>Corning</td></tr><tr><td>period</td><td>2026Q2</td></tr><tr><td>doc_kind</td><td>Presentation</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>source_file</td><td>presentation_20260728_c1c96c78.htm</td></tr><tr><td>source_url</td><td><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm">https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm</a></td></tr><tr><td>doc_date</td><td>2026-07-28</td></tr><tr><td>bytes</td><td>682724</td></tr><tr><td>sha256</td><td>c1c96c78837d73fff5706a7768b48b9f1b39fef47622c39b7b0a534127eaa729</td></tr></tbody></table></div><details><summary>原始 JSON（560 字）</summary><pre>{
+  &quot;path&quot;: &quot;docs/NYSE_GLW/2026Q2/Corning_Q2CY26_Presentation.htm&quot;,
+  &quot;record_type&quot;: &quot;ir_document_file&quot;,
+  &quot;sha256&quot;: &quot;c1c96c78837d73fff5706a7768b48b9f1b39fef47622c39b7b0a534127eaa729&quot;,
+  &quot;bytes&quot;: 682724,
+  &quot;company_key&quot;: &quot;NYSE:GLW&quot;,
+  &quot;company_slug&quot;: &quot;Corning&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q2&quot;,
+  &quot;doc_kind&quot;: &quot;Presentation&quot;,
+  &quot;fiscal_label&quot;: null,
+  &quot;source_file&quot;: &quot;presentation_20260728_c1c96c78.htm&quot;,
+  &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm&quot;,
+  &quot;doc_date&quot;: &quot;2026-07-28&quot;
+}</pre></details></section><section class="card mt" id="r4"><span class="tag t-ir_financials">ir_financials</span><b>財報數據</b><div class="small">batch_path：<code>financials/NYSE_GLW.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_financials（annual[] + quarterly[] 一期一列）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>Corning Incorporated</td></tr><tr><td>currency</td><td>USD</td></tr><tr><td>unit</td><td>one</td></tr><tr><td>source</td><td>SEC companyfacts</td></tr><tr><td>generated_at</td><td>2026-10-21T10:33:41</td></tr></tbody></table><h3>annual[]（5 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num">2025-12-31</td><td class="num">15,629,000,000</td><td class="num">10,008,000,000</td><td class="num">5,621,000,000</td><td class="num">2,279,000,000</td><td class="num">2,052,000,000</td><td class="num">1,596,000,000</td><td class="num">1,596,000,000</td><td class="num">1.83</td><td class="num">2,695,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-1,243,000,000</td><td class="num">30,976,000,000</td><td class="num">18,669,000,000</td><td class="num">12,307,000,000</td><td class="num">35.97</td><td class="num">14.58</td><td class="num">13.13</td><td class="num">10.21</td><td class="num">10.21</td><td class="num">60.27</td><td class="num">1.59</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num">2024-12-31</td><td class="num">13,118,000,000</td><td class="num">8,842,000,000</td><td class="num">4,276,000,000</td><td class="num">1,135,000,000</td><td class="num">813,000,000</td><td class="num">506,000,000</td><td class="num">506,000,000</td><td class="num">0.58</td><td class="num">1,939,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-744,000,000</td><td class="num">27,735,000,000</td><td class="num">16,665,000,000</td><td class="num">11,070,000,000</td><td class="num">32.60</td><td class="num">8.65</td><td class="num">6.20</td><td class="num">3.86</td><td class="num">3.86</td><td class="num">60.09</td><td class="num">1.62</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num">2023-12-31</td><td class="num">12,588,000,000</td><td class="num">8,657,000,000</td><td class="num">3,931,000,000</td><td class="num">890,000,000</td><td class="num">816,000,000</td><td class="num">581,000,000</td><td class="num">581,000,000</td><td class="num">0.68</td><td class="num">2,005,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-1,000,000,000</td><td class="num">28,500,000,000</td><td class="num">16,632,000,000</td><td class="num">11,868,000,000</td><td class="num">31.23</td><td class="num">7.07</td><td class="num">6.48</td><td class="num">4.62</td><td class="num">4.62</td><td class="num">58.36</td><td class="num">1.67</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num">2022-12-31</td><td class="num">14,189,000,000</td><td class="num">9,683,000,000</td><td class="num">4,506,000,000</td><td class="num">1,438,000,000</td><td class="num">1,797,000,000</td><td class="num">1,316,000,000</td><td class="num">1,316,000,000</td><td class="num">1.54</td><td class="num">2,615,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-1,355,000,000</td><td class="num">29,499,000,000</td><td class="num">17,224,000,000</td><td class="num">12,275,000,000</td><td class="num">31.76</td><td class="num">10.13</td><td class="num">12.66</td><td class="num">9.27</td><td class="num">9.27</td><td class="num">58.39</td><td class="num">1.44</td><td class="num"></td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num">2021-12-31</td><td class="num">14,082,000,000</td><td class="num">9,019,000,000</td><td class="num">5,063,000,000</td><td class="num">2,112,000,000</td><td class="num">2,426,000,000</td><td class="num">1,906,000,000</td><td class="num">1,906,000,000</td><td class="num">1.28</td><td class="num">3,412,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-1,419,000,000</td><td class="num">30,154,000,000</td><td class="num">17,609,000,000</td><td class="num">12,545,000,000</td><td class="num">35.95</td><td class="num">15.00</td><td class="num">17.23</td><td class="num">13.54</td><td class="num">13.54</td><td class="num">58.40</td><td class="num">1.59</td><td class="num"></td></tr></tbody></table></div><h3>quarterly[]（7 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num">2026Q2</td><td class="num"></td><td class="num">2026-06-30</td><td class="num">4,505,000,000</td><td class="num">2,877,000,000</td><td class="num">1,628,000,000</td><td class="num">698,000,000</td><td class="num">649,000,000</td><td class="num">559,000,000</td><td class="num">559,000,000</td><td class="num">0.64</td><td class="num">1,717,000,000</td><td class="num">2,079,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-359,000,000</td><td class="num">32,956,000,000</td><td class="num">19,829,000,000</td><td class="num">13,127,000,000</td><td class="num">36.14</td><td class="num">15.49</td><td class="num">14.41</td><td class="num">12.41</td><td class="num">12.41</td><td class="num">60.17</td><td class="num">1.81</td><td class="num">operating_cash_flow、investing_cash_flow</td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num">2026-03-31</td><td class="num">4,144,000,000</td><td class="num">2,616,000,000</td><td class="num">1,528,000,000</td><td class="num">639,000,000</td><td class="num">529,000,000</td><td class="num">371,000,000</td><td class="num">371,000,000</td><td class="num">0.43</td><td class="num">362,000,000</td><td class="num">362,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-203,000,000</td><td class="num">31,253,000,000</td><td class="num">18,904,000,000</td><td class="num">12,349,000,000</td><td class="num">36.87</td><td class="num">15.42</td><td class="num">12.77</td><td class="num">8.95</td><td class="num">8.95</td><td class="num">60.49</td><td class="num">1.61</td><td class="num"></td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num">2025-12-31</td><td class="num">4,215,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,495,000,000</td><td class="num">672,000,000</td><td class="num">678,000,000</td><td class="num">540,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">1,052,000,000</td><td class="num">2,695,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-478,000,000</td><td class="num">30,976,000,000</td><td class="num">18,669,000,000</td><td class="num">12,307,000,000</td><td class="num">35.47</td><td class="num">15.94</td><td class="num">16.09</td><td class="num">12.81</td><td class="num"><span class="null">—</span></td><td class="num">60.27</td><td class="num">1.59</td><td class="num">revenue、gross_profit、operating_income、pretax_income、net_income、operating_cash_flow、investing_cash_flow</td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num">2025-09-30</td><td class="num">4,100,000,000</td><td class="num">2,580,000,000</td><td class="num">1,520,000,000</td><td class="num">589,000,000</td><td class="num">550,000,000</td><td class="num">430,000,000</td><td class="num">430,000,000</td><td class="num">0.50</td><td class="num">784,000,000</td><td class="num">1,643,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-299,000,000</td><td class="num">29,916,000,000</td><td class="num">17,911,000,000</td><td class="num">12,005,000,000</td><td class="num">37.07</td><td class="num">14.37</td><td class="num">13.41</td><td class="num">10.49</td><td class="num">10.49</td><td class="num">59.87</td><td class="num">1.56</td><td class="num">operating_cash_flow、investing_cash_flow</td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num">2025-06-30</td><td class="num">3,862,000,000</td><td class="num">2,470,000,000</td><td class="num">1,392,000,000</td><td class="num">573,000,000</td><td class="num">584,000,000</td><td class="num">469,000,000</td><td class="num">469,000,000</td><td class="num">0.54</td><td class="num">708,000,000</td><td class="num">859,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-301,000,000</td><td class="num">28,745,000,000</td><td class="num">17,200,000,000</td><td class="num">11,545,000,000</td><td class="num">36.04</td><td class="num">14.84</td><td class="num">15.12</td><td class="num">12.14</td><td class="num">12.14</td><td class="num">59.84</td><td class="num">1.50</td><td class="num">operating_cash_flow、investing_cash_flow</td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num">2025-03-31</td><td class="num">3,452,000,000</td><td class="num">2,238,000,000</td><td class="num">1,214,000,000</td><td class="num">445,000,000</td><td class="num">240,000,000</td><td class="num">157,000,000</td><td class="num">157,000,000</td><td class="num">0.18</td><td class="num">151,000,000</td><td class="num">151,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">-165,000,000</td><td class="num">27,394,000,000</td><td class="num">16,266,000,000</td><td class="num">11,128,000,000</td><td class="num">35.17</td><td class="num">12.89</td><td class="num">6.95</td><td class="num">4.55</td><td class="num">4.55</td><td class="num">59.38</td><td class="num">1.69</td><td class="num"></td></tr><tr><td class="num">2024Q4</td><td class="num"></td><td class="num">2024-12-31</td><td class="num">3,501,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,197,000,000</td><td class="num">393,000,000</td><td class="num">437,000,000</td><td class="num">310,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">1,939,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">27,735,000,000</td><td class="num">16,665,000,000</td><td class="num">11,070,000,000</td><td class="num">34.19</td><td class="num">11.23</td><td class="num">12.48</td><td class="num">8.85</td><td class="num"><span class="null">—</span></td><td class="num">60.09</td><td class="num">1.62</td><td class="num">revenue、gross_profit、operating_income、pretax_income、net_income</td></tr></tbody></table></div><div class="note">金額為原始單位（台股仟元、美股元）；季別列的 OCF / 資本支出是年初累計（YTD），新版另推算單季值；derived 標示推算值。source_urls 省略，見原始 JSON。</div><h3>新版才有的資產負債表明細與天數（annual[] ＋ quarterly[]）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">現金</th><th class="num">FVTPL 金融資產</th><th class="num">FVOCI 金融資產</th><th class="num">應收票據</th><th class="num">應收帳款</th><th class="num">應收關係人</th><th class="num">存貨</th><th class="num">應付帳款</th><th class="num">應付關係人</th><th class="num">速動資產</th><th class="num">速動比</th><th class="num">應收天數</th><th class="num">應付天數</th><th class="num">天數基準</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num">1,526,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,779,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,077,000,000</td><td class="num">1,979,000,000</td><td class="num"><span class="null">—</span></td><td class="num">4,305,000,000</td><td class="num">0.76</td><td class="num">56.4</td><td class="num">62.9</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num">1,768,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,053,000,000</td><td class="num"><span class="null">—</span></td><td class="num">2,724,000,000</td><td class="num">1,472,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,821,000,000</td><td class="num">0.78</td><td class="num">50.4</td><td class="num">60.6</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num">1,779,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">1,572,000,000</td><td class="num"><span class="null">—</span></td><td class="num">2,666,000,000</td><td class="num">1,466,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,351,000,000</td><td class="num">0.78</td><td class="num">47.7</td><td class="num">68.9</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">1,721,000,000</td><td class="num"><span class="null">—</span></td><td class="num">2,904,000,000</td><td class="num">1,804,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">47.9</td><td class="num">64.4</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,004,000,000</td><td class="num"><span class="null">—</span></td><td class="num">2,481,000,000</td><td class="num">1,612,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">51.9</td><td class="num">65.2</td><td class="num">end</td></tr><tr><td class="num">2026Q2</td><td class="num"></td><td class="num">2,504,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,932,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,426,000,000</td><td class="num">2,361,000,000</td><td class="num"><span class="null">—</span></td><td class="num">5,436,000,000</td><td class="num">0.90</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num">1,755,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,676,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,279,000,000</td><td class="num">2,251,000,000</td><td class="num"><span class="null">—</span></td><td class="num">4,431,000,000</td><td class="num">0.75</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num">1,526,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,779,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,077,000,000</td><td class="num">1,979,000,000</td><td class="num"><span class="null">—</span></td><td class="num">4,305,000,000</td><td class="num">0.76</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,509,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,104,000,000</td><td class="num">2,029,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num">1,491,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,298,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,084,000,000</td><td class="num">1,931,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,789,000,000</td><td class="num">0.69</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num">1,359,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,045,000,000</td><td class="num"><span class="null">—</span></td><td class="num">2,896,000,000</td><td class="num">1,737,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,404,000,000</td><td class="num">0.75</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2024Q4</td><td class="num"></td><td class="num">1,768,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">2,053,000,000</td><td class="num"><span class="null">—</span></td><td class="num">2,724,000,000</td><td class="num">1,472,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,821,000,000</td><td class="num">0.78</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr></tbody></table></div><div class="note">速動資產＝現金及約當現金＋按公允價值衡量之金融資產（流動）＋應收票據＋應收帳款（含關係人）；速動比＝速動資產／流動負債。應收天數＝平均應收帳款／營收×365、應付天數＝平均應付帳款／銷貨成本×365，days_basis＝avg 為期初期末平均、end 為期末值（最早一年）；天數只在年度列。</div></div><details><summary>原始 JSON（15,715 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_financials&quot;,
+  &quot;company_key&quot;: &quot;NYSE:GLW&quot;,
+  &quot;company_name&quot;: &quot;Corning Incorporated&quot;,
+  &quot;stock_code&quot;: &quot;GLW&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;currency&quot;: &quot;USD&quot;,
+  &quot;unit&quot;: &quot;one&quot;,
+  &quot;source&quot;: &quot;SEC companyfacts&quot;,
+  &quot;annual&quot;: [
+    {
+      &quot;fiscal_year&quot;: 2025,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;revenue&quot;: 15629000000,
+      &quot;gross_profit&quot;: 5621000000,
+      &quot;cost_of_revenue&quot;: 10008000000,
+      &quot;operating_income&quot;: 2279000000,
+      &quot;pretax_income&quot;: 2052000000,
+      &quot;net_income&quot;: 1596000000,
+      &quot;eps&quot;: 1.83,
+      &quot;net_income_parent&quot;: 1596000000,
+      &quot;operating_cash_flow&quot;: 2695000000,
+      &quot;investing_cash_flow&quot;: -1243000000,
+      &quot;total_liabilities&quot;: 18669000000,
+      &quot;accounts_payable&quot;: 1979000000,
+      &quot;current_liabilities&quot;: 5628000000,
+      &quot;cash&quot;: 1526000000,
+      &quot;equity_parent&quot;: 11807000000,
+      &quot;total_assets&quot;: 30976000000,
+      &quot;inventory&quot;: 3077000000,
+      &quot;current_assets&quot;: 8936000000,
+      &quot;accounts_receivable&quot;: 2779000000,
+      &quot;equity&quot;: 12307000000,
+      &quot;derived&quot;: null,
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 35.97,
+      &quot;operating_margin&quot;: 14.58,
+      &quot;pretax_margin&quot;: 13.13,
+      &quot;net_margin&quot;: 10.21,
+      &quot;net_margin_parent&quot;: 10.21,
+      &quot;debt_ratio&quot;: 60.27,
+      &quot;current_ratio&quot;: 1.59,
+      &quot;quick_assets&quot;: 4305000000,
+      &quot;quick_ratio&quot;: 0.76,
+      &quot;dso_days&quot;: 56.4,
+      &quot;dpo_days&quot;: 62.9,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2024,
+      &quot;period_end&quot;: &quot;2024-12-31&quot;,
+      &quot;revenue&quot;: 13118000000,
+      &quot;gross_profit&quot;: 4276000000,
+      &quot;cost_of_revenue&quot;: 8842000000,
+      &quot;operating_income&quot;: 1135000000,
+      &quot;pretax_income&quot;: 813000000,
+      &quot;net_income&quot;: 506000000,
+      &quot;eps&quot;: 0.58,
+      &quot;net_income_parent&quot;: 506000000,
+      &quot;operating_cash_flow&quot;: 1939000000,
+      &quot;investing_cash_flow&quot;: -744000000,
+      &quot;total_liabilities&quot;: 16665000000,
+      &quot;accounts_payable&quot;: 1472000000,
+      &quot;current_liabilities&quot;: 4919000000,
+      &quot;cash&quot;: 1768000000,
+      &quot;equity_parent&quot;: 10686000000,
+      &quot;total_assets&quot;: 27735000000,
+      &quot;inventory&quot;: 2724000000,
+      &quot;current_assets&quot;: 7992000000,
+      &quot;accounts_receivable&quot;: 2053000000,
+      &quot;equity&quot;: 11070000000,
+      &quot;derived&quot;: null,
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 32.6,
+      &quot;operating_margin&quot;: 8.65,
+      &quot;pretax_margin&quot;: 6.2,
+      &quot;net_margin&quot;: 3.86,
+      &quot;net_margin_parent&quot;: 3.86,
+      &quot;debt_ratio&quot;: 60.09,
+      &quot;current_ratio&quot;: 1.62,
+      &quot;quick_assets&quot;: 3821000000,
+      &quot;quick_ratio&quot;: 0.78,
+      &quot;dso_days&quot;: 50.4,
+      &quot;dpo_days&quot;: 60.6,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2023,
+      &quot;period_end&quot;: &quot;2023-12-31&quot;,
+      &quot;revenue&quot;: 12588000000,
+      &quot;gross_profit&quot;: 3931000000,
+      &quot;cost_of_revenue&quot;: 8657000000,
+      &quot;operating_income&quot;: 890000000,
+      &quot;pretax_income&quot;: 816000000,
+      &quot;net_income&quot;: 581000000,
+      &quot;eps&quot;: 0.68,
+      &quot;net_income_parent&quot;: 581000000,
+      &quot;operating_cash_flow&quot;: 2005000000,
+      &quot;investing_cash_flow&quot;: -1000000000,
+      &quot;total_liabilities&quot;: 16632000000,
+      &quot;accounts_payable&quot;: 1466000000,
+      &quot;current_liabilities&quot;: 4319000000,
+      &quot;cash&quot;: 1779000000,
+      &quot;equity_parent&quot;: 11551000000,
+      &quot;total_assets&quot;: 28500000000,
+      &quot;inventory&quot;: 2666000000,
+      &quot;current_assets&quot;: 7212000000,
+      &quot;accounts_receivable&quot;: 1572000000,
+      &quot;equity&quot;: 11868000000,
+      &quot;derived&quot;: null,
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 31.23,
+      &quot;operating_margin&quot;: 7.07,
+      &quot;pretax_margin&quot;: 6.48,
+      &quot;net_margin&quot;: 4.62,
+      &quot;net_margin_parent&quot;: 4.62,
+      &quot;debt_ratio&quot;: 58.36,
+      &quot;current_ratio&quot;: 1.67,
+      &quot;quick_assets&quot;: 3351000000,
+      &quot;quick_ratio&quot;: 0.78,
+      &quot;dso_days&quot;: 47.7,
+      &quot;dpo_days&quot;: 68.9,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2022,
+      &quot;period_end&quot;: &quot;2022-12-31&quot;,
+      &quot;revenue&quot;: 14189000000,
+      &quot;gross_profit&quot;: 4506000000,
+      &quot;cost_of_revenue&quot;: 9683000000,
+      &quot;operating_income&quot;: 1438000000,
+      &quot;pretax_income&quot;: 1797000000,
+      &quot;net_income&quot;: 1316000000,
+      &quot;eps&quot;: 1.54,
+      &quot;net_income_parent&quot;: 1316000000,
+      &quot;operating_cash_flow&quot;: 2615000000,
+      &quot;investing_cash_flow&quot;: -1355000000,
+      &quot;total_liabilities&quot;: 17224000000,
+      &quot;accounts_payable&quot;: 1804000000,
+      &quot;current_liabilities&quot;: 5175000000,
+      &quot;equity_parent&quot;: 12008000000,
+      &quot;total_assets&quot;: 29499000000,
+      &quot;inventory&quot;: 2904000000,
+      &quot;current_assets&quot;: 7453000000,
+      &quot;accounts_receivable&quot;: 1721000000,
+      &quot;equity&quot;: 12275000000,
+      &quot;derived&quot;: null,
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 31.76,
+      &quot;operating_margin&quot;: 10.13,
+      &quot;pretax_margin&quot;: 12.66,
+      &quot;net_margin&quot;: 9.27,
+      &quot;net_margin_parent&quot;: 9.27,
+      &quot;debt_ratio&quot;: 58.39,
+      &quot;current_ratio&quot;: 1.44,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;dso_days&quot;: 47.9,
+      &quot;dpo_days&quot;: 64.4,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2021,
+      &quot;period_end&quot;: &quot;2021-12-31&quot;,
+      &quot;revenue&quot;: 14082000000,
+      &quot;gross_profit&quot;: 5063000000,
+      &quot;cost_of_revenue&quot;: 9019000000,
+      &quot;operating_income&quot;: 2112000000,
+      &quot;pretax_income&quot;: 2426000000,
+      &quot;net_income&quot;: 1906000000,
+      &quot;eps&quot;: 1.28,
+      &quot;net_income_parent&quot;: 1906000000,
+      &quot;operating_cash_flow&quot;: 3412000000,
+      &quot;investing_cash_flow&quot;: -1419000000,
+      &quot;total_liabilities&quot;: 17609000000,
+      &quot;accounts_payable&quot;: 1612000000,
+      &quot;current_liabilities&quot;: 4806000000,
+      &quot;equity_parent&quot;: 12333000000,
+      &quot;total_assets&quot;: 30154000000,
+      &quot;inventory&quot;: 2481000000,
+      &quot;current_assets&quot;: 7659000000,
+      &quot;accounts_receivable&quot;: 2004000000,
+      &quot;equity&quot;: 12545000000,
+      &quot;derived&quot;: null,
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 35.95,
+      &quot;operating_margin&quot;: 15.0,
+      &quot;pretax_margin&quot;: 17.23,
+      &quot;net_margin&quot;: 13.54,
+      &quot;net_margin_parent&quot;: 13.54,
+      &quot;debt_ratio&quot;: 58.4,
+      &quot;current_ratio&quot;: 1.59,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;dso_days&quot;: 51.9,
+      &quot;dpo_days&quot;: 65.2,
+      &quot;days_basis&quot;: &quot;end&quot;
+    }
+  ],
+  &quot;quarterly&quot;: [
+    {
+      &quot;period&quot;: &quot;2026Q2&quot;,
+      &quot;period_end&quot;: &quot;2026-06-30&quot;,
+      &quot;revenue&quot;: 4505000000,
+      &quot;gross_profit&quot;: 1628000000,
+      &quot;cost_of_revenue&quot;: 2877000000,
+      &quot;operating_income&quot;: 698000000,
+      &quot;pretax_income&quot;: 649000000,
+      &quot;net_income&quot;: 559000000,
+      &quot;eps&quot;: 0.64,
+      &quot;net_income_parent&quot;: 559000000,
+      &quot;operating_cash_flow_ytd&quot;: 2079000000,
+      &quot;investing_cash_flow_ytd&quot;: -562000000,
+      &quot;total_assets&quot;: 32956000000,
+      &quot;total_liabilities&quot;: 19829000000,
+      &quot;current_assets&quot;: 10917000000,
+      &quot;current_liabilities&quot;: 6021000000,
+      &quot;cash&quot;: 2504000000,
+      &quot;accounts_receivable&quot;: 2932000000,
+      &quot;inventory&quot;: 3426000000,
+      &quot;accounts_payable&quot;: 2361000000,
+      &quot;equity&quot;: 13127000000,
+      &quot;equity_parent&quot;: 12560000000,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 36.14,
+      &quot;operating_margin&quot;: 15.49,
+      &quot;pretax_margin&quot;: 14.41,
+      &quot;net_margin&quot;: 12.41,
+      &quot;net_margin_parent&quot;: 12.41,
+      &quot;debt_ratio&quot;: 60.17,
+      &quot;current_ratio&quot;: 1.81,
+      &quot;quick_assets&quot;: 5436000000,
+      &quot;quick_ratio&quot;: 0.9,
+      &quot;operating_cash_flow&quot;: 1717000000,
+      &quot;investing_cash_flow&quot;: -359000000
+    },
+    {
+      &quot;period&quot;: &quot;2026Q1&quot;,
+      &quot;period_end&quot;: &quot;2026-03-31&quot;,
+      &quot;revenue&quot;: 4144000000,
+      &quot;gross_profit&quot;: 1528000000,
+      &quot;cost_of_revenue&quot;: 2616000000,
+      &quot;operating_income&quot;: 639000000,
+      &quot;pretax_income&quot;: 529000000,
+      &quot;net_income&quot;: 371000000,
+      &quot;eps&quot;: 0.43,
+      &quot;net_income_parent&quot;: 371000000,
+      &quot;operating_cash_flow&quot;: 362000000,
+      &quot;operating_cash_flow_ytd&quot;: 362000000,
+      &quot;investing_cash_flow&quot;: -203000000,
+      &quot;investing_cash_flow_ytd&quot;: -203000000,
+      &quot;total_assets&quot;: 31253000000,
+      &quot;total_liabilities&quot;: 18904000000,
+      &quot;current_assets&quot;: 9526000000,
+      &quot;current_liabilities&quot;: 5916000000,
+      &quot;cash&quot;: 1755000000,
+      &quot;accounts_receivable&quot;: 2676000000,
+      &quot;inventory&quot;: 3279000000,
+      &quot;accounts_payable&quot;: 2251000000,
+      &quot;equity&quot;: 12349000000,
+      &quot;equity_parent&quot;: 11812000000,
+      &quot;derived&quot;: null,
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 36.87,
+      &quot;operating_margin&quot;: 15.42,
+      &quot;pretax_margin&quot;: 12.77,
+      &quot;net_margin&quot;: 8.95,
+      &quot;net_margin_parent&quot;: 8.95,
+      &quot;debt_ratio&quot;: 60.49,
+      &quot;current_ratio&quot;: 1.61,
+      &quot;quick_assets&quot;: 4431000000,
+      &quot;quick_ratio&quot;: 0.75
+    },
+    {
+      &quot;period&quot;: &quot;2025Q4&quot;,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;total_assets&quot;: 30976000000,
+      &quot;total_liabilities&quot;: 18669000000,
+      &quot;current_assets&quot;: 8936000000,
+      &quot;current_liabilities&quot;: 5628000000,
+      &quot;cash&quot;: 1526000000,
+      &quot;accounts_receivable&quot;: 2779000000,
+      &quot;inventory&quot;: 3077000000,
+      &quot;accounts_payable&quot;: 1979000000,
+      &quot;equity&quot;: 12307000000,
+      &quot;equity_parent&quot;: 11807000000,
+      &quot;revenue&quot;: 4215000000,
+      &quot;_derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;,
+        &quot;net_income&quot;
+      ],
+      &quot;gross_profit&quot;: 1495000000,
+      &quot;operating_income&quot;: 672000000,
+      &quot;pretax_income&quot;: 678000000,
+      &quot;net_income&quot;: 540000000,
+      &quot;derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;,
+        &quot;net_income&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 35.47,
+      &quot;operating_margin&quot;: 15.94,
+      &quot;pretax_margin&quot;: 16.09,
+      &quot;net_margin&quot;: 12.81,
+      &quot;net_margin_parent&quot;: null,
+      &quot;debt_ratio&quot;: 60.27,
+      &quot;current_ratio&quot;: 1.59,
+      &quot;quick_assets&quot;: 4305000000,
+      &quot;quick_ratio&quot;: 0.76,
+      &quot;operating_cash_flow_ytd&quot;: 2695000000,
+      &quot;investing_cash_flow_ytd&quot;: -1243000000,
+      &quot;operating_cash_flow&quot;: 1052000000,
+      &quot;investing_cash_flow&quot;: -478000000
+    },
+    {
+      &quot;period&quot;: &quot;2025Q3&quot;,
+      &quot;period_end&quot;: &quot;2025-09-30&quot;,
+      &quot;revenue&quot;: 4100000000,
+      &quot;gross_profit&quot;: 1520000000,
+      &quot;cost_of_revenue&quot;: 2580000000,
+      &quot;operating_income&quot;: 589000000,
+      &quot;pretax_income&quot;: 550000000,
+      &quot;net_income&quot;: 430000000,
+      &quot;eps&quot;: 0.5,
+      &quot;net_income_parent&quot;: 430000000,
+      &quot;operating_cash_flow_ytd&quot;: 1643000000,
+      &quot;investing_cash_flow_ytd&quot;: -765000000,
+      &quot;total_assets&quot;: 29916000000,
+      &quot;total_liabilities&quot;: 17911000000,
+      &quot;current_assets&quot;: 8677000000,
+      &quot;current_liabilities&quot;: 5577000000,
+      &quot;accounts_receivable&quot;: 2509000000,
+      &quot;inventory&quot;: 3104000000,
+      &quot;accounts_payable&quot;: 2029000000,
+      &quot;equity&quot;: 12005000000,
+      &quot;equity_parent&quot;: 11536000000,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 37.07,
+      &quot;operating_margin&quot;: 14.37,
+      &quot;pretax_margin&quot;: 13.41,
+      &quot;net_margin&quot;: 10.49,
+      &quot;net_margin_parent&quot;: 10.49,
+      &quot;debt_ratio&quot;: 59.87,
+      &quot;current_ratio&quot;: 1.56,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;operating_cash_flow&quot;: 784000000,
+      &quot;investing_cash_flow&quot;: -299000000
+    },
+    {
+      &quot;period&quot;: &quot;2025Q2&quot;,
+      &quot;period_end&quot;: &quot;2025-06-30&quot;,
+      &quot;revenue&quot;: 3862000000,
+      &quot;gross_profit&quot;: 1392000000,
+      &quot;cost_of_revenue&quot;: 2470000000,
+      &quot;operating_income&quot;: 573000000,
+      &quot;pretax_income&quot;: 584000000,
+      &quot;net_income&quot;: 469000000,
+      &quot;eps&quot;: 0.54,
+      &quot;net_income_parent&quot;: 469000000,
+      &quot;operating_cash_flow_ytd&quot;: 859000000,
+      &quot;investing_cash_flow_ytd&quot;: -466000000,
+      &quot;total_assets&quot;: 28745000000,
+      &quot;total_liabilities&quot;: 17200000000,
+      &quot;current_assets&quot;: 8196000000,
+      &quot;current_liabilities&quot;: 5475000000,
+      &quot;cash&quot;: 1491000000,
+      &quot;accounts_receivable&quot;: 2298000000,
+      &quot;inventory&quot;: 3084000000,
+      &quot;accounts_payable&quot;: 1931000000,
+      &quot;equity&quot;: 11545000000,
+      &quot;equity_parent&quot;: 11116000000,
+      &quot;derived&quot;: [
+        &quot;operating_cash_flow&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 36.04,
+      &quot;operating_margin&quot;: 14.84,
+      &quot;pretax_margin&quot;: 15.12,
+      &quot;net_margin&quot;: 12.14,
+      &quot;net_margin_parent&quot;: 12.14,
+      &quot;debt_ratio&quot;: 59.84,
+      &quot;current_ratio&quot;: 1.5,
+      &quot;quick_assets&quot;: 3789000000,
+      &quot;quick_ratio&quot;: 0.69,
+      &quot;operating_cash_flow&quot;: 708000000,
+      &quot;investing_cash_flow&quot;: -301000000
+    },
+    {
+      &quot;period&quot;: &quot;2025Q1&quot;,
+      &quot;period_end&quot;: &quot;2025-03-31&quot;,
+      &quot;revenue&quot;: 3452000000,
+      &quot;gross_profit&quot;: 1214000000,
+      &quot;cost_of_revenue&quot;: 2238000000,
+      &quot;operating_income&quot;: 445000000,
+      &quot;pretax_income&quot;: 240000000,
+      &quot;net_income&quot;: 157000000,
+      &quot;eps&quot;: 0.18,
+      &quot;net_income_parent&quot;: 157000000,
+      &quot;operating_cash_flow&quot;: 151000000,
+      &quot;operating_cash_flow_ytd&quot;: 151000000,
+      &quot;investing_cash_flow&quot;: -165000000,
+      &quot;investing_cash_flow_ytd&quot;: -165000000,
+      &quot;total_assets&quot;: 27394000000,
+      &quot;total_liabilities&quot;: 16266000000,
+      &quot;current_assets&quot;: 7644000000,
+      &quot;current_liabilities&quot;: 4523000000,
+      &quot;cash&quot;: 1359000000,
+      &quot;accounts_receivable&quot;: 2045000000,
+      &quot;inventory&quot;: 2896000000,
+      &quot;accounts_payable&quot;: 1737000000,
+      &quot;equity&quot;: 11128000000,
+      &quot;equity_parent&quot;: 10716000000,
+      &quot;derived&quot;: null,
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 35.17,
+      &quot;operating_margin&quot;: 12.89,
+      &quot;pretax_margin&quot;: 6.95,
+      &quot;net_margin&quot;: 4.55,
+      &quot;net_margin_parent&quot;: 4.55,
+      &quot;debt_ratio&quot;: 59.38,
+      &quot;current_ratio&quot;: 1.69,
+      &quot;quick_assets&quot;: 3404000000,
+      &quot;quick_ratio&quot;: 0.75
+    },
+    {
+      &quot;period&quot;: &quot;2024Q4&quot;,
+      &quot;period_end&quot;: &quot;2024-12-31&quot;,
+      &quot;total_assets&quot;: 27735000000,
+      &quot;total_liabilities&quot;: 16665000000,
+      &quot;current_assets&quot;: 7992000000,
+      &quot;current_liabilities&quot;: 4919000000,
+      &quot;cash&quot;: 1768000000,
+      &quot;accounts_receivable&quot;: 2053000000,
+      &quot;inventory&quot;: 2724000000,
+      &quot;accounts_payable&quot;: 1472000000,
+      &quot;equity&quot;: 11070000000,
+      &quot;equity_parent&quot;: 10686000000,
+      &quot;revenue&quot;: 3501000000,
+      &quot;_derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;,
+        &quot;net_income&quot;
+      ],
+      &quot;gross_profit&quot;: 1197000000,
+      &quot;operating_income&quot;: 393000000,
+      &quot;pretax_income&quot;: 437000000,
+      &quot;net_income&quot;: 310000000,
+      &quot;derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;,
+        &quot;net_income&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000024741.json&quot;
+      ],
+      &quot;gross_margin&quot;: 34.19,
+      &quot;operating_margin&quot;: 11.23,
+      &quot;pretax_margin&quot;: 12.48,
+      &quot;net_margin&quot;: 8.85,
+      &quot;net_margin_parent&quot;: null,
+      &quot;debt_ratio&quot;: 60.09,
+      &quot;current_ratio&quot;: 1.62,
+      &quot;quick_assets&quot;: 3821000000,
+      &quot;quick_ratio&quot;: 0.78,
+      &quot;operating_cash_flow_ytd&quot;: 1939000000,
+      &quot;investing_cash_flow_ytd&quot;: -744000000
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-10-21T10:33:41&quot;
+}</pre></details></section><section class="card mt" id="r5"><span class="tag t-ir_summary">ir_summary</span><b>法說彙整</b><div class="small">batch_path：<code>summaries/2026-07-28_NYSEGLW_2026Q2.json</code>｜批次：dev_20261021T103341<br>進 silver：s_ir_calendar_summary</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>Corning Incorporated</td></tr><tr><td>period</td><td>2026Q2</td></tr><tr><td>fiscal_period</td><td>2026Q2</td></tr><tr><td>conference_date</td><td>2026-07-28</td></tr><tr><td>local_conference_date</td><td>2026-07-28</td></tr><tr><td>fallback</td><td>false</td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;A00&quot;
+]</pre></td></tr><tr><td>crawled_at</td><td>2026-10-21T10:37:35+08:00</td></tr></tbody></table><h3>summary 物件</h3><table class="kv"><tbody><tr><td>found</td><td>true</td></tr><tr><td>reported_period（報告期間）</td><td>2026 Q2（2026 年 4～6 月；Corning 會計年度與日曆年相同）</td></tr><tr><td>core_points（重點）</td><td><ul><li>2026 Q2 核心銷售額 US$4.74B（YoY +17%）、核心 EPS US$0.78（YoY +30%），優於市場預期；GAAP 銷售額 US$4.51B、GAAP 稀釋 EPS US$0.64</li><li>Optical Communications 成為最大事業部：銷售 US$2.07B（YoY +32%）、部門淨利 US$438M（YoY +77%），淨利率達 21% 新高；Enterprise Networks 銷售 YoY +65% 至 US$1.27B，AI 資料中心相關銷售近乎翻倍</li><li>與 NVIDIA 建立長期合作，美國光學連接製造產能擴大 10 倍、美國光纖產能擴增逾 50%；與 Amazon 簽多年期數十億美元光纖／光纜／連接協議；Meta 協議最高 US$6B（媒體說法）</li><li>Solar 銷售 YoY +90% 至 US$438M，但因太陽能晶圓廠延長維修停機與設備升級（額外費用約 US$30M）本季淨損 US$7M，管理層預期 Q3 起改善</li><li>2026 年起重劃部門：Display 與 Specialty Materials 合併為 Glass Innovations，新增 Solar（含 Hemlock），其餘併入 Life Sciences &amp; Emerging Growth</li><li>Springboard 計畫：年化營收 run rate 2026 年底 US$20B、2028 年底 US$30B、2030 年底 US$40B；2026 Q4～2030 Q4 銷售 CAGR 19%，獲利成長快於營收；US$20B run rate 預計由 Q4 提前至 Q3 達成</li><li>Q3 財測僅與華爾街預期相當，7/28 股價收跌 12.1% 至 US$126.01，並拖累光通訊類股（Lumentum、Coherent 等）下跌</li></ul></td></tr><tr><td>guidance（展望）</td><td>2026 Q3 核心銷售額 US$4.9B～5.0B（YoY 約 +16%）、核心 EPS US$0.85～0.89（YoY 約 +28%）；管理層稱 Q3 指引不代表減速，Solar 獲利自 Q3 起改善；2026 年資本支出約 US$2.0B，Q3、Q4 投資節奏加快並以光通訊為主；長期維持核心營業利益率 20% 以上、ROIC 朝 high-teens 邁進，年底前再更新利潤率目標；Photonics 平台目標 2030 年營收 US$10B；風險調整後高信心計畫為 2028 年 US$27B、2030 年 US$35B（Investing.com 轉述）</td></tr><tr><td>key_numbers（關鍵數字）</td><td><ul><li>2026 Q2 核心銷售額 US$4.738B（YoY +17%）；GAAP 銷售額 US$4.505B（YoY +17%）</li><li>2026 Q2 核心 EPS US$0.78（YoY +30%）；GAAP 稀釋 EPS US$0.64（YoY +19%）；核心淨利 US$680M（YoY +30%）</li><li>2026 Q2 核心毛利率 39.6%（YoY +120 bps）；核心營業利益率 20.9%（YoY +190 bps）；GAAP 毛利率 36.1%、GAAP 營業利益率 15.5%</li><li>2026 Q2 核心 ROIC 14.9%（YoY +180 bps）</li><li>2026 Q2 GAAP 營業現金流 US$1,717M；調整後自由現金流 US$1,423M；資本支出 US$422M（上年同期 US$308M）</li><li>2026 H1 營業現金流 US$2,079M；H1 資本支出 US$754M（2025 H1 US$516M）</li><li>截至 2026/6/30 長期債務 US$7,756M、一年內到期債務與短期借款 US$668M；總負債 US$19,829M、股東權益 US$13,127M；US$1.5B 循環信貸未動用</li><li>Optical Communications 2026 Q2 銷售 US$2,072M（YoY +32%）、部門淨利 US$438M（YoY +77%）；Enterprise 銷售 US$1.27B（YoY +65%）；Carrier YoY +1%（H1 約 +17%）</li><li>Solar 2026 Q2 銷售 US$438M（YoY +90%）、淨損 US$7M（上年同期淨利 US$2M）</li><li>2026 Q3 指引：核心銷售額 US$4.9B～5.0B、核心 EPS US$0.85～0.89</li><li>季度股息 US$0.28，2026/9/29 支付</li></ul></td></tr><tr><td>risks（風險）</td><td><ul><li>AI 工廠中光學 scale-up（機櫃內垂直擴展）的採用時程難以預測，是 Springboard 上行空間的最大變數</li><li>手機市場受記憶體價格影響，2026 全年出貨量預估年減 mid-teens（約 15%）；汽車市場仍疲弱（全球車市年減 2%）</li><li>Solar 本季虧損，獲利改善仰賴 Q3 產能恢復；Life Sciences &amp; Emerging Growth 銷售 YoY -15% 且淨損 US$21M</li><li>2026 資本支出約 US$2.0B 且下半年加速，短期可能壓抑自由現金流</li><li>Q3 指引僅符合市場預期，高估值下股價對指引敏感，7/28 單日收跌 12.1%</li><li>與客戶的長期協議含權證安排（10-Q：某客戶取得 1,500 萬股 US$180 行使價權證與 300 萬股 pre-funded 權證，認列 US$296M 權證公允價值作為收入減項）</li></ul></td></tr><tr><td>headline_metrics（法說揭露的重點數字）</td><td><div style="overflow:auto"><table><thead><tr><th>指標</th><th>期間</th><th>值</th><th>YoY</th><th>註</th></tr></thead><tbody><tr><td>營收</td><td>2026 Q2</td><td>核心銷售額 US$4.74B（GAAP US$4.51B）</td><td>+17%</td><td>優於市場預估約 US$4.62B～4.65B（各媒體預估值略異）</td></tr><tr><td>毛利率</td><td>2026 Q2</td><td>核心 39.6%（GAAP 36.1%）</td><td>+120 bps</td><td><span class="null">null</span></td></tr><tr><td>營業利益率</td><td>2026 Q2</td><td>核心 20.9%（GAAP 15.5%）</td><td>+190 bps</td><td><span class="null">null</span></td></tr><tr><td>稅後淨利</td><td>2026 Q2</td><td>核心淨利 US$680M</td><td>+30%</td><td><span class="null">null</span></td></tr><tr><td>EPS</td><td>2026 Q2</td><td>核心 EPS US$0.78（GAAP 稀釋 EPS US$0.64）</td><td>核心 +30%（GAAP +19%）</td><td>上年同期核心 EPS US$0.60</td></tr><tr><td>營業現金流</td><td>2026 Q2</td><td>GAAP 營業現金流 US$1,717M；調整後自由現金流 US$1,423M</td><td><span class="null">null</span></td><td>2026 H1 營業現金流 US$2,079M</td></tr><tr><td>資本支出</td><td>2026 Q2</td><td>US$422M</td><td>上年同期 US$308M</td><td>2026 H1 US$754M；2026 全年約 US$2.0B（法說說法）</td></tr><tr><td>負債比</td><td>2026/6/30</td><td>長期債務 US$7,756M；總負債 US$19,829M／股東權益 US$13,127M</td><td><span class="null">null</span></td><td>10-Q 未直接列示負債比；5 月償還 €300M 3.875% 2026 票據，8/15 擬贖回 US$250M 7.25% 2036 票據</td></tr><tr><td>其他</td><td>2026 Q2</td><td>核心 ROIC 14.9%</td><td>+180 bps</td><td><span class="null">null</span></td></tr><tr><td>營收</td><td>2026 Q3（指引）</td><td>核心銷售額 US$4.9B～5.0B</td><td>約 +16%</td><td><span class="null">null</span></td></tr><tr><td>EPS</td><td>2026 Q3（指引）</td><td>核心 EPS US$0.85～0.89</td><td>約 +28%</td><td><span class="null">null</span></td></tr></tbody></table></div></td></tr><tr><td>business_segments（事業群）</td><td><div style="overflow:auto"><table><thead><tr><th>事業群</th><th>營收</th><th>營收 YoY</th><th>營益率</th><th>營益率 YoY</th><th>註</th></tr></thead><tbody><tr><td>Optical Communications</td><td>US$2,072M</td><td>+32%</td><td>部門淨利 US$438M（淨利率 21%）</td><td>部門淨利 +77%</td><td>Enterprise Networks 銷售 US$1.27B（YoY +65%），GenAI 產品成長更快、AI 資料中心相關銷售近乎翻倍；Carrier YoY +1%（H1 約 +17%，客戶專案時程因素）</td></tr><tr><td>Glass Innovations（原 Display + Specialty Materials）</td><td>US$1,463M</td><td>+1%</td><td>部門淨利 US$354M</td><td>部門淨利 +9%</td><td>手機市場 2026 出貨預估年減 mid-teens，Gorilla Glass 因單機內容量提升可優於市場</td></tr><tr><td>Automotive</td><td>US$471M</td><td>+2%</td><td>部門淨利 US$82M</td><td>部門淨利 +4%</td><td>汽車市場仍疲弱，全球車市年減 2%</td></tr><tr><td>Solar（含 Hemlock）</td><td>US$438M</td><td>+90%</td><td>部門淨損 US$(7)M</td><td>上年同期淨利 US$2M</td><td>太陽能晶圓廠延長維修停機與設備升級，額外費用約 US$30M；預期 Q3 改善，目標建成 US$3B 以上營收事業</td></tr><tr><td>Life Sciences &amp; Emerging Growth</td><td>US$294M</td><td>-15%</td><td>部門淨損 US$(21)M</td><td>上年同期淨利 US$6M</td><td>媒體轉述：營收 QoQ +8%、淨利 QoQ +13%</td></tr></tbody></table></div></td></tr><tr><td>management_views（管理層觀點，固定五類＝模板法說 01–05）</td><td><div style="overflow:auto"><table><thead><tr><th>主題</th><th>內容</th></tr></thead><tbody><tr><td>事業體／產品線重點</td><td>Optical Communications 銷售 YoY +32%、淨利 +77%，Enterprise +65% 由 GenAI 資料中心連接產品驅動，AI 相關占比近乎翻倍；Carrier 本季僅 +1% 但 H1 約 +17%，FTTH 與 DCI 需求持續。Solar 銷售 +90% 但因停機虧損；手機與車用終端市場偏弱。</td></tr><tr><td>擴產／產能變化</td><td>與 NVIDIA 長期合作將美國光學連接製造產能擴大 10 倍、美國光纖產能擴增逾 50%；高密度光學產品需求已高於現有產能；2026 資本支出約 US$2.0B，下半年加速並以光通訊為主，大型擴產皆由長期客戶協議（LTA）支撐；Solar 晶圓廠完成延長維修停機與設備升級。</td></tr><tr><td>獲利能力變化</td><td>核心毛利率 39.6%（+120 bps）、核心營業利益率 20.9%（+190 bps）、ROIC 14.9%（+180 bps）；光通訊淨利率達 21% 新高且仍有擴張空間；Q3 利潤率提升主要來自 Solar 獲利改善；長期目標維持營業利益率 20% 以上，年底前更新新目標。</td></tr><tr><td>未來市場預測</td><td>Q3 核心銷售額 US$4.9B～5.0B（+16%）、核心 EPS US$0.85～0.89（+28%），US$20B 年化 run rate 預計提前至 Q3 達成；Springboard 2026 Q4～2030 Q4 CAGR 19%，2030 年 US$40B；預估至 2028 年 Enterprise 每顆 GPU 光學用量增至目前 1.3～1.5 倍；scale-up 光學導入是更大但較難預測的機會。</td></tr><tr><td>投資／M&amp;A／組織整改</td><td>2026 年起重劃部門（Glass Innovations、Solar、Life Sciences &amp; Emerging Growth）；與 NVIDIA、Amazon、Meta、Apple 簽署長期協議，LTA 將成為光學業務的「絕大部分」；10-Q 揭露 5/6 與一客戶建立長期合作（客戶存款 US$1.0B，附 1,500 萬股 US$180 權證）；Solar 將持續提高半導體級多晶矽比例。</td></tr></tbody></table></div></td></tr><tr><td>qa_highlights（Q&amp;A）</td><td><div style="overflow:auto"><table><thead><tr><th>問</th><th>答</th></tr></thead><tbody><tr><td>Citi：Q3 強勁但為何 Q4 成長有限？</td><td>CFO Schlesinger：Q3 指引隱含提前達成 US$20B run rate，成長率從約 15% 加速至接近 20%，沒有隱含其他事業部門的負面訊息；Weeks 補充只是不想在 5 月後再次上調計畫。</td></tr><tr><td>UBS：5 月以來 Photonics／scale-up 供應鏈有延遲傳聞，計畫有無改變？2027 年 Photonics 能否達十億美元級？</td><td>Weeks：基本觀點沒有改變，外界臆測多於業界實際變化；未給 2027 年數字，僅維持 2030 年 US$10B Photonics 目標並按季更新。</td></tr><tr><td>Wolfe Research：LTA 在光學業務占比與定價策略？</td><td>Weeks：LTA 占比將是絕大部分，大型擴產皆有 LTA 支撐；定價不是單純漲光纖價格，而是透過創新降低客戶成本、加快部署並分享價值。</td></tr><tr><td>Bank of America：Q3 指引變動因素？Enterprise 營收季增約 US$300M 但淨利率未見明顯槓桿？</td><td>Schlesinger：Q3 不代表減速，Enterprise 仍是主要貢獻；手機市場因記憶體價格下半年明顯轉弱、車市疲軟；光學利潤率將持續提升。</td></tr><tr><td>Susquehanna：是否增加半導體級多晶矽配置？scale-up 與 FAU 是否已納入 Springboard？</td><td>Weeks：會持續提高半導體級多晶矽比例但太陽能仍占重要營收；Enterprise 光纖與 Photonics 的 FAU 已納入計畫，上行空間取決於光學端口占比與 scale-up 在 AI 工廠的普及程度。</td></tr></tbody></table></div></td></tr><tr><td>positive_signals（正向訊號）</td><td><ul><li>光通訊需求高於產能且由 NVIDIA、Amazon、Meta 等長期協議鎖定，美國連接產能擴大 10 倍、光纖 +50%，供應鏈投資方向明確</li><li>核心毛利率與營業利益率連續擴張，光通訊淨利率達 21%，公司有資源持續投資 Photonics 與產能</li><li>Solar／Hemlock 將提高半導體級多晶矽比例，並已完成設備升級，Q3 起獲利改善</li><li>Glass Innovations 在手機市場下滑下仍 YoY +1%、淨利 +9%，Gorilla Glass 單機內容量提升支撐表現</li></ul></td></tr><tr><td>watch_items（觀察項）</td><td><ul><li>AI 工廠光學 scale-up 的採用時程與光學端口占比，為 Photonics US$10B 目標的關鍵變數</li><li>手機市場 2026 出貨預估年減 mid-teens、全球車市年減 2%，影響 Glass Innovations 與 Automotive 需求</li><li>2026 資本支出約 US$2.0B 且下半年加速，自由現金流與擴產進度需持續追蹤</li><li>Solar 部門能否如期於 Q3 轉正；Life Sciences &amp; Emerging Growth 銷售 -15% 且虧損</li></ul></td></tr><tr><td>open_questions（未答問題）</td><td><ul><li>光學端口占比（管理層稱機密）與 scale-up 採用速度的具體判斷</li><li>2027 年 Photonics 營收規模，管理層只給 2030 年 US$10B 目標</li><li>LTA 在光學業務的具體占比與定價／漲價幅度</li><li>Enterprise 營收大增但營運槓桿未明顯顯現的完整原因，以及新的營業利益率目標（留待年底）</li></ul></td></tr><tr><td>notes（彙整備註）</td><td>股價反應媒體說法不一：Investing.com 稱盤前跌 18.47%、年初至今 +64%；MoneyDJ 稱 7/28 收跌 12.1% 至 US$126.01、年初至今 +43.91%；財報狗稱年初至今約 +39%。財報狗引用的參考資料中另有一則標題稱 Q2 營收未達預估，與多數報導的「優於預期」相矛盾（媒體說法不一）。Springboard CAGR 19% 的起算點各媒體表述略異（2026 Q4 起 vs 自 Springboard 起點）。法說未提及 Micro LED、CPO 或與 AUO 的直接合作，故無 AUO 相關議題一筆。</td></tr><tr><td>sources（來源）</td><td><ul><li><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm">Corning 8-K Exhibit 99（2026 Q2 業績新聞稿）</a>｜SEC EDGAR</li><li><a href="https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm">Corning Form 10-Q（2026/6/30 止季度）</a>｜SEC EDGAR</li><li><a href="https://www.businesswire.com/news/home/20260727590976/en/Cornings-Strong-Second-Quarter-2026-Financial-Results1-Demonstrate-Progress-on-Recently-Upgraded-Springboard-Plan">Corning&#x27;s Strong Second-Quarter 2026 Financial Results Demonstrate Progress on Recently Upgraded Springboard Plan</a>｜Business Wire（Corning 新聞稿）</li><li><a href="https://www.investing.com/news/transcripts/earnings-call-transcript-corning-beats-q2-2026-estimates-but-shares-sink-93CH-4817120">Earnings call transcript: Corning beats Q2 2026 estimates but shares sink</a>｜Investing.com</li><li><a href="https://finance.yahoo.com/markets/stocks/articles/corning-inc-glw-q2-2026-210222441.html">Corning Inc (GLW) Q2 2026 Earnings Call Highlights: Strong Growth in Optical Communications</a>｜Yahoo Finance／GuruFocus</li><li><a href="https://finance.technews.tw/2026/07/29/cornings-strong-second-quarter-2026-financial-results/">康寧財報優於預期但財測平淡，股價跳水拖累光通訊類股</a>｜科技新報（轉載 MoneyDJ）</li><li><a href="https://statementdog.com/news/17258">康寧 AI 光通訊需求爆發帶動獲利大增 30% 上修長期成長目標至 2030 年 400 億美元</a>｜財報狗</li></ul></td></tr></tbody></table></div><details><summary>原始 JSON（11,593 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_summary&quot;,
+  &quot;company_key&quot;: &quot;NYSE:GLW&quot;,
+  &quot;company_name&quot;: &quot;Corning Incorporated&quot;,
+  &quot;stock_code&quot;: &quot;GLW&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q2&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q2&quot;,
+  &quot;conference_date&quot;: &quot;2026-07-28&quot;,
+  &quot;time_basis&quot;: &quot;LOCAL_DATE_ONLY&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-07-28&quot;,
+  &quot;fallback&quot;: false,
+  &quot;summary&quot;: {
+    &quot;found&quot;: true,
+    &quot;reported_period&quot;: &quot;2026 Q2（2026 年 4～6 月；Corning 會計年度與日曆年相同）&quot;,
+    &quot;core_points&quot;: [
+      &quot;2026 Q2 核心銷售額 US$4.74B（YoY +17%）、核心 EPS US$0.78（YoY +30%），優於市場預期；GAAP 銷售額 US$4.51B、GAAP 稀釋 EPS US$0.64&quot;,
+      &quot;Optical Communications 成為最大事業部：銷售 US$2.07B（YoY +32%）、部門淨利 US$438M（YoY +77%），淨利率達 21% 新高；Enterprise Networks 銷售 YoY +65% 至 US$1.27B，AI 資料中心相關銷售近乎翻倍&quot;,
+      &quot;與 NVIDIA 建立長期合作，美國光學連接製造產能擴大 10 倍、美國光纖產能擴增逾 50%；與 Amazon 簽多年期數十億美元光纖／光纜／連接協議；Meta 協議最高 US$6B（媒體說法）&quot;,
+      &quot;Solar 銷售 YoY +90% 至 US$438M，但因太陽能晶圓廠延長維修停機與設備升級（額外費用約 US$30M）本季淨損 US$7M，管理層預期 Q3 起改善&quot;,
+      &quot;2026 年起重劃部門：Display 與 Specialty Materials 合併為 Glass Innovations，新增 Solar（含 Hemlock），其餘併入 Life Sciences &amp; Emerging Growth&quot;,
+      &quot;Springboard 計畫：年化營收 run rate 2026 年底 US$20B、2028 年底 US$30B、2030 年底 US$40B；2026 Q4～2030 Q4 銷售 CAGR 19%，獲利成長快於營收；US$20B run rate 預計由 Q4 提前至 Q3 達成&quot;,
+      &quot;Q3 財測僅與華爾街預期相當，7/28 股價收跌 12.1% 至 US$126.01，並拖累光通訊類股（Lumentum、Coherent 等）下跌&quot;
+    ],
+    &quot;guidance&quot;: &quot;2026 Q3 核心銷售額 US$4.9B～5.0B（YoY 約 +16%）、核心 EPS US$0.85～0.89（YoY 約 +28%）；管理層稱 Q3 指引不代表減速，Solar 獲利自 Q3 起改善；2026 年資本支出約 US$2.0B，Q3、Q4 投資節奏加快並以光通訊為主；長期維持核心營業利益率 20% 以上、ROIC 朝 high-teens 邁進，年底前再更新利潤率目標；Photonics 平台目標 2030 年營收 US$10B；風險調整後高信心計畫為 2028 年 US$27B、2030 年 US$35B（Investing.com 轉述）&quot;,
+    &quot;key_numbers&quot;: [
+      &quot;2026 Q2 核心銷售額 US$4.738B（YoY +17%）；GAAP 銷售額 US$4.505B（YoY +17%）&quot;,
+      &quot;2026 Q2 核心 EPS US$0.78（YoY +30%）；GAAP 稀釋 EPS US$0.64（YoY +19%）；核心淨利 US$680M（YoY +30%）&quot;,
+      &quot;2026 Q2 核心毛利率 39.6%（YoY +120 bps）；核心營業利益率 20.9%（YoY +190 bps）；GAAP 毛利率 36.1%、GAAP 營業利益率 15.5%&quot;,
+      &quot;2026 Q2 核心 ROIC 14.9%（YoY +180 bps）&quot;,
+      &quot;2026 Q2 GAAP 營業現金流 US$1,717M；調整後自由現金流 US$1,423M；資本支出 US$422M（上年同期 US$308M）&quot;,
+      &quot;2026 H1 營業現金流 US$2,079M；H1 資本支出 US$754M（2025 H1 US$516M）&quot;,
+      &quot;截至 2026/6/30 長期債務 US$7,756M、一年內到期債務與短期借款 US$668M；總負債 US$19,829M、股東權益 US$13,127M；US$1.5B 循環信貸未動用&quot;,
+      &quot;Optical Communications 2026 Q2 銷售 US$2,072M（YoY +32%）、部門淨利 US$438M（YoY +77%）；Enterprise 銷售 US$1.27B（YoY +65%）；Carrier YoY +1%（H1 約 +17%）&quot;,
+      &quot;Solar 2026 Q2 銷售 US$438M（YoY +90%）、淨損 US$7M（上年同期淨利 US$2M）&quot;,
+      &quot;2026 Q3 指引：核心銷售額 US$4.9B～5.0B、核心 EPS US$0.85～0.89&quot;,
+      &quot;季度股息 US$0.28，2026/9/29 支付&quot;
+    ],
+    &quot;risks&quot;: [
+      &quot;AI 工廠中光學 scale-up（機櫃內垂直擴展）的採用時程難以預測，是 Springboard 上行空間的最大變數&quot;,
+      &quot;手機市場受記憶體價格影響，2026 全年出貨量預估年減 mid-teens（約 15%）；汽車市場仍疲弱（全球車市年減 2%）&quot;,
+      &quot;Solar 本季虧損，獲利改善仰賴 Q3 產能恢復；Life Sciences &amp; Emerging Growth 銷售 YoY -15% 且淨損 US$21M&quot;,
+      &quot;2026 資本支出約 US$2.0B 且下半年加速，短期可能壓抑自由現金流&quot;,
+      &quot;Q3 指引僅符合市場預期，高估值下股價對指引敏感，7/28 單日收跌 12.1%&quot;,
+      &quot;與客戶的長期協議含權證安排（10-Q：某客戶取得 1,500 萬股 US$180 行使價權證與 300 萬股 pre-funded 權證，認列 US$296M 權證公允價值作為收入減項）&quot;
+    ],
+    &quot;headline_metrics&quot;: [
+      {
+        &quot;metric&quot;: &quot;營收&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;核心銷售額 US$4.74B（GAAP US$4.51B）&quot;,
+        &quot;yoy&quot;: &quot;+17%&quot;,
+        &quot;note&quot;: &quot;優於市場預估約 US$4.62B～4.65B（各媒體預估值略異）&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;毛利率&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;核心 39.6%（GAAP 36.1%）&quot;,
+        &quot;yoy&quot;: &quot;+120 bps&quot;,
+        &quot;note&quot;: null
+      },
+      {
+        &quot;metric&quot;: &quot;營業利益率&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;核心 20.9%（GAAP 15.5%）&quot;,
+        &quot;yoy&quot;: &quot;+190 bps&quot;,
+        &quot;note&quot;: null
+      },
+      {
+        &quot;metric&quot;: &quot;稅後淨利&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;核心淨利 US$680M&quot;,
+        &quot;yoy&quot;: &quot;+30%&quot;,
+        &quot;note&quot;: null
+      },
+      {
+        &quot;metric&quot;: &quot;EPS&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;核心 EPS US$0.78（GAAP 稀釋 EPS US$0.64）&quot;,
+        &quot;yoy&quot;: &quot;核心 +30%（GAAP +19%）&quot;,
+        &quot;note&quot;: &quot;上年同期核心 EPS US$0.60&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;營業現金流&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;GAAP 營業現金流 US$1,717M；調整後自由現金流 US$1,423M&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;2026 H1 營業現金流 US$2,079M&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;資本支出&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;US$422M&quot;,
+        &quot;yoy&quot;: &quot;上年同期 US$308M&quot;,
+        &quot;note&quot;: &quot;2026 H1 US$754M；2026 全年約 US$2.0B（法說說法）&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;負債比&quot;,
+        &quot;period&quot;: &quot;2026/6/30&quot;,
+        &quot;value&quot;: &quot;長期債務 US$7,756M；總負債 US$19,829M／股東權益 US$13,127M&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;10-Q 未直接列示負債比；5 月償還 €300M 3.875% 2026 票據，8/15 擬贖回 US$250M 7.25% 2036 票據&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;其他&quot;,
+        &quot;period&quot;: &quot;2026 Q2&quot;,
+        &quot;value&quot;: &quot;核心 ROIC 14.9%&quot;,
+        &quot;yoy&quot;: &quot;+180 bps&quot;,
+        &quot;note&quot;: null
+      },
+      {
+        &quot;metric&quot;: &quot;營收&quot;,
+        &quot;period&quot;: &quot;2026 Q3（指引）&quot;,
+        &quot;value&quot;: &quot;核心銷售額 US$4.9B～5.0B&quot;,
+        &quot;yoy&quot;: &quot;約 +16%&quot;,
+        &quot;note&quot;: null
+      },
+      {
+        &quot;metric&quot;: &quot;EPS&quot;,
+        &quot;period&quot;: &quot;2026 Q3（指引）&quot;,
+        &quot;value&quot;: &quot;核心 EPS US$0.85～0.89&quot;,
+        &quot;yoy&quot;: &quot;約 +28%&quot;,
+        &quot;note&quot;: null
+      }
+    ],
+    &quot;business_segments&quot;: [
+      {
+        &quot;segment&quot;: &quot;Optical Communications&quot;,
+        &quot;revenue&quot;: &quot;US$2,072M&quot;,
+        &quot;revenue_yoy&quot;: &quot;+32%&quot;,
+        &quot;operating_margin&quot;: &quot;部門淨利 US$438M（淨利率 21%）&quot;,
+        &quot;opm_yoy&quot;: &quot;部門淨利 +77%&quot;,
+        &quot;note&quot;: &quot;Enterprise Networks 銷售 US$1.27B（YoY +65%），GenAI 產品成長更快、AI 資料中心相關銷售近乎翻倍；Carrier YoY +1%（H1 約 +17%，客戶專案時程因素）&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;Glass Innovations（原 Display + Specialty Materials）&quot;,
+        &quot;revenue&quot;: &quot;US$1,463M&quot;,
+        &quot;revenue_yoy&quot;: &quot;+1%&quot;,
+        &quot;operating_margin&quot;: &quot;部門淨利 US$354M&quot;,
+        &quot;opm_yoy&quot;: &quot;部門淨利 +9%&quot;,
+        &quot;note&quot;: &quot;手機市場 2026 出貨預估年減 mid-teens，Gorilla Glass 因單機內容量提升可優於市場&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;Automotive&quot;,
+        &quot;revenue&quot;: &quot;US$471M&quot;,
+        &quot;revenue_yoy&quot;: &quot;+2%&quot;,
+        &quot;operating_margin&quot;: &quot;部門淨利 US$82M&quot;,
+        &quot;opm_yoy&quot;: &quot;部門淨利 +4%&quot;,
+        &quot;note&quot;: &quot;汽車市場仍疲弱，全球車市年減 2%&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;Solar（含 Hemlock）&quot;,
+        &quot;revenue&quot;: &quot;US$438M&quot;,
+        &quot;revenue_yoy&quot;: &quot;+90%&quot;,
+        &quot;operating_margin&quot;: &quot;部門淨損 US$(7)M&quot;,
+        &quot;opm_yoy&quot;: &quot;上年同期淨利 US$2M&quot;,
+        &quot;note&quot;: &quot;太陽能晶圓廠延長維修停機與設備升級，額外費用約 US$30M；預期 Q3 改善，目標建成 US$3B 以上營收事業&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;Life Sciences &amp; Emerging Growth&quot;,
+        &quot;revenue&quot;: &quot;US$294M&quot;,
+        &quot;revenue_yoy&quot;: &quot;-15%&quot;,
+        &quot;operating_margin&quot;: &quot;部門淨損 US$(21)M&quot;,
+        &quot;opm_yoy&quot;: &quot;上年同期淨利 US$6M&quot;,
+        &quot;note&quot;: &quot;媒體轉述：營收 QoQ +8%、淨利 QoQ +13%&quot;
+      }
+    ],
+    &quot;management_views&quot;: [
+      {
+        &quot;topic&quot;: &quot;事業體／產品線重點&quot;,
+        &quot;view&quot;: &quot;Optical Communications 銷售 YoY +32%、淨利 +77%，Enterprise +65% 由 GenAI 資料中心連接產品驅動，AI 相關占比近乎翻倍；Carrier 本季僅 +1% 但 H1 約 +17%，FTTH 與 DCI 需求持續。Solar 銷售 +90% 但因停機虧損；手機與車用終端市場偏弱。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;擴產／產能變化&quot;,
+        &quot;view&quot;: &quot;與 NVIDIA 長期合作將美國光學連接製造產能擴大 10 倍、美國光纖產能擴增逾 50%；高密度光學產品需求已高於現有產能；2026 資本支出約 US$2.0B，下半年加速並以光通訊為主，大型擴產皆由長期客戶協議（LTA）支撐；Solar 晶圓廠完成延長維修停機與設備升級。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;獲利能力變化&quot;,
+        &quot;view&quot;: &quot;核心毛利率 39.6%（+120 bps）、核心營業利益率 20.9%（+190 bps）、ROIC 14.9%（+180 bps）；光通訊淨利率達 21% 新高且仍有擴張空間；Q3 利潤率提升主要來自 Solar 獲利改善；長期目標維持營業利益率 20% 以上，年底前更新新目標。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;未來市場預測&quot;,
+        &quot;view&quot;: &quot;Q3 核心銷售額 US$4.9B～5.0B（+16%）、核心 EPS US$0.85～0.89（+28%），US$20B 年化 run rate 預計提前至 Q3 達成；Springboard 2026 Q4～2030 Q4 CAGR 19%，2030 年 US$40B；預估至 2028 年 Enterprise 每顆 GPU 光學用量增至目前 1.3～1.5 倍；scale-up 光學導入是更大但較難預測的機會。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;投資／M&amp;A／組織整改&quot;,
+        &quot;view&quot;: &quot;2026 年起重劃部門（Glass Innovations、Solar、Life Sciences &amp; Emerging Growth）；與 NVIDIA、Amazon、Meta、Apple 簽署長期協議，LTA 將成為光學業務的「絕大部分」；10-Q 揭露 5/6 與一客戶建立長期合作（客戶存款 US$1.0B，附 1,500 萬股 US$180 權證）；Solar 將持續提高半導體級多晶矽比例。&quot;
+      }
+    ],
+    &quot;qa_highlights&quot;: [
+      {
+        &quot;question&quot;: &quot;Citi：Q3 強勁但為何 Q4 成長有限？&quot;,
+        &quot;answer&quot;: &quot;CFO Schlesinger：Q3 指引隱含提前達成 US$20B run rate，成長率從約 15% 加速至接近 20%，沒有隱含其他事業部門的負面訊息；Weeks 補充只是不想在 5 月後再次上調計畫。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;UBS：5 月以來 Photonics／scale-up 供應鏈有延遲傳聞，計畫有無改變？2027 年 Photonics 能否達十億美元級？&quot;,
+        &quot;answer&quot;: &quot;Weeks：基本觀點沒有改變，外界臆測多於業界實際變化；未給 2027 年數字，僅維持 2030 年 US$10B Photonics 目標並按季更新。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;Wolfe Research：LTA 在光學業務占比與定價策略？&quot;,
+        &quot;answer&quot;: &quot;Weeks：LTA 占比將是絕大部分，大型擴產皆有 LTA 支撐；定價不是單純漲光纖價格，而是透過創新降低客戶成本、加快部署並分享價值。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;Bank of America：Q3 指引變動因素？Enterprise 營收季增約 US$300M 但淨利率未見明顯槓桿？&quot;,
+        &quot;answer&quot;: &quot;Schlesinger：Q3 不代表減速，Enterprise 仍是主要貢獻；手機市場因記憶體價格下半年明顯轉弱、車市疲軟；光學利潤率將持續提升。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;Susquehanna：是否增加半導體級多晶矽配置？scale-up 與 FAU 是否已納入 Springboard？&quot;,
+        &quot;answer&quot;: &quot;Weeks：會持續提高半導體級多晶矽比例但太陽能仍占重要營收；Enterprise 光纖與 Photonics 的 FAU 已納入計畫，上行空間取決於光學端口占比與 scale-up 在 AI 工廠的普及程度。&quot;
+      }
+    ],
+    &quot;positive_signals&quot;: [
+      &quot;光通訊需求高於產能且由 NVIDIA、Amazon、Meta 等長期協議鎖定，美國連接產能擴大 10 倍、光纖 +50%，供應鏈投資方向明確&quot;,
+      &quot;核心毛利率與營業利益率連續擴張，光通訊淨利率達 21%，公司有資源持續投資 Photonics 與產能&quot;,
+      &quot;Solar／Hemlock 將提高半導體級多晶矽比例，並已完成設備升級，Q3 起獲利改善&quot;,
+      &quot;Glass Innovations 在手機市場下滑下仍 YoY +1%、淨利 +9%，Gorilla Glass 單機內容量提升支撐表現&quot;
+    ],
+    &quot;watch_items&quot;: [
+      &quot;AI 工廠光學 scale-up 的採用時程與光學端口占比，為 Photonics US$10B 目標的關鍵變數&quot;,
+      &quot;手機市場 2026 出貨預估年減 mid-teens、全球車市年減 2%，影響 Glass Innovations 與 Automotive 需求&quot;,
+      &quot;2026 資本支出約 US$2.0B 且下半年加速，自由現金流與擴產進度需持續追蹤&quot;,
+      &quot;Solar 部門能否如期於 Q3 轉正；Life Sciences &amp; Emerging Growth 銷售 -15% 且虧損&quot;
+    ],
+    &quot;open_questions&quot;: [
+      &quot;光學端口占比（管理層稱機密）與 scale-up 採用速度的具體判斷&quot;,
+      &quot;2027 年 Photonics 營收規模，管理層只給 2030 年 US$10B 目標&quot;,
+      &quot;LTA 在光學業務的具體占比與定價／漲價幅度&quot;,
+      &quot;Enterprise 營收大增但營運槓桿未明顯顯現的完整原因，以及新的營業利益率目標（留待年底）&quot;
+    ],
+    &quot;sources&quot;: [
+      {
+        &quot;title&quot;: &quot;Corning 8-K Exhibit 99（2026 Q2 業績新聞稿）&quot;,
+        &quot;url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/24741/000002474126000253/glw-20260728xex99xq22026.htm&quot;,
+        &quot;media&quot;: &quot;SEC EDGAR&quot;
+      },
+      {
+        &quot;title&quot;: &quot;Corning Form 10-Q（2026/6/30 止季度）&quot;,
+        &quot;url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/24741/000002474126000255/glw-20260630.htm&quot;,
+        &quot;media&quot;: &quot;SEC EDGAR&quot;
+      },
+      {
+        &quot;title&quot;: &quot;Corning&#x27;s Strong Second-Quarter 2026 Financial Results Demonstrate Progress on Recently Upgraded Springboard Plan&quot;,
+        &quot;url&quot;: &quot;https://www.businesswire.com/news/home/20260727590976/en/Cornings-Strong-Second-Quarter-2026-Financial-Results1-Demonstrate-Progress-on-Recently-Upgraded-Springboard-Plan&quot;,
+        &quot;media&quot;: &quot;Business Wire（Corning 新聞稿）&quot;
+      },
+      {
+        &quot;title&quot;: &quot;Earnings call transcript: Corning beats Q2 2026 estimates but shares sink&quot;,
+        &quot;url&quot;: &quot;https://www.investing.com/news/transcripts/earnings-call-transcript-corning-beats-q2-2026-estimates-but-shares-sink-93CH-4817120&quot;,
+        &quot;media&quot;: &quot;Investing.com&quot;
+      },
+      {
+        &quot;title&quot;: &quot;Corning Inc (GLW) Q2 2026 Earnings Call Highlights: Strong Growth in Optical Communications&quot;,
+        &quot;url&quot;: &quot;https://finance.yahoo.com/markets/stocks/articles/corning-inc-glw-q2-2026-210222441.html&quot;,
+        &quot;media&quot;: &quot;Yahoo Finance／GuruFocus&quot;
+      },
+      {
+        &quot;title&quot;: &quot;康寧財報優於預期但財測平淡，股價跳水拖累光通訊類股&quot;,
+        &quot;url&quot;: &quot;https://finance.technews.tw/2026/07/29/cornings-strong-second-quarter-2026-financial-results/&quot;,
+        &quot;media&quot;: &quot;科技新報（轉載 MoneyDJ）&quot;
+      },
+      {
+        &quot;title&quot;: &quot;康寧 AI 光通訊需求爆發帶動獲利大增 30% 上修長期成長目標至 2030 年 400 億美元&quot;,
+        &quot;url&quot;: &quot;https://statementdog.com/news/17258&quot;,
+        &quot;media&quot;: &quot;財報狗&quot;
+      }
+    ],
+    &quot;notes&quot;: &quot;股價反應媒體說法不一：Investing.com 稱盤前跌 18.47%、年初至今 +64%；MoneyDJ 稱 7/28 收跌 12.1% 至 US$126.01、年初至今 +43.91%；財報狗稱年初至今約 +39%。財報狗引用的參考資料中另有一則標題稱 Q2 營收未達預估，與多數報導的「優於預期」相矛盾（媒體說法不一）。Springboard CAGR 19% 的起算點各媒體表述略異（2026 Q4 起 vs 自 Springboard 起點）。法說未提及 Micro LED、CPO 或與 AUO 的直接合作，故無 AUO 相關議題一筆。&quot;
+  },
+  &quot;recipients&quot;: [
+    &quot;A00&quot;
+  ],
+  &quot;crawled_at&quot;: &quot;2026-10-21T10:37:35+08:00&quot;
+}</pre></details></section>
+</main>
+<footer>由 build_sources.py 產出｜2026-10-21</footer>
+</body>
+</html>
