@@ -111,7 +111,10 @@ def test_token_labels_and_resolve(mod):
     assert labels[(1, "P03")] == "第三方（inx）" and labels[(1, "P04")] == "與會者"
     assert labels[(1, "G01")] == "群組（acer）"
     assert mod.resolve_tokens("<P02> 要求 <P01> 回覆，cc <G01> 與 <P99>", 1, labels) == (
-        "客戶方（acer） 要求 AUO 方 回覆，cc 群組（acer） 與 與會者"
+        "客戶方（acer）要求 AUO 方回覆，cc 群組（acer）與與會者"
+    )  # 中文鄰字的空格拿掉；「要求 AUO 方」英文開頭留空格
+    assert mod.resolve_tokens("<P01> 說明 roadmap，<P03> 回覆 OK", 1, labels) == (
+        "AUO 方說明 roadmap，第三方（inx）回覆 OK"
     )
     assert mod.resolve_tokens("<P02> x", 2, labels) == "與會者 x"  # 別封信的 token 不混用
     assert mod.resolve_tokens("<P02> x", 1, None) == "<P02> x"
@@ -147,7 +150,7 @@ def test_sections_layout(mod, built):
     timeline = sections[4]["data"]
     assert timeline["rows"][0][:2] == ["09/03", "事實"]
     assert [r[:3] for r in timeline["rows"] if r[0] == "09/10"] == [
-        ["09/10", "要求", "客戶方（acer） 要求分享 SPEC，cc 群組（acer）、與會者"]
+        ["09/10", "要求", "客戶方（acer）要求分享 SPEC，cc 群組（acer）、與會者"]
     ]  # D33：<Pnn> 顯示成陣營
     intel = sections[5]["data"]
     assert intel["rows"][0][0] == "口徑 / 定義" and intel["rows"][0][4] == "未審"  # semantic 排前

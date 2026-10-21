@@ -245,6 +245,22 @@ def test_plan_intel(mod):
         2,
     )
     assert upd["INT-002"]["pm_note"] == "PM 寫的"  # 更新不動 PM 欄
+    # 2026-10-21：比台帳 date 舊的條目（重萃補進來的舊信）算一次更新，
+    # 但不覆蓋 summary / source / item_key
+    p_old = mod.plan_intel(
+        [_item("i0", "intel", term="inx產能", summary="更舊", as_of="2026-05",
+               date=date(2026, 5, 1))],
+        [{  # 上面的 existing 已被 plan_intel 就地改過，另建一列
+            "intel_id": "INT-002", "app": "MNT", "term": "INX 產能",
+            "term_norm": mod.normalize_text("INX 產能"), "summary": "舊", "as_of": "2026-Q2",
+            "date": date(2026, 6, 1), "n_updates": 1, "status": "active",
+            "item_key": "k_old", "source": "src_old",
+        }], "0.1", NOW,
+    )
+    r = p_old["updates"][0]
+    assert (r["summary"], r["source"], r["item_key"], r["as_of"], r["date"], r["n_updates"]) == (
+        "舊", "src_old", "k_old", "2026-05", date(2026, 6, 1), 2  # as_of 同季平手取後者
+    )
     new = {r["intel_id"]: r for r in p["new"]}
     assert list(new) == ["INT-003", "INT-004", "INT-005"]
     assert (new["INT-004"]["status"], new["INT-004"]["n_updates"]) == (

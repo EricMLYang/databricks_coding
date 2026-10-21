@@ -436,7 +436,7 @@ def test_build_item_rows_empty_and_segment_failure(mod):
     assert (
         len(rows) == 1
         and rows[0]["extract_status"] == "empty"
-        and rows[0]["item_id"] == "BU-MTG-7-2-0-000"
+        and rows[0]["item_id"] == "BU-MTG-7-2-0-001"  # empty 也從 offset+1 起編（重萃不撞舊列）
     )
     assert rows[0]["summary"] == "只有會議行政" and st["empty"] == 1 and st["items"] == 0
     rows, st = mod.build_item_rows(None, "invalid JSON: x", SEG, _ctx(mod, nnn_offset=2))

@@ -1,10 +1,63 @@
-# HANDOFF — 2026-10-20 更新（下次 session 先讀這份）
+# HANDOFF — 2026-10-21 更新（下次 session 先讀這份）
 
 總覽與決定（D1–D32）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
 
 ## 0. 接續點（2026-10-20 傍晚更新，最新；底下 §1–§6 是歷史脈絡）
 
 ### 0.0 現在停在哪（下次 session 從這裡接）
+
+**2026-10-21 進度（最新）**：✅ 修復 MERGE 跑過（7 列更新）；✅ [c05] 已換到 Databricks。之後跑了 `max_segments = 10` 與 `100` 兩批（94 ＋ 1,528 條、[c30] 全過、USD 7.2），**但都是把最舊的 0.3 段重打一次**：0.3 的段仍是 400、customer NULL 池子（0.2 且 NULL）只剩 9 段。原因：排除「本版已萃過的段」那條是 commit `da5b4e1`（10-20 傍晚）才進 [c10]，**Databricks 上的 [c10] 沒跟著換**，4,795 條 0.3 後仍 NULL 的條目每輪都被當待重萃。第四批跑到 [c11] `segments 100` 時中斷、沒寫表。repo 加了護欄：[c11] 印「已用本版 prompt 萃過的段數」，customer_null 批次不為 0 就在打 LLM 前 assert 停。表不用修（重打的只是舊 0.3 列被 superseded）。
+**全表現況**：清洗表 1,817 段（cleaner 0.1；可萃取 1,257 段全部有有效條目）；items 有效 0.2 5,745 列（857 段）/ 0.3 7,526 列（400 段）；active ok 12,601、customer NULL 4,839（38%）。0.3 ok 7,310 條裡 2,576 條有 customer（35%）。
+✅ 10-21 Databricks 已換 [c10] [c11]，再跑印 `segments 0 | already extracted: 0`：**customer_null 重萃結束**（0.3 共 400 段 / 7,526 列）。那 9 段 0.2 NULL 池子不在可萃取清洗段裡（10-19 重切後段型別或 dup_of 變了的舊條目），選不到、不影響。
+✅ customer_basis SQL：0.2 ok 5,291（NULL 105）/ 0.3 ok 7,343（llm 2,650、NULL 4,693 = 64%，規則補不到的內部會議段）；合計 NULL 4,798 / 12,634 = 38%。
+✅ **Stage A 10-21 跑完**：新增 3,891 列（rule 1,262 / llm 200 / dup 2,429）、USD 0.33、[c30] 全過（dup_item_key 0、verified 4 → 4）；鏡頭表 active 12,583 = event 12,032 / semantic 173 / intel 378。WARN disagree 75%（先驗 intel 173 → LLM 判 event 140）：先驗 intel 規則偏寬，不擋，之後調 003 [c02] 或 prompt。
+✅ **Stage B 0.3 dry_run 看過**（10-21）：semantic_auto 94 個新 SEM（SEM-002..095）＋ 補證據、intel 新 22 個（INT-202..223）＋ 同主題更新約 90 次、關鍵審核清單 259 條（semantic 171 / intel 88）、退場候選 62 個。觀察：近義 SEM 未合併（分貨 code ×5、SR 效期 ×3、VECA 流程 ×3、SEM-048 = SEM-001）、雜訊 SEM（SEM-091 測試信、SEM-089 內部專案、SEM-004 Excel W 欄）→ PM 標 n，依使用者優先序重複暫不管。**修了一處**：`update_intel` 原本不管日期一律用本次條目蓋 summary / source（INT-007 的 11 月摘要被 10 月那封蓋掉）→ [c04] 改成條目 date 比台帳舊就只計次不覆蓋；tests 7 passed。
+✅ **Stage B 0.3 已換 [c04]、`dry_run = false` 寫表，數字全過**（10-21）：[c20] written sem_new 94 / sem_updated 0 / evidence 171 / intel_new 22 / intel_updated 11（被更新到的 INT 個數；dry_run 的「約 90 次」是 update_intel 動作數，口徑不同）/ lens_sem_id 258；[c21] status sync 0 列（PM 還沒審）；[c30] dup_sem_id 0 / dup_intel_id 0 / dup_evidence_key 0 / dup_intel_topic 0 / lens_filled 258 = expected 258 / evidence_mismatch [] / unreviewed_with_y 0；totals **SEM 95 / evidence 173 / INT 223**（全 unreviewed，除 SEM-001、INT-001 / 002）。兩份 md 全文用 `print(md_sem_after)` / `print(md_int_after)` 印，仍不貼回 PM_Head（見下方 16 條說明）。
+✅ **digest 10-21 跑過 acer × MNT**（Databricks 上已是 D33 版，[c10] 有「參與者表只取 token / side / company」那行）：month 2026-08 / rows 56 / intel+semantic 29 / tokens 76、4 封 3 場。(1) `<P07>` → 「客戶方（acer）」「AUO 方」OK；(2) S2 6 / 56 條且全是真的報價 / 數量，AUO roadmap 已不在 S2；(3) **AUO roadmap 發言方沒改到**：8/14「AUO Monthly Meeting_LVDS QHD/UHD 100Hz」15 條仍是「acer 說明友達三模計劃…」、發言方客戶。SQL 確認那 10 條 `prompt_version = 0.2, speaker_side = customer`：該段條目全有 customer = acer，`customer_null` 選不到，預期內。
+**repo 已加（10-21，未貼 Databricks）**：task 3 `reextract = customer` ＋ widgets `reextract_customers`（entity_id 逗號分隔）/ `reextract_apps`（空 = 全部）：指定客戶 × 應用、有舊版 ok 條目的段重萃，排除本版已萃過；[c11] 護欄同樣管它（[c01] [c10] [c11]）。digest [c03]：標籤兩側中文鄰字的空格拿掉（「客戶方（acer） 請求」→「客戶方（acer）請求」）、§7 資料缺口第 2 條改成「約四成條目沒有客戶（內部會議或只提型號）」。tests 21 passed。
+**使用者 10-21 決定：不再補舊帳。** `reextract = customer` 的 acer × MNT dry_run 跑了 67 段（護欄 0）但沒寫表；0.2 版剩下的段（857 段扣掉已重萃的）維持原樣，digest / 台帳裡舊月份的 AUO roadmap 條目仍會是「客戶說明友達…」。之後只走週跑新流程（`reextract = none`）；要補再用 `reextract = customer` 或 `all`。下面 1–3 點改為「如果之後要補」才做。
+**（如果之後要補）照順序**：
+1. task 3 換 [c01] [c10] [c11] → `reextract = customer`、`reextract_customers = acer`、`reextract_apps = MNT`、`max_segments = 0`、`dry_run = true` 看段數（估幾十段、USD 1–3）→ `dry_run = false` → [c30]。
+2. Stage A `dry_run = false` 再跑（新 item_key 進鏡頭表）→ Stage B 0.3 `dry_run = false`（SEM / INT 會再多幾個）。
+3. digest 換 [c03] 重跑 acer × MNT：8/14 那 15 條應變「AUO 說明…」、發言方 AUO。
+4. 寫 `jobs/meeting_record/USER_BRIEF.md`（非技術版一頁：故事 ＋ md 裡三個例子 ＋ 三個限制）給使用者向 USER 交代。
+
+**2026-10-21 早上接續（最新）**：昨晚 400 段那批**跑完且 [c20] 已寫表**（7,481 列、batch_active_rows = expected_rows），但 [c30] 停在
+`dup_item_id 7`（其餘檢查 mixed_prompt_version 0 / email 0 / dangling 0 / customer_without_basis 0 都過；`customer_basis_dist`
+llm 7,237 / segment_hint 143 / mail_party 380 / NULL 4,829，active ok 12,589，NULL 比例 48% → 38%）。
+**原因**：[c05] `build_item_rows` 的 `empty` 列流水號用 `nnn_offset` 本身（設計是首次萃取固定 000），重萃時 offset = 該段既有最大流水號，
+新 empty 列就跟那條舊列（已 superseded）撞 `item_id`；這批 400 段有 7 段 prompt 0.3 回 empty → 7 對重複。只影響 `item_id` 唯一性，
+有效 View（`NOT superseded`）本來就不重複，Stage A 以 `item_key` 承接也不受影響。
+**repo 已修**：[c05] empty 改 `nnn + 1`（與 failed_schema 一致）、tests 15 passed、README。**Databricks 要做（照順序）**：
+1. 先跑下面「看重複」SQL（預期 14 列、7 對：每對一條 0.2 ok superseded ＋ 一條 0.3 empty active）；再跑「修復」MERGE（只改 active 的 empty 列，
+   把流水號改成該段 max + 1；舊列 id 不動，鏡頭表引用不受影響）；再跑一次「看重複」→ 0 列。不用重跑 [c30]（其餘檢查已過）。
+2. task 3 **替換 [c05]** 後再跑下一批：`reextract = customer_null`、`max_segments = 100`、`dry_run = false`（[c10] 會印剩幾段，預期 409 − 400 = 9 段
+   加端點失敗的段；印 `segments 0` 就是追完了）。
+3. 之後接原本的第 1 點 SQL（prompt_version × customer_basis）→ Stage A → Stage B 0.3 → digest。
+
+```sql
+-- 看重複
+SELECT item_id, extract_status, prompt_version, superseded, customer, extracted_at
+FROM micenter.mi3_datahub_prod.g_meeting_items_bu
+WHERE item_id IN (SELECT item_id FROM micenter.mi3_datahub_prod.g_meeting_items_bu GROUP BY item_id HAVING count(*) > 1)
+ORDER BY item_id, superseded;
+
+-- 修復：active 的 empty 列改成該段既有最大流水號 + 1（try_cast：ANSI 下 regexp 沒抓到時不丟錯）
+MERGE INTO micenter.mi3_datahub_prod.g_meeting_items_bu t
+USING (
+  SELECT i.item_id AS old_id,
+         concat(regexp_replace(i.item_id, '-\d{3}$', ''), '-', lpad(cast(mx.nnn_max + 1 AS STRING), 3, '0')) AS new_id
+  FROM micenter.mi3_datahub_prod.g_meeting_items_bu i
+  JOIN (SELECT item_id FROM micenter.mi3_datahub_prod.g_meeting_items_bu GROUP BY item_id HAVING count(*) > 1) dup
+    ON dup.item_id = i.item_id
+  JOIN (SELECT pk_seq, segment_no, sub_no, max(try_cast(regexp_extract(item_id, '-(\d{3})$', 1) AS INT)) AS nnn_max
+        FROM micenter.mi3_datahub_prod.g_meeting_items_bu GROUP BY ALL) mx
+    ON mx.pk_seq = i.pk_seq AND mx.segment_no = i.segment_no AND mx.sub_no = i.sub_no
+  WHERE i.extract_status = 'empty' AND NOT i.superseded
+) s
+ON t.item_id = s.old_id AND t.extract_status = 'empty' AND NOT t.superseded
+WHEN MATCHED THEN UPDATE SET t.item_id = s.new_id;
+```
 
 **Databricks 上正在跑 / 剛跑完**：task 3 `meeting_extracted_w1_t2_extract`（prompt 0.3）`reextract = customer_null`、`dry_run = false`、`max_segments = 0`、`concurrency = 4`——只重萃「有 customer NULL 有效條目」的 409 段（5,695 條），估 USD 13、約 30 分鐘。10 段 dry_run 已看過：70 條全 ok、customer_raw 有名字就填、發言方 auo 正確、費用 0.31。使用者下班前啟動全量，**跑到一半中斷，沒寫表**（[c11] 全部跑完才到 [c20]）。改成分批：`max_segments = 100` 重複跑到 [c10] 印 `segments 0`（[c10] 的 customer_null 範圍已改成排除本版已萃過的段，否則合理 NULL 的段每輪會再被選）。用 `SELECT count(*) ... WHERE prompt_version = '0.3' AND NOT superseded` 看進度。
 **2026-10-20 晚第二次啟動：一批 400 段（沒分批），33 分鐘跑到 100/400（calls 117、retries 17 精簡重打、端點錯 0），使用者關機離開；雲端會繼續跑。** 下次開工先跑那段 SQL：
@@ -15,10 +68,10 @@
 
 | notebook | Databricks |
 |---|---|
-| task 3 w1_t2_extract | ✅ 全支同步（[c01] [c04] [c07] [c10] [c22] v2 [c23]）。第一版 [c22] 補錯 4,646 條已由 v2 自動退回；現況規則補 523 條（segment_hint 143 / mail_party 380）、敏感度降級 458 列 |
+| task 3 w1_t2_extract | ✅ 全支同步（[c01] [c04] [c07] [c10] [c22] v2 [c23]）10-21 已換 [c10] [c11]；**`reextract = customer` 版的 [c01] [c10] [c11] 還沒貼**。第一版 [c22] 補錯 4,646 條已由 v2 自動退回；現況規則補 523 條（segment_hint 143 / mail_party 380）、敏感度降級 458 列 |
 | Stage A sem_stage_a | ✅ [c22] 同步、跑過一次（952 列同步到鏡頭表） |
-| Stage B sem_stage_b 0.3 | 🟡 使用者說已複製，**還沒跑** |
-| digest_preview | 🟡 使用者說已複製，**還沒重跑** |
+| Stage B sem_stage_b 0.3 | ✅ 10-21 [c04] 重貼後 `dry_run = false` 寫表，[c30] 全過（SEM 95 / evidence 173 / INT 223） |
+| digest_preview | ✅ D33 版已跑 acer × MNT（10-21）；**[c03] 10-21 改了還沒貼** |
 | 002 spec | 不用跑（`customer_basis` 由 task 3 [c10] ALTER 補了） |
 
 **下次開工第一件事（照順序）**：
