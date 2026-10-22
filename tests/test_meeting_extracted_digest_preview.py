@@ -183,3 +183,37 @@ def test_include_dups_and_empty(mod):
     html_out = mod.render_html(sections)
     assert "&lt;b&gt;x&lt;/b&gt;" in html_out and "<b>x</b>" not in html_out  # HTML 跳脫
     assert "<p>（無）</p>" in html_out  # intel 表空
+
+
+def test_shown_stats_matches_sections(mod):
+    # 主題 demand 3 條（cap 2 → 折 1）、quality 1 條；1 條同文重複略去；1 條 S2 進 §6
+    rows = [
+        _row("a1", date=date(2026, 9, 1)),
+        _row("a2", date=date(2026, 9, 2)),
+        _row("a3", date=date(2026, 9, 3), pk_seq=2),
+        _row("a4", dup_key="a1"),
+        _row("b1", topic_tag_primary="quality", sensitivity="S2", pk_seq=3),
+    ]
+    intel = [_row(f"i{n}", category="intel") for n in range(15)]
+    cfg = {"customer": "acer", "app": "MNT", "max_per_topic": 2, "include_dups": False}
+    st = mod.shown_stats(rows, intel, cfg)
+    assert (st["rows"], st["dup_dropped"], st["kept"], st["mails"]) == (5, 1, 4, 3)
+    assert (st["topics"], st["s3_listed"], st["s3_folded"]) == (2, 3, 1)
+    assert (st["s4_listed"], st["s6_listed"], st["shown_unique"], st["not_shown"]) == (4, 1, 4, 0)
+    assert (st["s5_pool"], st["s5_listed"]) == (15, mod.MAX_INTEL)
+    # 與 build_sections 的 §3 一致
+    secs = mod.build_sections(rows, intel, cfg, "2026-09")
+    s3_rows = secs[3]["data"]["rows"]
+    listed = sum(len([x for x in r[1] if not x.startswith("…另")]) for r in s3_rows)
+    assert listed == st["s3_listed"]
+    assert len(secs[4]["data"]["rows"]) == st["s4_listed"]
+    assert len(secs[6]["data"]["rows"]) == st["s6_listed"]
+
+
+def test_format_funnel(mod):
+    stages = [("## 信件層", None, ""), ("收進的信", 1234, "封"), ("清洗段", None, "")]
+    out = mod.format_funnel(stages)
+    lines = out.split("\n")
+    assert lines[0] == "信件層"
+    assert "1,234" in lines[1] and lines[1].endswith("封")
+    assert lines[2].strip().endswith("—")

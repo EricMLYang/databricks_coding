@@ -1,10 +1,14 @@
-# HANDOFF — 2026-10-21 更新（下次 session 先讀這份）
+# HANDOFF — 2026-10-22 更新（下次 session 先讀這份）
 
 總覽與決定（D1–D32）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
 
 ## 0. 接續點（2026-10-20 傍晚更新，最新；底下 §1–§6 是歷史脈絡）
 
 ### 0.0 現在停在哪（下次 session 從這裡接）
+
+**2026-10-22 進度（最新，使用者暫停作業）**：digest 加了 [c10a] 資料漏斗（repo 完成、tests 8 passed、**Databricks 未貼**）。使用者問「md 條目有沒有被篩過」→ 有：上游只取可萃取段 / 有效 ok / 鏡頭表 active；[c10] 客戶（指定時客戶 NULL 全進不來）× 應用（含 ALL）× 會議日期月份（沒日期的永遠不出現）；[c03] 去同文重複；§3 每主題 `max_per_topic`、§4 30、§6 10、§5 跨月取 12。[c10a] 一張表一次 agg，印信件層（收信日：收信 / 同信重複 / 清洗段 / 可萃取段）→ 條目層（會議日期：有效 ok、鏡頭 active、客戶篩後、應用篩後、去重後）→ 報表實際列出（§3 / §4 / §6 / 至少出現一次 / 完全沒出現 / §5）。[c03] 的挑選邏輯抽成 `kept_rows` / `group_topics` / `timeline_pick` / `review_pick` 讓 `build_sections` 與 `shown_stats` 共用；[c02] 多 `import unicodedata`（`format_funnel` 按顯示寬度對齊）。README 加「條目怎麼被篩掉」。
+**Databricks 要貼（digest）**：替換 [c02] [c03]（含 10-21 未貼的標籤空格 / §7 文字）、新增 [c10a] 於 [c10] 之後。task 3 的 [c01] [c10] [c11]（reextract = customer 版）也仍未貼。
+**下次接續**：仍是下方「🔜 後續順序」第 1 點（10 月信跑 task 1 → 2 → 3 → Stage A，再 digest NB / MNT / TV × 2026-10）；先問使用者要不要先改 §3「客戶 × 主題」分組 / [c12] LLM 摘要（建議先做零成本的分組）。跑 digest 時先看 [c10a] 漏斗，確認 10 月條目量（10 月轉寄的 9 月會議落在 9 月）。
 
 **2026-10-21 進度（最新）**：✅ 修復 MERGE 跑過（7 列更新）；✅ [c05] 已換到 Databricks。之後跑了 `max_segments = 10` 與 `100` 兩批（94 ＋ 1,528 條、[c30] 全過、USD 7.2），**但都是把最舊的 0.3 段重打一次**：0.3 的段仍是 400、customer NULL 池子（0.2 且 NULL）只剩 9 段。原因：排除「本版已萃過的段」那條是 commit `da5b4e1`（10-20 傍晚）才進 [c10]，**Databricks 上的 [c10] 沒跟著換**，4,795 條 0.3 後仍 NULL 的條目每輪都被當待重萃。第四批跑到 [c11] `segments 100` 時中斷、沒寫表。repo 加了護欄：[c11] 印「已用本版 prompt 萃過的段數」，customer_null 批次不為 0 就在打 LLM 前 assert 停。表不用修（重打的只是舊 0.3 列被 superseded）。
 **全表現況**：清洗表 1,817 段（cleaner 0.1；可萃取 1,257 段全部有有效條目）；items 有效 0.2 5,745 列（857 段）/ 0.3 7,526 列（400 段）；active ok 12,601、customer NULL 4,839（38%）。0.3 ok 7,310 條裡 2,576 條有 customer（35%）。
@@ -79,7 +83,7 @@ WHEN MATCHED THEN UPDATE SET t.item_id = s.new_id;
 | task 3 w1_t2_extract | ✅ 全支同步（[c01] [c04] [c07] [c10] [c22] v2 [c23]）10-21 已換 [c10] [c11]；**`reextract = customer` 版的 [c01] [c10] [c11] 還沒貼**。第一版 [c22] 補錯 4,646 條已由 v2 自動退回；現況規則補 523 條（segment_hint 143 / mail_party 380）、敏感度降級 458 列 |
 | Stage A sem_stage_a | ✅ [c22] 同步、跑過一次（952 列同步到鏡頭表） |
 | Stage B sem_stage_b 0.3 | ✅ 10-21 [c04] 重貼後 `dry_run = false` 寫表，[c30] 全過（SEM 95 / evidence 173 / INT 223） |
-| digest_preview | ✅ D33 版已跑 acer × MNT（10-21）；**[c03] 10-21 改了還沒貼** |
+| digest_preview | ✅ D33 版已跑 acer × MNT（10-21）；**[c02] [c03] 改了還沒貼、[c10a] 資料漏斗新增於 [c10] 之後（10-22）** |
 | 002 spec | 不用跑（`customer_basis` 由 task 3 [c10] ALTER 補了） |
 
 **下次開工第一件事（照順序）**：
