@@ -3,9 +3,9 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
-## §0 接續點（2026-10-21 收工）
+## §0 接續點（2026-10-21 收工；10-22 更新：只剩 build_supplier_report 未匯入）
 
-### 0.1 這次改了什麼（repo 已 commit；Databricks **全部未貼**）
+### 0.1 這次改了什麼（repo 已 commit；Databricks 2026-10-22 已貼步驟 1、2、4，只剩步驟 3 `build_supplier_report` **未匯入**）
 
 兩件事同時做：**換報告版面**（`doc/20261021_SCM財報和法說報告html格式v20261007.html` 取代 20261010 版）與**接爬蟲新版欄位**
 （MI_Crawler 交代文件 `doc/20261021_給Databricks_notebook開發者_新版SCM報告欄位交代_HANDOFF.md`、規劃 `doc/20261021_爬蟲對齊新版SCM報告版面_規劃與實測.md`）。
@@ -23,13 +23,13 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 
 | 步驟 | notebook（repo 路徑 `jobs/ir_calendar/<資料夾>/notebook.ipynb`） | cell | 動作 | 貼完做什麼 |
 | --- | --- | --- | --- | --- |
-| 1 | `init_tables` | [c13] ddl_s_summary | 替換整個 cell | — |
-| 1 | `init_tables` | [c19] ddl_s_financials | 替換整個 cell | — |
-| 1 | `init_tables` | [c21] add_columns | 替換整個 cell | 整支跑一次：輸出應有 `add …s_ir_calendar_financials：[21 欄]`、`add …s_ir_calendar_summary：[reported_period, business_segments, qa_highlights]`、`comment …`；再跑一次全部 `ok 欄位已齊` |
-| 2 | `consume_batches` | [c04] table_schemas | 替換整個 cell | — |
-| 2 | `consume_batches` | [c06] transform_silver | 替換整個 cell | 先 `dry_run = true` 跑一次；再 `rebuild_silver = true` 跑一次（舊批次新欄多為 NULL，正常；爬蟲新版整檔重發後再 rebuild 一次就有值） |
+| 1 ✅ | `init_tables` | [c13] ddl_s_summary | 替換整個 cell | — |
+| 1 ✅ | `init_tables` | [c19] ddl_s_financials | 替換整個 cell | — |
+| 1 ✅ | `init_tables` | [c21] add_columns | 替換整個 cell | 整支跑一次：輸出應有 `add …s_ir_calendar_financials：[21 欄]`、`add …s_ir_calendar_summary：[reported_period, business_segments, qa_highlights]`、`comment …`；再跑一次全部 `ok 欄位已齊` |
+| 2 ✅ | `consume_batches` | [c04] table_schemas | 替換整個 cell | — |
+| 2 ✅ | `consume_batches` | [c06] transform_silver | 替換整個 cell | 先 `dry_run = true` 跑一次；再 `rebuild_silver = true` 跑一次（舊批次新欄多為 NULL，正常；爬蟲新版整檔重發後再 rebuild 一次就有值） |
 | 3 | `build_supplier_report` | 整支（第一個 markdown + [c01] [c02] [c03] [c05] [c06] [c07] [c09] [c10] [c11] [c30]；[c04] [c08] [c20] 沒變） | 整支重新匯入最省事（Databricks 上原本就**未貼**） | job parameter `prompt_version = 2.0`；依 notebook 第一格「首次上線順序」：`dry_run` → `max_reports = 1`（`TPE:1303`）→ 無彙整的 `TPE:1763` → 無 financials 的 TYO |
-| 4 | `inspect_record` | [c03] pure_helpers | 替換整個 cell | 只讀，隨時可貼 |
+| 4 ✅ | `inspect_record` | [c03] pure_helpers | 替換整個 cell | 只讀，隨時可貼 |
 | — | `check_landing` / `check_api_status` / `parse_documents` | — | 不用動 | — |
 
 比對方法：本機 `python tools/nb.py show <notebook> <tag>` 與 Databricks 上同標籤 cell 逐字對；`python tools/nb.py export <nb> <tag>` 可直接複製。
@@ -43,7 +43,8 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 
 ### 0.4 之前的接續點（仍有效）
 
-- Databricks `ir_calendar_consume_batches` 游標 `_cursor.json` 在 seq = 36（2026-10-20）。告警分級那組 cell 已貼、`dry_run = true` 跑過；正式跑後驗 `batch_log.crawler_alerts`（§4-1）。
+- 2026-10-22：步驟 1–2 已貼；`rebuild_silver` 已寫入（`s_financials` 261 列、`s_summary` 89 列，`updated_at` 全為 2026-10-22 09:06 UTC），新欄位存在、非 NULL 數 0（爬蟲新版未上 VM，正常）。
+- Databricks `ir_calendar_consume_batches` 排程正常消費，2026-10-22 台北 12:18 已到 seq = 44（`000044_20261022T094001`），37–44 全 SUCCESS、皆小增量。告警分級那組 cell 已貼；`batch_log.crawler_alerts` 落表待驗（§4-2）。
 - `parse_documents` 2026-10-20 手動跑過 10 份供應商文件；還沒排程（建議接成 `consume_batches` job 的下一個 task，`max_files = 50`）。
 - 爬蟲端 2 筆實體檔案放棄待人工補（§2）。
 
@@ -53,12 +54,12 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 
 | notebook | cell | repo 版本來源 | Databricks 狀態 | 備註 |
 | --- | --- | --- | --- | --- |
-| `init_tables` | [c13] ddl_s_summary、[c19] ddl_s_financials、[c21] add_columns | **2026-10-21 新版欄位** | **未貼** | 貼完整支跑一次（§0.2 步驟 1） |
+| `init_tables` | [c13] ddl_s_summary、[c19] ddl_s_financials、[c21] add_columns | **2026-10-21 新版欄位** | 已貼、已跑（2026-10-22） | 新欄位已加到既有表 |
 | `init_tables` | [c02] / [c11] / [c15] / [c19a] / [c19b] | 10-11 / 10-20 | 已貼、已跑 | 12 張表齊；[c19a]/[c19b] 兩張表存在、0 列 |
-| `consume_batches` | [c04] table_schemas、[c06] transform_silver | **2026-10-21 新版欄位** | **未貼** | 貼完 `rebuild_silver = true`（§0.2 步驟 2） |
+| `consume_batches` | [c04] table_schemas、[c06] transform_silver | **2026-10-21 新版欄位** | 已貼（2026-10-22） | `rebuild_silver` 已跑 09:06 UTC；爬蟲新版整檔重發後再 rebuild 一次 |
 | `consume_batches` | [c02] [c03] [c05] [c11] [c20] | SEMI / 10-11 §3.1 | 已貼（2026-10-20） | 告警分級；只有 FATAL 才 raise |
 | `check_landing` | [c02] imports、[c13] check_silver | SEMI + 10-11 §2.2 | 已貼（2026-10-20） | 不受這次影響（[c13] 只查鍵與列數） |
-| `inspect_record` | [c03] pure_helpers | **2026-10-21** | **未貼**（10-20 版已貼） | 只讀，隨時可貼 |
+| `inspect_record` | [c03] pure_helpers | **2026-10-21** | 已貼（2026-10-22） | 只讀 |
 | `parse_documents` | [c02] [c03] [c03a] [c05] [c07] [c08] [c10] | 10-11 §3.2 | 未知 | `.htm` 改純 Python 抽文字不計費；貼完先 `dry_run = true` |
 | `check_api_status` | — | — | 不用動 | |
 | `build_supplier_report` | 整支 | **2026-10-21 新版面（template 20261021 / prompt 2.0）** | **未貼**（10-20 的舊版面也沒貼過） | 整支匯入；job parameter `prompt_version = 2.0` |
@@ -88,7 +89,7 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 
 ## §4 下一步
 
-1. **貼 §0.2 的四步**（init_tables → consume_batches + rebuild_silver → build_supplier_report 整支 → inspect_record）。
+1. **匯入 `build_supplier_report` 整支**（§0.2 步驟 3；步驟 1、2、4 已於 2026-10-22 完成）。
 2. **驗 `crawler_alerts` 落表**：下一批 SUCCESS 後
    ```sql
    SELECT batch_id, processed_at, explode(crawler_alerts) AS alert
