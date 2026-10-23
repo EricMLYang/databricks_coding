@@ -49,7 +49,7 @@ b_internal_meeting_record（ETL 原始信）
 
 三分法：一年後還成立 → semantic（累積，幾乎不退場）；未來幾個月解讀數字會用到 → intel（滾動，帶 `as_of`）；其餘 event（一次性，不進 prompt）。現況：event 12,048 / intel 448 / semantic 190。
 
-## 3. W2 Sales Brief 鏡頭（未建，規格 §3.4–§4.6）
+## 3. W2 Sales Brief 鏡頭（004 表 2026-10-23 建好；T3–T5 未建，規格 §3.4–§4.6）
 
 | 步驟 | 動作 | 產出 |
 |---|---|---|

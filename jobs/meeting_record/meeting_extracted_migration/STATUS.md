@@ -63,6 +63,8 @@
 | D32 | **PM 審核量縮減（2026-10-19，使用者決定）**：(a) `intel_auto`（Stage B widget，預設 true）：intel 的 verified 空白也併進 `g_background_intel`，`status = unreviewed`、md 標〔未審〕；PM 之後在鏡頭表標 y → Stage B [c21] 改 active，該主題所有條目都標 n → retired。`v_background_intel_q.retire_candidate` 改成「非 retired」都算。semantic 仍要 PM 標 y 才定案。(b) 同文重複跟著正本：`dup_key` 指向的正本 verified = y 或已併過，重複條目不用標就一起併（semantic → 正本的 SEM 補證據；intel → 同主題更新）。效果：第一批人工從 638 條降到 semantic 190 條（扣同文重複更少）；之後每週約 5 條。Stage B 版本 0.2 | §8.3 |
 | D33 | **資訊缺失 / 誤會優先修（2026-10-20，使用者定的優先序）**：(a) `customer` NULL 48%：task 3 新 [c22] 規則補（段層 `customer_hint` 要有佐證：參與者有該客戶的人或主旨含其別名，否則內部 EC meeting 的 TPV（ODM）會被當客戶，第一版 2026-10-20 Databricks 跑出補 4,789 / 抽查錯 16/20 → 收緊並自動退回 → 信層唯一客戶公司；`customer_basis` 新欄記 llm / alias_fix / segment_hint / mail_party，[c10] ALTER 補欄），prompt 0.3 再要求 LLM 每條帶章節客戶；(b) 發言方歸屬：prompt 0.3「以主張是誰的為準」（AUO roadmap 曾寫成「acer 說明友達…」）＋ few-shot；(c) 同型號同主張只收一條；(d) S2 關鍵字「數字＋K」改兩位數以上或 Kpc（4K / 5K 是解析度），task 3 新 [c23] 用同一 pattern 重算有效列；(e) 報表不露 `<P07>`：digest 讀 participants 的 token / side / company 顯示成「客戶方（acer）/ AUO 方」；(f) **升 prompt 不再自動重萃舊段**：task 3 新 widget `reextract`（預設 false），`select_batch_segments` 多一個參數；全量重萃要明開；(g) Stage A 新 [c22] 把中立層事後改的 customer / sensitivity / tags 同步回鏡頭表；(h) PM 審核再減：Stage B 0.3 `semantic_auto`（semantic 先併成 unreviewed SEM，y → confirmed、全 n → retired，unreviewed 不投影），[c12] 改「關鍵審核清單」只列口徑候選 / 與先驗不同 / 信心 < 0.6；`n_updates` 不算同文重複。沒做：近義主題合併、同主題跨 app、as_of 粒度（重複類，使用者說第一個應用是 by 客戶 × 應用請 LLM 彙整，重複暫不影響） | §6.6、§8.3 |
 | D34 | **壞信不擋整批（2026-10-23）**：task 1 [c12] 原本 `mail_from` 解析 < 95% / `body_conflict` > 10% / 0 封就 assert 停；一封測試信（pk 640，`mail_from` 工號前多一個英文字母、英文姓名）讓單封批次 0% 直接擋住，水位卡在 10-16，後面 task 全部 0 筆。改成：不符規則的信在 task 1 [c11] `split_skipped` 隔離到新表 `s_meeting_record_skipped_bu`（002 [c04] 加 spec：pk、原因、形狀、人工 `note`；S1），其餘照寫；水位改看 mail ∪ 隔離表；新 widget `reprocess_pks` 強制重跑指定 pk，寫進 mail 表就從隔離表移除；0 封 / 0 段只印不停（task 1 [c12]、task 2 [c12]）。S3 硬規則（殘留姓名 / email）與寫入後驗證 [c30] 仍會停。`MAIL_FROM_RE` 沒放寬（那種工號是否真實待使用者確認） | §4.0b、§4.1b |
+| D35 | **W2 鏡頭表的幾個偏離（2026-10-23，004）**：(a) 標註表 `g_meeting_items_sb_bu` 鍵改 `(item_key, app_name)`（規格 `item_id`；比照 003，重萃後列不漂移），加 `active` 欄；(b) 兩張表都記 `window_start / window_end / brief_month_basis`（D6 窗口），T3 以 `v_meeting_sb_period.submitted_end` 為截止點、`prev_submitted_end + 1` 為起點，widget 可改 `window_mode / grace_days / overrides`；(c) §7.1 映射與 §7.2 相關性規則合成一張種子表 `s_meeting_sb_facet_map`（`facet` / `relevance_rule` 代號 / `follow_tag`），T3 照代號判，不另寫 if；(d) `brand` 存 Sales Brief `brand_code` 原字串（Asus / Samsung …），對不上保留 entity_id 並 `brand_in_sb = false`；`samsung` 且 app ∈ {TV, MNT} 視同 `samsung_vd`（D9）；(e) 對照格表多 `meeting_item_keys`、`n_items / n_items_sent`、`shareable_failed`；(f) Phase 1 不做 L2（`facet_basis` 無 `llm_fallback`）；(g) Sales Brief 端只用 brand_summary / app_summary 的四欄，`market_intelligence` 只拿 `submitted_at` 算窗口、`numeric_entry` 不用 | §3.4、§3.5、§4.3、§6.5、§7.1、§7.2 |
+| D36 | **T4 的兩個偏離（2026-10-23，依 T3 9 / 10 月格子預覽）**：(a) `brand` NULL（客戶 NULL、app 已解）的相關條目 10 月佔四分之一，不丟：當 `brand = UNKNOWN` 的品牌格，永遠 `meeting_only`（只產摘要），也參與 app 層訊號；(b) `other` 格送 LLM 的條目改「每個 `topic_tag_primary` 最多 8 條」（TV × TCL × other 一期 65 條，整格 8 條會漏整類），其餘面向維持每格 8 條；(c) T3 `submitted_at` 查不到該期截止點時退回 `fixed_day`（25 日）並 WARN，brief 填完重跑整月重標；(d) 對照格表本期上次有、這次沒產的格不刪只印（PM 可能審過）；(e) ALL 格的會議端 = 各品牌格 `meeting_summary`（含 UNKNOWN），沒有任何品牌格摘要時 ALL 格 = `sb_only` | §4.3、§4.4、§6.5 |
 
 ## 4. Phase 0 結論（決定 T1 規則）
 
@@ -103,7 +105,10 @@
 | W1 task 3 `meeting_extracted_w1_t2_extract`（T2 L1） | ✅ **2026-10-19 跟著 task 1 / 2 的 0.2 重切跑一輪 incremental**：本批 90 段 / 21 封、545 列、s3_masked 26 列、端點錯 0、約 5 美元；[c30] 一致，table_total 13,731 / active ok 12,774（原 12,249）。同日清洗表補驗：1,817 段、email_left 0、seg0 < 150 字剩 14（整封本來就短的 noise）。之前的紀錄：🟡 2026-10-16 建好並貼到 Databricks（13 個 cell、README、tests 15 passed）。dry_run 四輪（10 / 10 / 10 / 50 段）調完：quote 失敗 1%、S3 0、customer NULL 0、費用 3 美元 / 50 段。**2026-10-16 全量 backfill 已寫表**（`prompt_version 0.2`、1,181 段、11:43 開跑約 3 小時、69 美元）：13,185 列 / ok 12,248 / empty 119 / 截斷 46 / quote 失敗 1.5% / 端點錯 1（408）/ [c30] 一致。兩個問題：S3 誤殺 583 條（4.5%）→ D26 改遮罩，待 `retry_failed = true` 重打；`customer` NULL 52% → [c31a] 診斷待跑。D22–D26 |
 | L1 prompt | 🟡 v0.2 內嵌在 task 3 [c04]（0.2：人名規則，D25）（§5.1 十個構件、§6 規則、詞彙表壓縮版、附錄 A 5 條 few-shot）；50 段 dry_run 樣本品質可接受（事實 / 要求分開、S2 判定合理、thread 段 speaker 正確） |
 | golden set | ⬜（需 PM 標註） |
-| W2（T3～T5） | ⬜ |
+| `004_meeting_sb_lens`（W2 Sales Brief 鏡頭表） | ✅ 2026-10-23 repo 建好（13 cells；tests 12 passed）並 **Databricks 執行完**（[c30] 無 PROBLEM：表 32 / 32 / 7 / 5 欄、View 7 / 11 / 40 / 36 欄、facet_map active 14）。`v_meeting_sb_period`：三 app 最新期 2026-09；8 月前 `submitted_end` 都是 25 日 00:00（補登）、8 月起 21–26 日；TV 缺 2026-07。見 README §004、D35 |
+| W2 T3 `meeting_extracted_w2_t3_label` | ✅ 2026-10-23 repo 建好（11 cells、README；tests 12 passed）並 **Databricks 寫表**：2026-09 436 列 / 420 條 / 23 封、相關 243（[c30] 全過）；2026-10 300 列 / 297 條 / 21 封、相關 145（截止點退回 fixed_day 25 日、brand_in_sb 全 false，brief 填完重跑）。[c12] 踩 Spark 4 ANSI `sum(boolean)` 已改 cast int。窗口 D6 三模式；規則鏈七個純函式；MERGE on `(item_key, app_name)`、整月停用 |
+| W2 T4 `meeting_extracted_w2_t4_reconcile` | 🟡 2026-10-23 repo 建好（13 cells、README；tests 10 passed）；**Databricks 未貼**。三種 L3 模式（格子 / 摘要批次 / app 層）、`UNKNOWN` 品牌格、other 格每標籤 8 條（D36）、shareable 驗證、MERGE 不碰審核欄。先 `brief_month = 2026-09`、`max_cells = 12` dry_run |
+| W2 T5 | ⬜ 關卡彙總 ＋ PM 例外清單 md（§4.6）。10 月 Sales Brief 要 10 月底那週才填，T4 對 2026-10 的實跑要等 |
 
 ## 6. 下一步
 
@@ -224,8 +229,8 @@ SELECT count(*) AS dup_keys FROM (
 2. cleaner 0.2（task 2）：去掉落單的 `**` 粗體殘渣（會進 quote）；只有與會名單的段歸 `attachment_only`（pk 112 那類被當 thread_reply 送 LLM 回 empty）。升版後 incremental 自動重洗，T2 會重萃那些段（舊條目標 superseded）。
 3. thread 近似段（152-7 / 152-8）萃出重複條目：Phase 1 接受，T3 時以相似度合併或段層近似去重。
 4. golden set 模板，請 PM 標；有了再做 llama 比較（D22）、算 §9.2 指標。
-5. **004** migration（原寫 003，003 已給方向 C）：Sales Brief 鏡頭表（§3.4、§3.5）、`v_meeting_participants_q` column mask、分應用 View。
-6. W2：T3 標註（程式規則 + `sb_facet_map`，Phase 1 不做 L2）→ T4 對照（L3，單邊程式判）→ T5 關卡與 `job_run_log`；PM 審核匯出 md（§4.6）。
+5. ✅ **004** migration（2026-10-23 repo 完成，Databricks 未貼）：Sales Brief 鏡頭表（§3.4、§3.5）＋ `s_meeting_sb_facet_map` 種子 ＋ 四個 View。`v_meeting_participants_q` column mask、分應用 View 不在 004，之後另開流水號。
+6. W2：T3 標註（程式規則 + `s_meeting_sb_facet_map`，Phase 1 不做 L2）→ T4 對照（L3，單邊程式判）→ T5 關卡與 `job_run_log`；PM 審核匯出 md（§4.6）。Sales Brief 月表在該月最後一週才填：T4 對當月實跑要等月底，先用上一個已填月份 dry_run 驗邏輯。
 
 ### 6.5 方向 C 業務語意（§8.3；2026-10-19 開工）
 

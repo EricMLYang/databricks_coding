@@ -12,6 +12,7 @@
 | `002_meeting_neutral_tables` | 建中立層五張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`、`s_meeting_record_skipped_bu`（D34 隔離表，2026-10-23 加；既有環境重跑 002 即建））與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS`（例外：items 表 `s3_masked`（D26）、`customer_basis`（D33）兩欄由 task 3 [c10] 缺欄時自動補；spec 已同步） |
 | `005_semantic_ledgers` | 建方向 C Stage B 的台帳：`g_semantic_record`（SEM id）、`g_semantic_record_evidence`、`g_background_intel`（INT id）＋ `v_semantic_record_q`、`v_background_intel_q`（退場候選旗標）；只建結構。004 留給 Sales Brief 鏡頭 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
 | `003_meeting_semantic_lens` | 建語意鏡頭表 `g_meeting_items_sem_bu`（方向 C，§8.3）與兩個 View：`v_meeting_items_sem_cand`（候選規則 SQL 先算、Stage A 輸入）、`v_meeting_items_sem_q`（消費介面）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
+| `004_meeting_sb_lens` | 建 W2 Sales Brief 鏡頭：標註表 `g_meeting_items_sb_bu`（§3.4）、對照格表 `g_meeting_sb_reconcile_bu`（§3.5）、面向映射種子表 `s_meeting_sb_facet_map`（§7.1 + §7.2，從 [c05] 內嵌 CSV MERGE）＋ 四個 View（`v_meeting_sb_brief_text`、`v_meeting_sb_period`、`v_meeting_items_sb_q`、`v_meeting_sb_reconcile_q`） | 改 [c05] 種子（升 `FACET_MAP_VERSION`）或 [c06] View 後重跑；表欄位要改 → 開新流水號 |
 
 ## 001_semantic_entity
 
@@ -64,3 +65,16 @@
 - 負責人 / 更新日期：（填）/ 2026-10-19
 
 純函式測試：`tests/test_meeting_extracted_migration_005.py`（[c02]～[c05]；View 在本機 Spark 以假表實跑，退場判斷用相對今天的季）。
+
+## 004_meeting_sb_lens
+
+- 輸入：[c04] `table_specs`（三張表 ＋ log）、[c05] `seed_data`（`FACET_MAP_SEED`，CSV 格式字串）、[c06] `view_specs`（四個 View）。正本。前置：002 的 `g_meeting_items_bu` 與 Sales Brief 三張表 `g_sales_brief_brand_summary` / `g_sales_brief_app_summary` / `g_sales_brief_market_intelligence`（sales_report_mail job 的來源表）要存在；[c10] 會檢查，缺就停。T3 另外還要 001 的 `s_semantic_entity` / `_alias`（`sb_brand`、`app_default`）。
+- 參數（widgets）：`catalog`、`schema`、`dry_run`（預設 `true`：驗 spec 與種子、印 DDL 與種子差異）。
+- 標註表 `g_meeting_items_sb_bu` **一列一個 `(item_key, app_name)`**（規格 §3.4 寫 `item_id`；比照 003 改承接鍵，重萃後列不漂移）。中立層 `app = ALL / NULL` 的條目依客戶 `app_default` 展開成多列；推不出唯一 app 標 `app_unresolved`。`brief_month` 不是日曆月：D6 窗口，`window_start / window_end` 記在列上。中立層欄位複製一份（statement_type / topic_tags / speaker_side / event_date / summary / sensitivity / confidence）讓 T3 規則與 PM 清單不必回 join；quote / numbers / model_nos 由 `v_meeting_items_sb_q` join 回來。`active = false` 表示整月重標時這個 key 已不在名單（重萃或換期），不刪。
+- 對照格表 `g_meeting_sb_reconcile_bu` 鍵 `(app_name, brand, facet, brief_month)`；`brand = ALL` 是 app 層格。`meeting_summary` 含 S2 只給 PM，`meeting_summary_shareable` 才可外送（`shareable_failed` 記驗證結果）。PM 審核欄 `reviewer / review_verdict / review_relation / review_note` T4 MERGE 不覆蓋。多了 `meeting_item_keys`、`n_items / n_items_sent`（每格最多送 8 條）。
+- 面向映射種子 `s_meeting_sb_facet_map`：一列一個受控 tag（剛好 = task 3 [c02] `TOPIC_TAGS` 的 14 個，tests 會比）。`facet` NULL = 不映射；`relevance_rule` 是 §7.2 規則代號（`always` / `spec_statement` / `capacity_timeref` / `quality_request_or_customer` / `never`），T3 照代號判、不另寫 if；`follow_tag`：`schedule` 與 `product_plan` 共存時隨它映入。改種子 → 升 [c02] `FACET_MAP_VERSION` → 重跑 → T3 整月重標。
+- View：`v_meeting_sb_brief_text` 把 brand_summary（品牌格）與 app_summary（ALL 格）四欄 unpivot 成一格一列（`summary_futureOutlook / techProduct / pricing / otherInfo` ↔ `market_outlook / product_tech / price / other`；空白 → NULL、`sb_source = none`；同格多列取 `create_time` 最新）；`v_meeting_sb_period` 給每 app × 期別的品牌清單與 `submitted_start / submitted_end / prev_submitted_end`（market_intelligence；D6 截止點）；`v_meeting_items_sb_q` 標註列 ⋈ 中立層（`item_still_valid` 標 item_id 已被重萃）；`v_meeting_sb_reconcile_q` 加 `relation_rank`（§4.6 順序）、`effective_relation`、`review_pending`、`is_app_level`。
+- Phase 1 不做 L2 fallback：`facet_basis` 只會是 `rule_primary / rule_secondary / unresolved`。
+- 負責人 / 更新日期：（填）/ 2026-10-23
+
+純函式測試：`tests/test_meeting_extracted_migration_004.py`（[c02]～[c06]；種子驗證與詞表比對；四個 View 在本機 Spark 以 002 / 004 spec 與 Phase 0 探勘到的 Sales Brief 欄位建假表實跑）。
