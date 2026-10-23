@@ -7,8 +7,11 @@
 ### 0.0 現在停在哪（下次 session 從這裡接）
 
 **2026-10-22 進度（最新，使用者暫停作業）**：digest 加了 [c10a] 資料漏斗（repo 完成、tests 8 passed、**Databricks 未貼**）。使用者問「md 條目有沒有被篩過」→ 有：上游只取可萃取段 / 有效 ok / 鏡頭表 active；[c10] 客戶（指定時客戶 NULL 全進不來）× 應用（含 ALL）× 會議日期月份（沒日期的永遠不出現）；[c03] 去同文重複；§3 每主題 `max_per_topic`、§4 30、§6 10、§5 跨月取 12。[c10a] 一張表一次 agg，印信件層（收信日：收信 / 同信重複 / 清洗段 / 可萃取段）→ 條目層（會議日期：有效 ok、鏡頭 active、客戶篩後、應用篩後、去重後）→ 報表實際列出（§3 / §4 / §6 / 至少出現一次 / 完全沒出現 / §5）。[c03] 的挑選邏輯抽成 `kept_rows` / `group_topics` / `timeline_pick` / `review_pick` 讓 `build_sections` 與 `shown_stats` 共用；[c02] 多 `import unicodedata`（`format_funnel` 按顯示寬度對齊）。README 加「條目怎麼被篩掉」。
-**Databricks 要貼（digest）**：替換 [c02] [c03]（含 10-21 未貼的標籤空格 / §7 文字）、新增 [c10a] 於 [c10] 之後。task 3 的 [c01] [c10] [c11]（reextract = customer 版）也仍未貼。
-**下次接續**：仍是下方「🔜 後續順序」第 1 點（10 月信跑 task 1 → 2 → 3 → Stage A，再 digest NB / MNT / TV × 2026-10）；先問使用者要不要先改 §3「客戶 × 主題」分組 / [c12] LLM 摘要（建議先做零成本的分組）。跑 digest 時先看 [c10a] 漏斗，確認 10 月條目量（10 月轉寄的 9 月會議落在 9 月）。
+✅ **2026-10-23 使用者已全部貼到 Databricks**：digest [c02] [c03] [c10a]、task 3 [c01] [c10] [c11]（reextract = customer 版）。使用者再次確認**不補舊數據**（task 3 一律 `reextract = none`）。
+**2026-10-23 D34：壞信不擋整批（repo 完成、tests 31 passed、Databricks 未貼）**。跑 10 月新信時發現：10-16 之後原始表只有 2 封（639 已處理；640 是測試信，`mail_from` 工號前多一個英文字母、英文姓名），task 1 [c12] 的「`mail_from` 解析 ≥ 95%」在單封批次變 0% 直接 assert 停，水位卡在 10-16 23:39，task 2 / 萃取 全部 0 筆。使用者要求：壞的信 pass、要有紀錄、流程不卡。改法：002 [c04] 加隔離表 `s_meeting_record_skipped_bu`（pk、原因、`mail_from` 形狀、人工 `note`；S1）；task 1 [c06] `SKIP_RULES` / `split_skipped`（目前一條 `from_unparsed`）、[c10] 水位 = mail ∪ 隔離表 ＋ widget `reprocess_pks`、[c11] 先隔離再去重、[c12] 三個 assert 改 WARN（0 封也不停）、[c20] 隔離表 MERGE 不蓋 note ＋ 寫進 mail 表的 pk 從隔離表移除、[c30] 檢查沒有 pk 同時在兩表；task 2 [c12] 0 段只印。`MAIL_FROM_RE` 沒放寬（那種工號是否真實待使用者確認）。**Databricks 要貼**：002 替換 [c04] 後 `dry_run = false` 重跑（只會新建隔離表）→ task 1 替換 [c01] [c06] [c10] [c11] [c12] [c20] [c30] → task 2 替換 [c12]。跑順序：task 1（640 進隔離表、水位推到 10-20）→ task 2 → 萃取 → Stage A 都會是 0 筆正常結束 → digest NB / MNT / TV × 2026-10。
+✅ **2026-10-23 使用者已貼 D34 並跑完**：002 重跑（隔離表建好）、task 1（640 進隔離表、水位推到 10-20）、task 2 / 萃取 / Stage A 全部 0 筆正常結束。10 月沒有新的真信；10 月 digest 的內容 = 10-16 之前進來、會議日期落在 10 月的條目。
+**使用者 2026-10-23 決定：digest NB / MNT / TV × 2026-10 跑完就進 W2（下方「🔜 後續順序」第 2 點）。** §3「客戶 × 主題」分組 / [c12] LLM 摘要兩處先不做，等 W2 的對照結果一起看版面（第 3 點）。
+**下次接續**：(1) 問使用者三份 10 月 digest 的 [c10a] 漏斗數字與觀感（有沒有要先修的）；(2) 開 W2：先探勘 Sales Brief 四張表（`g_sales_brief_app_summary` / `brand_summary` / `market_intelligence` / `numeric_entry`）的欄位與品牌值（待決 #10；查不到 schema 就問、不猜欄位），再寫 004 migration（`g_meeting_items_sb_bu`、`g_meeting_sb_reconcile_bu`、`sb_facet_map` 種子）→ T3 → T4 → T5。W2 只保證 2026-10 起。原「🔜 後續順序」第 1 點（10 月信跑 task 1 → 2 → 3 → Stage A，再 digest NB / MNT / TV × 2026-10）；先問使用者要不要先改 §3「客戶 × 主題」分組 / [c12] LLM 摘要（建議先做零成本的分組）。跑 digest 時先看 [c10a] 漏斗，確認 10 月條目量（10 月轉寄的 9 月會議落在 9 月）。
 
 **2026-10-21 進度（最新）**：✅ 修復 MERGE 跑過（7 列更新）；✅ [c05] 已換到 Databricks。之後跑了 `max_segments = 10` 與 `100` 兩批（94 ＋ 1,528 條、[c30] 全過、USD 7.2），**但都是把最舊的 0.3 段重打一次**：0.3 的段仍是 400、customer NULL 池子（0.2 且 NULL）只剩 9 段。原因：排除「本版已萃過的段」那條是 commit `da5b4e1`（10-20 傍晚）才進 [c10]，**Databricks 上的 [c10] 沒跟著換**，4,795 條 0.3 後仍 NULL 的條目每輪都被當待重萃。第四批跑到 [c11] `segments 100` 時中斷、沒寫表。repo 加了護欄：[c11] 印「已用本版 prompt 萃過的段數」，customer_null 批次不為 0 就在打 LLM 前 assert 停。表不用修（重打的只是舊 0.3 列被 superseded）。
 **全表現況**：清洗表 1,817 段（cleaner 0.1；可萃取 1,257 段全部有有效條目）；items 有效 0.2 5,745 列（857 段）/ 0.3 7,526 列（400 段）；active ok 12,601、customer NULL 4,839（38%）。0.3 ok 7,310 條裡 2,576 條有 customer（35%）。
@@ -25,7 +28,7 @@
 3. **建月報版面**：DIGEST_ISSUES §4 五題（關鍵是 4.2 第一層按場合還是主題）；digest §3 右欄與狀態欄接對照表、§2 LLM 摘要。拿第 1 點的三份表格跟 USER 定。
 4. **流程 Job 化**：W1 三 task ＋ Stage A ＋ Stage B 串一個 Job 週跑；job parameters 統一 `dry_run = false`、`max_segments = 0`、`reextract = none`、`run_mode = incremental`；每支 widget 預設 `dry_run = true`，手動跑要改，換版先 `dbutils.widgets.removeAll()`。
 
-**git**：10-21 收工 commit `7dc0e0e`（Stage B 0.3 寫表 ＋ task 3 reextract=customer ＋ digest 標籤空格 ＋ 不補舊帳決定）；**push 被 Claude Code 權限擋住，使用者自己推**，下次先 `git status -sb` 看有沒有推上去。
+**git**：2026-10-23 D34（隔離表 ＋ task 1 / task 2 不擋整批 ＋ tests）與本 HANDOFF 一起 commit、push（使用者要求）；上一次是 10-21 `7dc0e0e`。
 
 **使用者 10-21 決定：不再補舊帳。** `reextract = customer` 的 acer × MNT dry_run 跑了 67 段（護欄 0）但沒寫表；0.2 版剩下的段（857 段扣掉已重萃的）維持原樣，digest / 台帳裡舊月份的 AUO roadmap 條目仍會是「客戶說明友達…」。之後只走週跑新流程（`reextract = none`）；要補再用 `reextract = customer` 或 `all`。下面 1–3 點改為「如果之後要補」才做。
 **（如果之後要補）照順序**：

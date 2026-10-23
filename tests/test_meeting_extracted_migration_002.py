@@ -17,6 +17,7 @@ EXPECT_TABLES = {
     "s_meeting_record_clean_bu",
     "s_meeting_participants_bu",
     "g_meeting_items_bu",
+    "s_meeting_record_skipped_bu",
     "b_meeting_migration_log",
 }
 EXPECT_VIEWS = {"v_meeting_items_q", "v_meeting_item_models", "v_meeting_mail_index"}
@@ -230,6 +231,7 @@ def fake_tables(mod, spark):
                 "superseded": False,
             },
         ],
+        "s_meeting_record_skipped_bu": [],
         "b_meeting_migration_log": [],
     }
     for t, spec in mod.TABLES.items():

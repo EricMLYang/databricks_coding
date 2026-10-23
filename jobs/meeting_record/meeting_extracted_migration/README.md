@@ -9,7 +9,7 @@
 | 流水號 | 內容 | 重跑時機 |
 |---|---|---|
 | `001_semantic_entity` | 建 `s_semantic_entity`、`s_semantic_entity_alias`；從 [c05] 內嵌種子 MERGE | 改 [c05] 後重跑（預設 `dry_run = true` 先看差異） |
-| `002_meeting_neutral_tables` | 建中立層四張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`）與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS`（例外：items 表 `s3_masked`（D26）、`customer_basis`（D33）兩欄由 task 3 [c10] 缺欄時自動補；spec 已同步） |
+| `002_meeting_neutral_tables` | 建中立層五張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`、`s_meeting_record_skipped_bu`（D34 隔離表，2026-10-23 加；既有環境重跑 002 即建））與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS`（例外：items 表 `s3_masked`（D26）、`customer_basis`（D33）兩欄由 task 3 [c10] 缺欄時自動補；spec 已同步） |
 | `005_semantic_ledgers` | 建方向 C Stage B 的台帳：`g_semantic_record`（SEM id）、`g_semantic_record_evidence`、`g_background_intel`（INT id）＋ `v_semantic_record_q`、`v_background_intel_q`（退場候選旗標）；只建結構。004 留給 Sales Brief 鏡頭 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
 | `003_meeting_semantic_lens` | 建語意鏡頭表 `g_meeting_items_sem_bu`（方向 C，§8.3）與兩個 View：`v_meeting_items_sem_cand`（候選規則 SQL 先算、Stage A 輸入）、`v_meeting_items_sem_q`（消費介面）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
 
@@ -31,10 +31,10 @@
 ## 002_meeting_neutral_tables
 
 - 輸入：[c04] `table_specs`（表：欄名 / 型別 / COMMENT / 鍵 / cluster_by）、[c05] `view_specs`（View：select 清單與 body SQL）。兩者是正本。
-- 輸出：規格 §3.0b / §3.1 / §3.2 / §3.3 四張表＋ §3.6 三個核心 View；`b_meeting_migration_log` 也 `IF NOT EXISTS`（以防跑在新 schema）。
+- 輸出：規格 §3.0b / §3.1 / §3.2 / §3.3 五張表（含 D34 隔離表）＋ §3.6 三個核心 View；`b_meeting_migration_log` 也 `IF NOT EXISTS`（以防跑在新 schema）。
 - 參數（widgets）：`catalog`、`schema`、`dry_run`（`true` 只驗 spec、印 DDL）。
 - 加的欄（STATUS.md §4）：mail 表 `body_hash / dup_of_pk / has_headers`；clean 表 `content_hash / dup_of / display_start / display_end`；items 表 `item_key / supersedes_item_id`。[c03] `validate_specs` 強制這些欄存在，也強制任何 View 不暴露 S3 欄（姓名、email、工號、原文）。
-- 四張表 `CLUSTER BY (pk_seq)`（liquid clustering；全部以 pk_seq 回溯 / MERGE，日量百封級不做 partition）。
+- 五張表 `CLUSTER BY (pk_seq)`（liquid clustering；全部以 pk_seq 回溯 / MERGE，日量百封級不做 partition）。
 - 冪等：表 `IF NOT EXISTS`、View `CREATE OR REPLACE`。[c30] 比對實際欄位 vs spec，缺欄印 `ALTER TABLE ADD COLUMNS` 語句並 fail，不自動執行。
 - 不在本支：column mask / GRANT、分應用 View、Sales Brief 鏡頭表（§3.4 / §3.5）→ 之後的 003。
 - 負責人 / 更新日期：（填）/ 2026-10-15

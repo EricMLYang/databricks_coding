@@ -3,11 +3,11 @@
 W1（中立層週跑）的第一支 task：**T1-a 取數 → T1-m 初洗 → T1-c 參與者**。規格 PM_Head `metting_record/01_meeting_to_sales_brief_進階規劃.md` v0.4.1 §4.0 / §4.0b / §4.1b；偏離處見 `../meeting_extracted_migration/STATUS.md` D10–D14。全是規則、無 LLM。
 
 - 輸入：`b_internal_meeting_record`（含 `mail_body_html`，**只在三個文字欄都沒正文時當備援**，D29）、`s_semantic_entity_alias` / `s_semantic_entity`（001 建）
-- 輸出：`s_meeting_record_mail_bu`（MERGE on `pk_seq`）、`s_meeting_participants_bu`（本批 pk DELETE 後 append）；表由 002 建
-- 參數（widgets）：`catalog`、`schema`、`source_table`、`run_mode`（incremental / backfill）、`date_from` / `date_to`（對 `mail_date`；backfill 與首跑用）、`unit`（預設 bu）、`cleaner_version`（預設 0.2）、`sample_limit`（開發用）、`dry_run`（預設 true）
-- 增量水位：mail 表的 `max(create_date)`；`cleaner_version` 不同的舊列也會被重洗。
+- 輸出：`s_meeting_record_mail_bu`（MERGE on `pk_seq`）、`s_meeting_participants_bu`（本批 pk DELETE 後 append）、`s_meeting_record_skipped_bu`（D34 隔離表：不符規則的信，MERGE on `pk_seq`、不蓋人工 `note`）；表由 002 建
+- 參數（widgets）：`catalog`、`schema`、`source_table`、`run_mode`（incremental / backfill）、`date_from` / `date_to`（對 `mail_date`；backfill 與首跑用）、`unit`（預設 bu）、`cleaner_version`（預設 0.2）、`sample_limit`（開發用）、`reprocess_pks`（逗號分隔 pk_seq，不管水位強制納入；隔離的信處理好後重跑用）、`dry_run`（預設 true）
+- 增量水位：mail 表 ∪ 隔離表的 `max(create_date)`（被跳過的信不會每週再被撈）；`cleaner_version` 不同的舊列也會被重洗。
 - 排程：W1 每週一。首次：`run_mode = backfill`、`date_from = 2026-06-01`，先 `dry_run = true` 看 [c12] 關卡，再 `false`。
-- 負責人 / 更新日期：（填）/ 2026-10-19
+- 負責人 / 更新日期：（填）/ 2026-10-23
 
 ## 規則摘要
 
@@ -23,10 +23,11 @@ W1（中立層週跑）的第一支 task：**T1-a 取數 → T1-m 初洗 → T1-
 | 參與者 | [c05] | 轉寄人 = `P01`（永遠第一個）；頂層 to / cc / bcc 為 segment 0；第 n 個標頭區塊 = segment n（文件順序）；辨識鍵 email → 中文名 → 英文名；群組（全大寫、PM / Team / HQ.）用 `Gnn`；IMCEAEX 假位址 email 設 NULL |
 | side / company | [c06] `resolve_side` | `email_domain` 後綴比對別名表，最長命中優先；轉寄人一律 auo；entity side = ignore → unknown |
 | mail 層去重 | [c06] `with_dup_of_pk` | 同 `body_hash` 取 `create_date` 最早者為正本；候選池含表中既有列 |
+| 隔離 | [c06] `SKIP_RULES` / `split_skipped` | 命中規則的信不寫 mail 表、記到隔離表（pk、原因、`mail_from` 形狀、`note`），其餘照寫。目前一條：`from_unparsed`（`forwarder_emp_id` NULL = `mail_from` 不符四段格式）。先隔離再去重，跳過的信不進 `dup_of_pk` 候選池（D34） |
 
 ## 關卡（[c12]）
 
-會停：本批 0 封；`body_conflict` > 10%；`mail_from` 解析 < 95%。只印：md 比例、來源分布、`has_headers` 比例、`display_len` P50 / P95、壓縮率、oversize、`dup_of_pk` 比例、`side = unknown` 比例、對不到的網域 top 20（> 20% 時提示補 001 [c05]）。
+D34（2026-10-23）起 [c12] 不停：0 封印一行（週跑常態）；隔離封數 / 原因 / pk 印 WARN；`body_conflict` > 10% 印 WARN（信仍寫入）。會停的只剩 [c30] 寫入後驗證（版本、鍵重複、同一 pk 同時在 mail 表與隔離表）。隔離的信：測試信 → 請爬蟲標 `is_test`（或在隔離表 `note` 註記）；真信 → 調 [c04] `MAIL_FROM_RE` 後 `reprocess_pks` 重跑，寫進 mail 表就自動從隔離表移除。只印：md 比例、來源分布、`has_headers` 比例、`display_len` P50 / P95、壓縮率、oversize、`dup_of_pk` 比例、`side = unknown` 比例、對不到的網域 top 20（> 20% 時提示補 001 [c05]）。
 
 ## 測試
 

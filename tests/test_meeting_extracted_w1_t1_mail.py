@@ -99,6 +99,20 @@ def _src(**kw):
     return {**base, **kw}
 
 
+SRC_TYPES = [
+    "bigint", "string", "string", "timestamp", "date", "timestamp",
+    "string", "string", "string", "string", "string",
+    "string", "string", "string", "string",  # 三個文字欄 + mail_body_html（D29）
+    "boolean", "int", "boolean",
+]
+
+
+def _src_df(spark, mod, srcs):
+    """_src() 的 dict 們 → Bronze 形狀的 DataFrame（欄序 = mod.SOURCE_COLS）。"""
+    ddl = ", ".join(f"{c} {t}" for c, t in zip(mod.SOURCE_COLS, SRC_TYPES, strict=True))
+    return spark.createDataFrame([tuple(s[c] for c in mod.SOURCE_COLS) for s in srcs], ddl)
+
+
 # ---------- [c03] 初洗 ----------
 def test_clean_display_rules(mod):
     raw = (
@@ -512,36 +526,7 @@ def test_spark_pipeline(mod, spark, schemas, ref_tables):
         ),  # 與 2 整封相同
         _src(pk_seq=4, mail_without_fw="noise", is_test=False),
     ]
-    df_src = spark.createDataFrame(
-        [tuple(s[c] for c in mod.SOURCE_COLS) for s in srcs],
-        ", ".join(
-            f"{c} {t}"
-            for c, t in zip(
-                mod.SOURCE_COLS,
-                [
-                    "bigint",
-                    "string",
-                    "string",
-                    "timestamp",
-                    "date",
-                    "timestamp",
-                    "string",
-                    "string",
-                    "string",
-                    "string",
-                    "string",
-                    "string",
-                    "string",
-                    "string",
-                    "string",  # mail_body_html（D29）
-                    "boolean",
-                    "int",
-                    "boolean",
-                ],
-                strict=True,
-            )
-        ),
-    )
+    df_src = _src_df(spark, mod, srcs)
     existing = spark.createDataFrame([], mail_schema)
     df_mail = mod.with_dup_of_pk(mod.transform_mail(df_src, mail_schema, "bu", "0.1"), existing)
     assert df_mail.columns == mail_schema.fieldNames()
@@ -570,6 +555,37 @@ def test_spark_pipeline(mod, spark, schemas, ref_tables):
     assert p[(1, 2, "to", "Bob Lin 林小寶")].side == "unknown"  # 無 email
     assert p[(1, 1, "cc", "MNT PM")].side == "customer"  # 群組也有 email → 可判公司
     assert len(p) == df_part.count()  # 鍵無重複
+
+
+@pytest.fixture(scope="module")
+def skip_schema(specs, spark):
+    ddl = specs.schema_ddl(specs.TABLES["s_meeting_record_skipped_bu"])
+    return spark.createDataFrame([], ddl).schema
+
+
+def test_split_skipped_quarantines_unparsed_from(mod, spark, schemas, skip_schema):
+    """mail_from 不符四段格式的信進隔離列（原因 + 形狀，不露原字串），其餘照常；
+    隔離列欄位 = 002 spec（D34）。"""
+    mail_schema, _ = schemas
+    srcs = [
+        _src(pk_seq=1, mail_body=PLAIN_THREAD),
+        _src(pk_seq=2, mail_body=PLAIN_THREAD, mail_from="X1234567/測試 Jo Doe/jdoe/DEPT01",
+             create_date=datetime(2026, 10, 20, 9, 0)),
+        _src(pk_seq=3, mail_body=PLAIN_THREAD, mail_from=None),
+    ]
+    kept, skipped = mod.split_skipped(
+        mod.transform_mail(_src_df(spark, mod, srcs), mail_schema, "bu", "0.2"), skip_schema, "0.2"
+    )
+    assert kept.columns == mail_schema.fieldNames()
+    assert [r.pk_seq for r in kept.collect()] == [1]
+    assert skipped.columns == skip_schema.fieldNames()
+    rows = {r.pk_seq: r for r in skipped.collect()}
+    assert set(rows) == {2, 3}
+    assert rows[2].skip_reason == "from_unparsed" and rows[2].cleaner_version == "0.2"
+    assert rows[2].note is None
+    assert rows[2].skip_detail == "mail_from=A9999999/中中 AA AAA/AAAA/AAAA99 len=30"
+    assert "Jo" not in rows[2].skip_detail and "測試" not in rows[2].skip_detail
+    assert rows[3].skip_detail == "mail_from=<null> len=0"
 
 
 def test_resolve_side_suffix_and_ignore(mod, spark, schemas, ref_tables):
