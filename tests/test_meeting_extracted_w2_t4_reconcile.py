@@ -397,3 +397,60 @@ def test_grid_sides(mod, grid):
         and g[("MNT", "Acer", "market_outlook")]["sb_source"] == "none"
     )
     assert len(grid) == 7
+
+
+def test_v03_forbidden_values_repair_prompt_and_header(mod):
+    """0.3：格內 S2 數值清單、repair prompt、relation 重問註記、格子標頭帶填報送出日。"""
+    n400 = '{"value": "400", "unit": "dppm"}'
+    items = [_item("S1", sensitivity="S1", numbers='[{"value": "999", "unit": "K"}]'),
+             _item("S2a", sensitivity="S2", numbers=f'[{n400}, {{"value": "10K", "unit": ""}}]'),
+             _item("S2b", sensitivity="S2", numbers=f'[{n400}, {{"value": 7, "unit": ""}}]')]
+    forbidden = mod.forbidden_values(items)
+    assert forbidden == ["400 dppm", "10K"]            # 值＋單位、去重、S1 不算、單字元不算
+    p = mod.build_shareable_repair_prompt("TCL 要求 VLRR 降到 400 dppm，備料 10K", forbidden)
+    assert p.startswith("mode=repair_shareable") and "400 dppm、10K" in p
+    assert "meeting_summary_shareable" in p
+    assert "relation 必須是 corroborate / supplement / conflict" in mod.RELATION_RETRY_NOTE
+    cell = _cell(items=[_item("A")], n_items=1)
+    head = mod.build_cell_prompt(cell, cell["items"]).splitlines()[1]
+    assert "期別 2026-09" in head and "填報送出日約 2026-09-22" in head
+    p1 = mod.build_cell_prompt(cell, cell["items"])
+    assert "## Sales Brief 填報原文（2026-09 期，送出日約 2026-09-22" in p1
+    cell2 = {**cell, "window_end": None}
+    p2 = mod.build_cell_prompt(cell2, cell2["items"])
+    assert "填報送出日" not in p2 and "## Sales Brief 填報原文（2026-09 期）" in p2
+    assert mod.PROMPT_VERSION_IN_CELL == "0.4"
+
+
+def test_v04_shareable_boundary_and_units(mod):
+    """0.4：S2 數值只在「值＋單位」或有數字邊界時算洩漏；10 不撞 10月 / QVN10.F / 2010。"""
+    nums = ('[{"value": 10, "unit": "K"}, {"value": "400", "unit": "dppm"}, '
+            '{"value": 7, "unit": "US$"}, {"value": "124", "unit": ""}]')
+    items = [_item("a", sensitivity="S2", numbers=nums)]
+    ok = "T550QVN10.F 目標 10 月放量，9/10 請採購確認；2010 年；1240 片；US$ 70"
+    assert mod.validate_shareable(ok, items)[1] is False
+    leaks = ("備料 10K", "備料 10 k", "降到 400dppm", "US$7", "US$ 7", "餘量 124", "餘量124K")
+    for leak in leaks:
+        assert mod.validate_shareable(leak, items) == (None, True), leak
+    assert mod.number_tokens('[{"value": "1,000", "unit": " K "}]') == [("1000", "K")]
+    assert mod.forbidden_values(items) == ["10K", "400 dppm", "7 US$", "124"]
+
+
+def _bc(brand, summ, shareable):
+    return {"brand": brand, "meeting_summary": summ, "meeting_summary_shareable": shareable,
+            "item_ids": [f"i-{brand}"], "item_keys": [f"k-{brand}"], "topic_tags_agg": ["spec"],
+            "sensitivity_max": "S0", "items": []}
+
+
+def test_v04_app_summary_fallback(mod):
+    bcs = [_bc("Acer", "A 摘要", "A 外送"), _bc("Dell", "D 摘要", None)]
+    all_cell = _cell(brand="ALL", facet="product_tech", sb_text=None, sb_source="none", items=None)
+    obj = {"relation": "meeting_only", "meeting_summary": "", "signals": []}
+    row, _, st = mod.postprocess_app(obj, None, all_cell, bcs, "0.4", "m")
+    assert row["meeting_summary"] == "Acer：A 摘要；Dell：D 摘要"
+    assert st["app_summary_fallback"] == 1
+    assert row["meeting_summary_shareable"] is None            # Dell 沒外送版 → 不拼
+    bcs[1]["meeting_summary_shareable"] = "D 外送"
+    obj2 = {**obj, "meeting_summary": None}
+    row2, _, _ = mod.postprocess_app(obj2, None, all_cell, bcs, "0.4", "m")
+    assert row2["meeting_summary_shareable"] == "Acer：A 外送；Dell：D 外送"

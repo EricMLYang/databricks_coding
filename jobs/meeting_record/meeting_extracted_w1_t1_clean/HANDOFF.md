@@ -1,12 +1,44 @@
-# HANDOFF — 2026-10-23 更新（下次 session 先讀這份）
+# HANDOFF — 2026-10-23 深夜更新（下次 session 先讀這份）
 
-總覽與決定（D1–D36）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
+總覽與決定（D1–D37）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
 
 ## 0. 接續點（2026-10-23 收工更新，最新；底下 §1–§6 是歷史脈絡）
 
 ### 0.0 現在停在哪（下次 session 從這裡接）
 
-#### ▶ 下次啟動（2026-10-23 收工，使用者要求的接續點）
+#### ▶ 下次啟動（2026-10-23 收工：W2 T3 → T4 0.4 → T5 兩期在 Databricks 全跑通；下一步 PM 審 9 月清單、月底 brief 填完重跑、Job 化）
+
+**Databricks 現況**：T4 0.2 已對 2026-09（88 格：supplement 25 / corroborate 3 / conflict 1 / meeting_only 21 / sb_only 38；34 次呼叫 USD 0.33；[c30] 全過）
+與 2026-10（42 格全 meeting_only；16 次 USD 0.20；[c30] 全過；brief 未填預期內）寫表。看到的毛病：9 月 NB × ALL × price 回空 relation 被作廢、
+shareable 失敗 9 月 2 格 / 10 月 1 格、10 月一批摘要 6 格 `max_tokens` 截斷 → `rows_without_summary` 10、一次呼叫 latency 211 秒（34 條的 TV × TCL × other）。
+**repo 已做（未 commit、未貼）**：
+- T4 **0.3**（README「prompt 版本」節）：shareable 失敗帶 S2 數值清單 repair 一次、relation 空重問一次、`T4_MAX_TOKENS` 8000 ＋ 摘要批截斷拆單格、
+  格子標頭加填報送出日；[c12] 多印 `shareable_repaired / relation_retries / summary_batches_split`。tests 11 passed。
+- **T5 `meeting_extracted_w2_t5_export`**（新，12 cells、README、tests 6 passed、決定 D37）：讀 `v_meeting_sb_reconcile_q` ＋ `v_meeting_items_sb_q` 本期 →
+  [c03] 關卡彙總（硬：0 格 / prompt 版本混雜 / llm 格沒摘要 / relation 不合法 → assert；軟：meeting_only 沒摘要、外送版失敗 > 20%、T3 相關數 ≠ 格內合計、沒填報）→
+  [c04] §4.6 例外清單 md（每 app 一節，conflict → supplement → meeting_only → ALL → corroborate，sb_only 一行；每格填報｜摘要｜外送版｜理由｜前 N 條證據｜其餘 id｜審核欄；
+  other 格證據依主標籤分組；用 `effective_relation` 分節）→ [c20] `dry_run = false` 寫 `b_meeting_migration_log` 一列（slug `w2_t5_export:<月>`）→ [c21] `print(md)`。
+  不打 LLM。OVERVIEW §3 / §4 表已更新。
+**貼上狀態（2026-10-23 更新）**：☑ T4 0.4 已貼、兩期已用 0.4 重跑寫表　☑ T5 已匯入、[c04] 修版已貼　☑ T5 兩期 `dry_run = false` 已跑：2026-09 log 89 格 / 0 WARN（15:13）、2026-10 log 42 格 / 1 WARN（沒填報文字，預期內；15:14），[c30] 都過。**W2 Sales Brief 鏡頭 T3 → T4 → T5 全部在 Databricks 跑通**；剩 Job 化。md 貼給 PM 前手動遮「Dawei」「彼得黃」。
+**T5 9 月 md 看過**：版面照 §4.6 走、順序對、sb_only 計數對、PM SQL 在開頭。兩個版面小修已在 repo：other 格證據依標籤分組但同標籤被拆成好幾段（照證據順序切段）→ 改成同標籤集中；原文裡的 `|`（表格殘留）被跳脫成 `\|` 很醜 → 換成 ／。**上游漏洞（不是 T5 的事，記下來）**：md 裡出現兩個沒被 token 化的人名：pk 279 seg 4 的「PE/Dawei」（羅馬拼音名）、pk 283 seg 2 的「彼得黃」（中文名）；task 2 的姓名遮罩只靠參與者表與 email，正文裡提到的第三人抓不到 → 之後在 task 2 或 task 3 加「正文人名」規則 / 讓 L1 標人名（規格 S3），PM 收到 md 前先手動遮這兩處。**prompt 遵循**：NB × Acer × market_outlook 的 rationale 寫「把握不足仍標記衝突」，直接違反「沒把握選 supplement」；TV × TCL × price 也明知機種不同仍判 conflict。等 PM 審完 9 月 6 個 conflict 再決定要不要在 [c04] few-shot 加反例。
+**T4 0.4 兩期結果（Databricks 現況）**：2026-09 89 格：conflict 6 / supplement 21 / corroborate 3 / meeting_only 21 / sb_only 38；`shareable_failed 0`（驗證規則修好，不用 repair）、`relation_retries 3`（都救回）、signals 5；37 次 USD 0.38；[c30] 全過。2026-10 42 格全 meeting_only：`rows_without_summary 0`（`summary_fallback 3` 把 3 個 ALL 格補上）、signals 3；16 次 USD 0.25；[c30] 全過。表共 131 格。**注意 conflict 數一路 1 → 4 → 6（0.2 → 0.3 → 0.4）**：0.4 強調填報較新後 LLM 更敢判 conflict，6 格對不對交 PM 審，T5 清單第一節就是它們；PM 若多數改 supplement，下一版 prompt 把「口徑不同不得判 conflict」再講硬。
+**T4 0.3 兩期結果**：2026-09 89 格全到（NB × ALL × price 靠 relation 重問救回：`relation_retries 1`）：conflict 4 / supplement 22 / corroborate 4 / meeting_only 21 / sb_only 38；signals 5、cross_customer_flagged 10；36 次呼叫 USD 0.36；[c30] 全過。2026-10 42 格全 meeting_only、摘要 32 / 32 全填（8000 tokens 後沒再截斷，`summary_batches_split 0`）；17 次 USD 0.24；[c30] 全過。表共 131 格。
+**兩個小點已查清、repo 修成 T4 0.4（未貼）**：(a) shareable repair 救不回的原因：兩期都是 TV × TCL × other，S2 數值有「10」「15」「20」「27」，[c03] 用子字串比對撞到「10月」「T550QVN10.F」「2026」，LLM 怎麼改寫都過不了 → 0.4 改成「值＋單位、有數字邊界」比對（README 0.4）。(b) 10 月 3 列沒摘要 = 3 個填報空的 ALL 格 LLM 回空摘要 → 0.4 [c05] 用各品牌格摘要拼 fallback。另 0.3 的 Dell 格 rationale 仍把 8/27 會議當成比填報新 → 0.4 填報段標頭寫明「送出日約 X，比下面每一條會議都新」。tests 13 passed。
+**9 月 4 個 conflict 看過**：MNT × Dell × market_outlook（24M vs 22–23M）、MNT × HP × other（IC 庫存 12 週 vs 9 週）是真的；NB × Acer × market_outlook（單條「Notebook 業務下跌 58%」vs BP 10M）0.2 判 supplement、0.3 判 conflict，number_caveat 自己也說口徑不同，是 LLM 的擲硬幣區，交 PM 審（few-shot 素材）；NB × ALL × market_outlook 的 conflict 是承 Acer 那格來的。
+**Databricks 要做（照順序）**：
+1. T4 替換 [c01] [c03] [c04] [c05] [c11] [c12]（0.4）→ `dbutils.widgets.removeAll()` → 2026-09 `max_cells = 0`、`dry_run = false` 重跑 → 貼 [c12]（看 `shareable_failed` 應 0 或 `shareable_repaired` 1 / 1）與 [c30] → 2026-10 同樣重跑（看 `rows_without_summary` 應 0、`app_mode.summary_fallback`）。
+2. ✅ 已完成（T5 兩期 log 寫入）。兩份 md 貼給 PM 前手動遮「Dawei」「彼得黃」。
+3. 之後：(a) PM 審 9 月清單的回饋 → 調 T4 prompt / T5 版面；(b) 10 月底 brief 填完 → T3 → T4 → T5 2026-10 重跑；(c) 月報版面（DIGEST_ISSUES §4 五題）；(d) Job 化
+   （W1 週 Job；T3 → T4 → T5 月 Job）。還沒問到：三份 10 月 digest 的 [c10a] 漏斗數字與觀感。
+**commit**：使用者要求時才 commit；commit 前 `py -3.10 tools/nb.py strip` T4 / T5。
+
+#### ▶ 2026-10-23 晚版（上一個接續點，保留脈絡）
+
+**T4 2026-09 dry_run（prompt 0.1、max_cells 12）結果**：grid 89 = both 19 / meeting_only 21 / sb_only 37 / ALL(sb) 12；items 243（送 LLM 179）；UNKNOWN 品牌格 2 條（MNT 1 / NB 1）。12 格 cell 模式：supplement 8 / corroborate 1 / conflict 3；bad_relation 0、shareable_failed 1（[c05] 已置 NULL）、USD 0.117（12 次呼叫；全量估 19 + 4 + 8 ≈ 31 次、USD 0.3）。品質：supplement / corroborate 都合理、摘要沒編造；3 個 conflict 有 2 個站不住：TV × TCL × price（填報 85 吋、會議 55 吋 T550 機種，LLM 自己也寫「機種不同」）、NB × Acer × market_outlook（單一條目「業務下跌 58%」主體不明 vs 填報 2026 BP 10M；其餘條目是 IGPU / DGPU 個人看法，T3 把它們標進 market_outlook 是 T3 facet 規則偏寬，先不動）。MNT × Dell × market_outlook 的 conflict（24M vs 22–23M）是真的。一格摘要出現 `<P06>` token。
+**repo 已改（未貼 Databricks）**：[c04] prompt 0.2（conflict 加同一主體 / 同一口徑限制、人寫客戶方 / AUO 方、S2 自我核對）、[c01] widget 預設 0.2、[c11] ALL 格預算邊界（有會議格但摘要沒產的 ALL 格不再誤寫 sb_only）、[c12] 多印 `deferred_no_summary`；tests 10 passed；README「prompt 版本」節。
+**Databricks 要做（照順序）**：替換 T4 [c01] [c04] [c11] [c12] → `brief_month = 2026-09`、`max_cells = 12`、`dry_run = true` 再跑一次（USD 0.12）→ 看那兩格是否變 supplement、摘要沒有 `<P` token、shareable_failed 0 → `max_cells = 0`、`dry_run = false` → 貼 [c12] log 與 [c30]。再跑 2026-10（全 meeting_only）。之後接 T5（下面 (b)）。
+
+#### ▶ 2026-10-23 收工版（上一個接續點，保留脈絡）
 
 **停在哪**：W2 Sales Brief 鏡頭做到 T4。repo 已 commit / push（004 ＋ T3 ＋ T4 ＋ tests ＋ 文件）。Databricks 上：004 已執行、T3 已對 2026-09 / 2026-10 寫表；**T4 `meeting_extracted_w2_t4_reconcile` 還沒複製到 Databricks**。10 月 Sales Brief 要 10 月底那週才填，所以 T4 先對 2026-09 驗。
 

@@ -49,13 +49,13 @@ b_internal_meeting_record（ETL 原始信）
 
 三分法：一年後還成立 → semantic（累積，幾乎不退場）；未來幾個月解讀數字會用到 → intel（滾動，帶 `as_of`）；其餘 event（一次性，不進 prompt）。現況：event 12,048 / intel 448 / semantic 190。
 
-## 3. W2 Sales Brief 鏡頭（004 表 2026-10-23 建好；T3–T5 未建，規格 §3.4–§4.6）
+## 3. W2 Sales Brief 鏡頭（004 / T3 / T4 / T5 2026-10-23 建好；規格 §3.4–§4.6）
 
 | 步驟 | 動作 | 產出 |
 |---|---|---|
 | T3 標註（規則） | 條目歸 `brief_month`；`customer` → Sales Brief 品牌；`topic_tag_primary` → 四面向（market_outlook / product_tech / price / other）；`sb_relevant` 規則 | `g_meeting_items_sb_bu` |
 | T4 對照（LLM） | 格子 = app × 品牌 × 面向 × 月；單邊為空程式判 `meeting_only` / `sb_only`；兩邊都有才呼叫 LLM 判 `corroborate` / `supplement` / `conflict` | `g_meeting_sb_reconcile_bu`（不覆蓋 PM 審核欄） |
-| T5 ＋ 匯出 | 關卡寫 `job_run_log`；PM 審例外清單（conflict → supplement → meeting_only） | md / 月報 |
+| T5 ＋ 匯出 `w2_t5_export`（規則） | 關卡（0 格 / prompt 版本混雜 / llm 格沒摘要 → 停；其餘 WARN）寫 `b_meeting_migration_log`（D37）；PM 例外清單 md：每 app 一節，conflict → supplement → meeting_only → ALL 格 → corroborate，sb_only 一行計數，每格填報｜摘要｜外送版｜理由｜前 3 條證據｜其餘 id｜審核欄 | 印出的 md（貼給 PM）/ 月報 |
 
 Phase 1 不做：L2 facet fallback、ALL 格跨客戶訊號、可外送摘要。費用每月 < USD 5。前置：月報版面定案（`meeting_extracted_digest_preview` 五題）、prompt 0.3 重萃解 customer 空值。
 
@@ -67,7 +67,7 @@ Phase 1 不做：L2 facet fallback、ALL 格跨客戶訊號、可外送摘要。
 |---|---|---|---|---|---|
 | task 3 L1 萃取 | claude-sonnet-5 | 每段一次：`clean_text` ＋ 主旨、日期、參與者 token / side、程式 hint | `noise` / `appointment` / `attachment_only` 段；跨信重複段（`dup_of`）；姓名 / email | 1,181 段 ≈ USD 70（八成是輸出 token） | 每週增量數美元 |
 | Stage A 分類 | claude-sonnet-5 | 先驗命中的 11%，20 條一批 | 先驗 `default` 的 89% 直接 event；同文重複複製正本 | 915 條 ≈ USD 1.4 | 每週幾十條 |
-| W2 T4 對照（未建） | — | 兩邊都有內容的格子，每格最多 8 條 | 單邊為空的格子程式判 | 估每月 < USD 5 | — |
+| W2 T4 對照 | claude-sonnet-5 | 兩邊都有的格子一格一次（最多 8 條；other 格每標籤 8 條）；只有會議的格 6 格一批只產摘要；app 層每 app × facet 一次；shareable 失敗 / relation 空各多救一次 | 單邊為空的格子程式判；sb_only 不呼叫 | 9 月 34 次 USD 0.33、10 月 16 次 USD 0.20 | 每月 < USD 1 |
 
 **刻意不用 LLM 的地方**：來源選擇與清洗（task 1）、切段與 token 化（task 2）、quote 驗證（程式比對 `clean_text`，LLM 改寫就作廢）、S3 遮罩、客戶正規化（別名表）、敏感度（關鍵字）、整封 / 段層 / 同文去重（hash）、Stage B 彙整與 SEM / INT 發號、`verified` 定案（永遠人工）。
 
