@@ -1,12 +1,43 @@
-# HANDOFF — 2026-10-23 深夜更新（下次 session 先讀這份）
+# HANDOFF — 2026-10-27 更新（下次 session 先讀這份）
 
 總覽與決定（D1–D37）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
 
-## 0. 接續點（2026-10-23 收工更新，最新；底下 §1–§6 是歷史脈絡）
+## 0. 接續點（2026-10-27 更新，最新；底下 §1–§6 是歷史脈絡）
 
 ### 0.0 現在停在哪（下次 session 從這裡接）
 
-#### ▶ 下次啟動（2026-10-23 收工：W2 T3 → T4 0.4 → T5 兩期在 Databricks 全跑通；下一步 PM 審 9 月清單、月底 brief 填完重跑、Job 化）
+#### ▶ 下次啟動（2026-10-27：10 月 brief 填完，2026-10 整期 W1 → T3 → T4 0.4 → T5 已在 Databricks 重跑完、log 已寫；下一步 PM 審 9 / 10 月清單、Job 化）
+
+**2026-10-27 做了什麼**：Sales Brief 10 月填完（`v_meeting_sb_period` 三 app 都有 2026-10：品牌清單與 9 月相同、`has_app_summary` true、76 格填報文字全填；
+`submitted_end` MNT / NB **10-27 13:13 UTC（當天剛填）**、TV 10-22）。照順序重跑：
+- W1 task 1 → 2 → 3 → Stage A（incremental、reextract none、max_segments 0）：**全 0 筆**，水位 10-20 之後沒有新信（原始表最後一封真信仍是 10-16）。
+  task 2 每次 incremental 都會再挑出 181 封老面孔（164 空信 ＋ 17 重複）再跳過，不影響結果；Job 化時可讓 task 2 把這類 pk 記進水位。
+- T3 2026-10 `submitted_at`：窗口 MNT 09-22～10-27、NB 09-23～10-27、TV 09-23～10-22，全 `basis=submitted_at` 無 WARN；300 列 / 相關 145（與 fallback 那次相同，沒新信所以窗口變了也沒條目掉出去）、
+  `deactivated 0`、`brand_not_in_sb_rate` 100% → 10.3%（剩 MNT 的 Acer / lg / TPV / qisda → meeting_only）；[c30] 全過，表 736 列（09：436 / 243；10：300 / 145）。
+- T4 0.4 2026-10 全量：**82 格 = both 18 + meeting_only 14 + sb_only 38 + ALL 12**；relation **conflict 0 / supplement 26 / corroborate 2 / meeting_only 14 / sb_only 40**（ALL 格 NB × price / other 無會議格 → sb_only，所以 app 層只呼叫 10 次）；
+  `relation_retries 3` 全救回、`shareable_failed 0`、`rows_without_summary 0`、`summary_fallback 0`、signals 3 / cross_customer_flagged 6；34 次 USD 0.29、latency max 19 秒；[c30] 全過，`stale_cells_in_month 0`（上次 42 格 meeting_only 全被同鍵覆寫）、表 171 格。
+- T5 2026-10：關卡全過無 WARN（相關 145 = 格內合計 145、has_sb_text true、版本單一 0.4）、待審 42（28 llm ＋ 14 meeting_only）、UNKNOWN 品牌格 5；`dry_run = false` 已寫 log `w2_t5_export:2026-10`（第二列，INSERT 並存）。
+  T5 `signals 2`（有 cross_customer_note 的 ALL 格數）vs T4 `signals 3`（LLM 回的訊號條數）口徑不同，不是錯。md 使用者自己掃人名後給 PM。
+**觀察**：10 月 conflict 0（9 月 6 格）。會議端只有 10-16 以前的信、條目少、填報又是剛寫的，可能真的沒衝突點；也可能 0.4 判法看心情。等 PM 審 9 月 6 格再決定 prompt 要不要動。NB 10 月會議端只 3 條，NB 格幾乎全 sb_only，是資料問題。
+**明天要查**：MNT / NB `submitted_end` 是 10-27 當天填的，若之後有人改填報、`submitted_end` 往後移，T3 → T4 → T5 2026-10 要再重跑一次（SQL 在下面）。
+```sql
+SELECT app_name, brief_month, n_brands, submitted_end, prev_submitted_end, has_app_summary
+FROM micenter.mi3_datahub_prod.v_meeting_sb_period WHERE brief_month = '2026-10' ORDER BY app_name;
+```
+**待辦（2026-10-27 收工；照順序，做完打勾）**
+- [ ] **使用者**：T5 2026-10 的 md（[c21]）掃正文人名後，連同 9 月 md 一起給 PM 審；重點 9 月 6 個 conflict（MNT × Dell × market_outlook、MNT × HP × other 是真的；NB × Acer × market_outlook、TV × TCL × price 是口徑不同的擲硬幣區）。
+- [ ] **使用者，10-28**：跑上面 SQL 看 MNT / NB 的 `submitted_end` 有沒有從 10-27 往後移；有移 → T3 → T4 → T5 `brief_month = 2026-10` 再跑一輪（設定同 10-27：T3 `submitted_at` / T4 0.4 `max_cells 0` / T5 `dry_run false`）。
+- [ ] **commit**（使用者說要再做）：這次只改 HANDOFF；要一起 commit 的 notebook 先 `py -3.10 tools/nb.py strip`。
+- [ ] **PM 回饋 → T4 prompt 0.5**：若 9 月 6 個 conflict 多數被改 supplement，[c04] 把「同一主體、同一口徑才能判 conflict」講硬並加反例 few-shot（素材 = `review_relation` 填了的格）；升 `PROMPT_VERSION_IN_CELL` 與 widget；兩期 `max_cells 0` 重跑覆寫非審核欄。T5 版面若 PM 有意見一併改 [c04]。
+- [ ] **上游正文人名遮罩**：task 2 或 task 3 加「正文人名」規則 / 讓 L1 標人名（規格 S3）；目前只遮參與者表與 email，9 月 md 露出「Dawei」「彼得黃」。改完 task 3 版本升、只對新信生效（不補舊帳）。
+- [ ] **Job 化**：W1 週 Job（task 1 → 2 → 3 → Stage A；job parameters `dry_run = false`、`run_mode = incremental`、`reextract = none`、`max_segments = 0`、Stage A `max_items = 0`）；
+  T3 → T4 → T5 月 Job（`brief_month` 留空 = 本月、T4 `max_cells = 0`、三支 `dry_run = false`），排在 brief 送出後（各 app 20–27 日才填完，排月底最後一天或由人手動觸發）。
+  順手：task 2 每次 incremental 會重挑 181 封空信 / 重複信再跳過，把這類 pk 記進水位。
+- [ ] **月報版面**：DIGEST_ISSUES §4 五題（關鍵 4.2 第一層按場合還是主題）；digest §3 右欄與狀態欄接對照表、§2 LLM 摘要。還沒問到：三份 10 月 digest 的 [c10a] 漏斗數字與觀感。
+- 固定每月流程（brief 填完後）：查 `v_meeting_sb_period` 該期三 app 都有列且 `submitted_end` 非 NULL → W1 四支 incremental 補信 → T3 → T4 → T5 同一 `brief_month`。repo 這次沒改 notebook，Databricks 與 repo 同步。
+
+#### ▶ 2026-10-23 收工版本（上一個接續點，保留脈絡）
+#### ▶ 2026-10-23 原文（2026-10-23 收工：W2 T3 → T4 0.4 → T5 兩期在 Databricks 全跑通；下一步 PM 審 9 月清單、月底 brief 填完重跑、Job 化）
 
 **Databricks 現況**：T4 0.2 已對 2026-09（88 格：supplement 25 / corroborate 3 / conflict 1 / meeting_only 21 / sb_only 38；34 次呼叫 USD 0.33；[c30] 全過）
 與 2026-10（42 格全 meeting_only；16 次 USD 0.20；[c30] 全過；brief 未填預期內）寫表。看到的毛病：9 月 NB × ALL × price 回空 relation 被作廢、
