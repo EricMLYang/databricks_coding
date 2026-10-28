@@ -31,3 +31,7 @@ Thumbs.db
 # scratch 內容預設不追蹤（保留目錄說明）
 scratch/*
 !scratch/README.md
+
+# pm_pack 實跑輸出（含 S2 會議內容與客戶名），不入庫；sample.html 是假資料樣本可入庫
+jobs/meeting_record/meeting_extracted_pm_pack/*.html
+!jobs/meeting_record/meeting_extracted_pm_pack/sample.html

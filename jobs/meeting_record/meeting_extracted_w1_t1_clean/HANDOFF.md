@@ -8,6 +8,21 @@
 
 #### ▶ 下次啟動（2026-10-27：10 月 brief 填完，2026-10 整期 W1 → T3 → T4 0.4 → T5 已在 Databricks 重跑完、log 已寫；下一步 PM 審 9 / 10 月清單、Job 化）
 
+**2026-10-28 現況（最新，先讀這段）**
+- ✅ `submitted_end` 複查未變（MNT / NB 10-27 13:13、TV 10-22）→ 2026-10 的 T3 / T4 / T5 不用重跑，10-27 結果就是定稿。
+- ✅ PM_Head `02_meeting_record_應用規劃.md` 升 v0.4：附錄 A 七段 SQL 實跑定稿（附錄 B）；重點：無正文 164 封 33%、有效 12,634 / 正本 6,210、customer 空值 38%、S2 506 條 4%、鏡頭 verified 只有 2 + 2、對照 171 格全待審、**條目會議日期回溯到 2025-05、2026-01～08 最厚、9 / 10 月最薄**（推翻「時間淺」）、NB 幾乎無會議資料。
+- ✅ **`meeting_extracted_pm_pack` 已貼到 Databricks 並實跑**（commit `cc2ae06` 版；`months = 2026-09,2026-10`、`sections = A,B`、`output = html`、`llm_summary = true`、prompt 0.1）：
+  B 節 9 月 MNT 7 組 91 條 / NB 1 組 28 條 / TV 4 組 125 條 / ALL 1 組 / 應用不明 2 組；10 月 MNT 6 組 92 條 / TV 4 組 23 條 / 應用不明 3 組；**LLM 摘要 20 組成功、8 組條目 < 3 跳過、0 失敗**。
+  輸出存在 `meeting_extracted_pm_pack/測試結果.html`（293 KB、2 月份、34 張客戶卡；含 S2 與客戶名，`.gitignore` 已排除 `pm_pack/*.html`、只放行 `sample.html`）。**還沒給 PM、還沒看摘要品質。**
+- 語意鏡頭審核：使用者已會用 `v_meeting_items_sem_q` 看、UPDATE `verified` 填；95 個 SEM 的初判四桶（重複 16 組 / 雜訊 4 / 疑似 event-intel / 真口徑）在 10-28 對話給過；SEM-043 已標 y 5 列；其餘等 PM。
+- 10-28 順手：使用者 profile 磁碟（FSLogix 39 GB）滿了存不了檔 → 清 npm / pip 快取與 `.codex` packages / sessions，釋出約 6.5 GB。
+
+**下一步（照順序）**
+1. 使用者看 `測試結果.html` 的 20 組 LLM 摘要是否有編造 / 漏重點（對照卡片下方的代表句）；有問題貼回來調 [c08] prompt → 0.2。版面若要「一個應用一份」加 `apps` widget（改 [c01] [c11]）。
+2. 給 PM：`測試結果.html`（總覽卡三題）＋ T5 9 / 10 月 md（掃人名）；PM 回饋 → A 節格照 T5 README 的 UPDATE 填、SEM 照四桶填 `verified`。
+3. 之後同前：T4 prompt 0.5（等 PM 審 6 格 conflict）、006 Genie View、Job 化、正文人名遮罩。
+
+
 **2026-10-27 做了什麼**：Sales Brief 10 月填完（`v_meeting_sb_period` 三 app 都有 2026-10：品牌清單與 9 月相同、`has_app_summary` true、76 格填報文字全填；
 `submitted_end` MNT / NB **10-27 13:13 UTC（當天剛填）**、TV 10-22）。照順序重跑：
 - W1 task 1 → 2 → 3 → Stage A（incremental、reextract none、max_segments 0）：**全 0 筆**，水位 10-20 之後沒有新信（原始表最後一封真信仍是 10-16）。
