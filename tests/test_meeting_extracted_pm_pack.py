@@ -121,6 +121,9 @@ def test_token_labels_and_resolve(mod):
 
 def test_group_items_order_and_dups(mod):
     groups = mod.group_items(_items())
+    ba = mod.groups_by_app(groups)
+    assert list(ba) == ["MNT", "NB"] and [k for k, _ in ba["MNT"]] == [("acer", "MNT"), (None, "MNT")]
+    assert mod.app_label("ALL") == "ALL（跨應用）" and mod.app_label(None) == "（應用不明）"
     assert list(groups) == [("acer", "MNT"), ("dell", "NB"), (None, "MNT")]  # 條目數降冪、客戶不明最後
     assert len(groups[("acer", "MNT")]) == 6  # dup 不列
     assert len(mod.group_items(_items(), include_dups=True)[("acer", "MNT")]) == 7
@@ -163,6 +166,8 @@ def test_render_monthly_md_cards(mod):
     assert "| 收進的信 | 40 | 其中 ETL 截斷無正文 12、同信重複 3、隔離（解析不了）1 |" in md
     assert "| 沒有會議日期 | 7 |" in md
     assert "### 客戶 × 應用摘要（3 組）" in md and "**摘要（LLM）**：客戶方要求加量。" in md and "- 追 Q4 100K" in md
+    assert "#### MNT（2 組、7 條）" in md and "#### NB（1 組、1 條）" in md and md.index("#### MNT") < md.index("#### NB")
+    assert "##### acer" in md and "##### （客戶不明）" in md and "#### MNT｜acer（6 條）" in md
     assert "（LLM 摘要失敗：HTTP 500）" in md
     assert "代表句（規則：要求 / 決定 / 問題 優先）：" in md and "〔S2〕雙方同意 10 月降 2%" in md
     assert "### 條目全列（8 條" in md and "另 4 條" in md
@@ -228,6 +233,8 @@ def test_render_monthly_html_cards(mod):
     html = mod.render_monthly_html("2026-09", funnel, _items(), {}, basis="meeting", badge=3, max_per_group=2, summaries=summaries)
     assert '<div class="section-badge">3</div>' in html and "會議紀錄彙整（按會議日期）" in html
     assert html.count('<div class="gcard">') == 3
+    assert 'id="b-2026-09-MNT">MNT｜2 組、7 條（客戶不明 1）</div>' in html and 'id="b-2026-09-NB">NB｜1 組、1 條</div>' in html
+    assert html.index("b-2026-09-MNT") < html.index("b-2026-09-NB") and "<h4>acer</h4>" in html
     assert "客戶方要求加量 &lt;b&gt;。" in html and "<li>追 Q4 100K</li>" in html
     assert "條目少於 3，只列代表句" in html
     assert 'class="tag-s2">S2</span> 雙方同意 10 月降 2%' in html
