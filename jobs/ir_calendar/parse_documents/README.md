@@ -7,7 +7,7 @@
   - silver `s_ir_calendar_document_text`（一檔一列，全文 markdown）、`s_ir_calendar_document_element`（一元素一列）
   - 分類與公司都是欄位：新分類不用改表、不用改 code
 - 參數（widgets）：`catalog`、`schema`、`domain`、`categories`、`company_keys`、`doc_kinds`、`max_files`、`chunk_size`、`max_retries`、`pause_seconds`、`max_attempts`、`force_reparse`、`rebuild_silver`、`dry_run`、`fail_on_error`、`job_run_id`
-- 排程：接在 `ir_calendar_consume_batches` 之後（同 job 下一個 task 或每天一次）；job cluster。`ai_parse_document` 按頁計費，`max_files` 是費用閘門。
+- 排程：接在 `ir_calendar_consume_batches` 之後（同 job 下一個 task 或每天一次）；job cluster。`ai_parse_document` 按頁計費，`max_files` 是費用閘門；財報本體只解前 30 頁（[c02] `PAGE_RANGE_BY_DOC_KIND`，2026-10-28）。
 - 負責人 / 更新日期：（填）/ 2026-09-22
 
 `.htm` / `.html` 不送 `ai_parse_document`（不支援 HTML），改由 [c03a] 純 Python 抽文字，`parser = html_text`、不計費（2026-10-11，同上交代文件 §3.2）。

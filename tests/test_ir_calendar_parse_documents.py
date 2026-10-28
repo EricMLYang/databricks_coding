@@ -94,10 +94,14 @@ def _parsed_df(mod, spark, rows):
 # ---------- [c03] 純函式 ----------
 
 
-def test_parse_options_only_presentation_gets_figure_description(mod):
+def test_parse_options_by_doc_kind(mod):
+    """簡報開圖表描述；財報本體只解前 30 頁（D1-3）；其他整份、不描述。"""
     assert mod.parse_options("Presentation") == {"version": "2.0", "descriptionElementTypes": "figure"}
-    assert mod.parse_options("Financial_Statements") == {"version": "2.0"}
+    assert mod.parse_options("Financial_Statements") == {"version": "2.0", "pageRange": "1-30"}
+    assert mod.parse_options("Press_Release") == {"version": "2.0"}
     assert mod.parse_options(None) == {"version": "2.0"}
+    assert mod.PAGE_RANGE_BY_DOC_KIND == {"Financial_Statements": "1-30"}
+    assert mod.options_sql(mod.parse_options("Financial_Statements")) == "map('pageRange', '1-30', 'version', '2.0')"
 
 
 def test_options_sql_is_sorted_and_escaped(mod):
@@ -110,8 +114,8 @@ def test_options_sql_is_sorted_and_escaped(mod):
 def test_plan_chunks_groups_by_options_then_company(mod):
     work = [mod.to_work(_work(r)) for r in DOC_FILE_ROWS]
     chunks = mod.plan_chunks(work, chunk_size=10)
-    # 兩種選項 → 兩組；同組內分類 / 公司排序
-    assert [[w["volume_path"] for w in c] for c in chunks] == [[VP_PRES], [VP, VP_SUP]]
+    # 三種選項（簡報描述圖表 / 財報限頁 / 其他）→ 三組，依 options_key 字串排序；同組內分類 / 公司排序
+    assert [[w["volume_path"] for w in c] for c in chunks] == [[VP_PRES], [VP], [VP_SUP]]
     assert all(len({w["options_key"] for w in c}) == 1 for c in chunks)
     assert [len(c) for c in mod.plan_chunks(work, chunk_size=1)] == [1, 1, 1]
 
@@ -178,7 +182,7 @@ def test_transform_parse_result_status_and_counts(mod, spark):
     assert ok.page_count == 2 and ok.element_count == 4
     assert ok.text_chars == len("Q2 2026 Results\n\nRevenue grew 10%.\n\nBar chart of revenue by segment\n\n| a | b |\n|---|---|\n| 1 | 2 |")
     assert json.loads(ok.payload) == PAYLOAD_OK                      # payload 原文不動
-    assert ok.parse_options == '{"version": "2.0"}' and ok.parser_version == "2.0"
+    assert ok.parse_options == '{"pageRange": "1-30", "version": "2.0"}' and ok.parser_version == "2.0"   # 財報本體限頁
     assert ok.job_run_id == "run-1" and ok.parsed_at.astimezone(UTC) == T1   # collect 回本機時區的 naive datetime
     assert part.status == "partial" and part.attempt == 2 and "timeout" in part.error
     assert part.parse_options == '{"descriptionElementTypes": "figure", "version": "2.0"}'

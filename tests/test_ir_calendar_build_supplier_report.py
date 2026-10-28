@@ -1,5 +1,5 @@
 # ruff: noqa: E501 - 測試資料與斷言逐字對齊比寬度重要
-"""ir_calendar_build_supplier_report 的純函式 cell 測試（[c02]～[c07]）：facts 換算、工作清單、prompt / JSON 解析、SVG 標籤不重疊、
+"""ir_calendar_build_supplier_report 的純函式 cell 測試（[c02]～[c07]）：facts 換算、工作清單（跨期補位 / 來源雜湊）、prompt / JSON 解析、文件餵入狀態、SVG 標籤不重疊、
 新版面（20261021）HTML 章節順序、爬蟲彙整與 LLM 的合併規則、「未取得 / 未提及」呈現；並比對建表 notebook [c19a] / [c19b] 的 DDL 欄位與 [c10] 的 schema。
 
 financials 用假資料（台股仟元；含 2026-10-21 新版欄位 quick_ratio / dso_days / dpo_days / net_margin_parent）、
@@ -203,45 +203,101 @@ def test_prompt_text_lists_numbers_and_summary(mod, facts):
     assert "報告會直接採用上列彙整的主題" in txt
 
 
-# ---------- [c04] select_work ----------
+# ---------- [c04] work plan ----------
 
-def _text_df(spark, rows):
-    return spark.createDataFrame(rows, "company_key string, company_slug string, category string, period string, "
-                                       "doc_kind string, sha256 string, parse_status string")
-
-
-def _report_df(spark, rows):
-    return spark.createDataFrame(rows, "company_key string, period string, docs_digest string, prompt_version string, template_version string")
+def _doc(ck, period, kind, sha, slug="Innolux", cat="SUPPLIER"):
+    return {"company_key": ck, "company_slug": slug, "category": cat, "period": period, "doc_kind": kind, "sha256": sha,
+            "volume_path": f"/Volumes/c/s/v/{cat.lower()}/{slug}/{slug}_{period}_{kind}.pdf", "parsed_at": None}
 
 
-def test_candidate_latest_period_per_company(mod, spark):
-    df = _text_df(spark, [
-        ("TPE:3481", "Innolux", "SUPPLIER", "2026Q1", "Presentation", "a", "success"),
-        ("TPE:3481", "Innolux", "SUPPLIER", "2026Q2", "Presentation", "b", "success"),
-        ("TPE:3481", "Innolux", "SUPPLIER", "2026Q2", "Financial_Statements", "c", "partial"),
-        ("TPE:3481", "Innolux", "SUPPLIER", "2026Q3", "Presentation", "d", "failed"),      # 失敗不算
-        ("NYSE:GLW", "Corning", "SUPPLIER", "2026Q2", "Press_Release", "e", "success"),
-        ("HK:1070", "TCL", "CUSTOMER", "2026Q2", "Presentation", "f", "success"),
+# 南亞實例（2026-10-28 檢討）：Q3 只有 10-13 法說簡報；Q2 有財報 + 簡報；Q1 只有財報
+NANYA = [
+    _doc("TPE:1303", "2026Q3", "Presentation", "p3", slug="Nan-Ya"),
+    _doc("TPE:1303", "2026Q2", "Financial_Statements", "f2", slug="Nan-Ya"),
+    _doc("TPE:1303", "2026Q2", "Presentation", "p2", slug="Nan-Ya"),
+    _doc("TPE:1303", "2026Q1", "Financial_Statements", "f1", slug="Nan-Ya"),
+]
+
+
+def _by_period(docs):
+    out = {}
+    for d in docs:
+        out.setdefault(d["period"], []).append(d)
+    return out
+
+
+def test_plan_docs_carries_missing_group_from_previous_period(mod):
+    by_p = _by_period(NANYA)
+    got = mod.plan_docs("2026Q3", by_p, lookback=2)
+    assert [(d["period"], d["doc_kind"], d["carried"]) for d in got] == [("2026Q3", "Presentation", False), ("2026Q2", "Financial_Statements", True)]
+    q2 = mod.plan_docs("2026Q2", by_p, 2)                                   # 兩類都有 → 不補
+    assert len(q2) == 2 and not any(d["carried"] for d in q2)
+    assert len(mod.plan_docs("2026Q3", by_p, 0)) == 1                       # lookback 0 → 不補
+    q4 = mod.plan_docs("2026Q4", by_p, 2)                                   # 本期沒文件：財報取最近的 Q2、法說取 Q3
+    assert sorted((d["period"], d["doc_kind"]) for d in q4) == [("2026Q2", "Financial_Statements"), ("2026Q3", "Presentation")]
+    assert [d["doc_kind"] for d in mod.plan_docs("2026Q1", by_p, 1)] == ["Financial_Statements"]   # 往前 1 期沒法說 → 不補
+    assert mod.doc_group("Earnings_Transcript") == "conference" and mod.doc_group("Financial_Statements") == "financial" and mod.doc_group("x") is None
+
+
+def test_pick_summary_period_and_source_digest(mod):
+    assert mod.pick_summary_period("2026Q3", ["2026Q2", "2026Q3"]) == "2026Q3"
+    assert mod.pick_summary_period("2026Q3", ["2026Q1", "2026Q2", "2026Q4"]) == "2026Q2"     # 退用最近的前一期，不拿後一期
+    assert mod.pick_summary_period("2026Q3", ["2026Q4"]) is None and mod.pick_summary_period("2026Q3", []) is None
+    docs = [{"sha256": "b"}, {"sha256": "a"}]
+    d1 = mod.source_digest(docs, "000010", 1)
+    assert d1 == mod.source_digest(list(reversed(docs)), "000010", 1)       # 文件順序無關
+    assert d1 != mod.source_digest(docs, "000011", 1)                       # 彙整換批次 → 重做
+    assert d1 != mod.source_digest(docs, "000010", 2)                       # 場次改版 → 重做
+    assert d1 != mod.source_digest(docs[:1], "000010", 1)                   # 文件增減 → 重做
+    assert mod.source_digest(docs, None, None) != d1
+
+
+def test_build_work_lookback_summary_and_done_filter(mod):
+    sm = [{"company_key": "TPE:1303", "period": "2026Q2", "batch_id": "000010"}]
+    conf = [{"company_key": "TPE:1303", "period": "2026Q3", "revision": 1}, {"company_key": "TPE:1303", "period": "2026Q3", "revision": 2}]
+    kw = dict(periods=[], prompt_version="2.1", template_version=mod.TEMPLATE_VERSION, force=False, lookback=2)
+    work = mod.build_work(NANYA, sm, conf, [], **kw)
+    assert len(work) == 1
+    w = work[0]
+    assert w["period"] == "2026Q3" and w["source_periods"] == ["2026Q2", "2026Q3"] and w["doc_count"] == 2
+    assert w["doc_kinds"] == ["Financial_Statements", "Presentation"] and w["company_slug"] == "Nan-Ya" and w["category"] == "SUPPLIER"
+    assert w["summary_period"] == "2026Q2" and w["summary_batch_id"] == "000010" and w["conference_revision"] == 2
+    assert w["doc_paths"] == sorted([NANYA[0]["volume_path"], NANYA[1]["volume_path"]])
+    assert set(w) == set(mod.WORK_COLS)
+    done = [{"company_key": "TPE:1303", "period": "2026Q3", "docs_digest": w["docs_digest"], "prompt_version": "2.1",
+             "template_version": mod.TEMPLATE_VERSION}]
+    assert mod.build_work(NANYA, sm, conf, done, **kw) == []                                          # 同來源已做 → 跳過
+    sm2 = [{"company_key": "TPE:1303", "period": "2026Q2", "batch_id": "000012"}]
+    assert len(mod.build_work(NANYA, sm2, conf, done, **kw)) == 1                                     # 彙整更新 → 重做（D2-3）
+    assert len(mod.build_work(NANYA, sm, conf, done, **{**kw, "force": True})) == 1
+    assert len(mod.build_work(NANYA, sm, conf, done, **{**kw, "template_version": "20261021"})) == 1   # 版型升版 → 重做
+    w_all = mod.build_work(NANYA, sm, conf, [], **{**kw, "periods": ["2026Q1", "2026Q4"]})
+    assert [(x["period"], x["doc_count"], x["summary_period"]) for x in w_all] == [("2026Q1", 1, None), ("2026Q4", 2, "2026Q2")]
+    assert mod.build_work([], sm, conf, [], **kw) == []
+
+
+def _text_rows(spark, docs_status):
+    return spark.createDataFrame([(d["company_key"], d["company_slug"], d["category"], d["period"], d["doc_kind"], d["sha256"],
+                                   d["volume_path"], None, st) for d, st in docs_status],
+                                 "company_key string, company_slug string, category string, period string, doc_kind string, "
+                                 "sha256 string, volume_path string, parsed_at timestamp, parse_status string")
+
+
+def test_select_work_spark_end_to_end(mod, spark):
+    df_text = _text_rows(spark, [(d, "success") for d in NANYA] + [
+        (_doc("NYSE:GLW", "2026Q2", "Press_Release", "e", slug="Corning"), "partial"),
+        (_doc("TPE:1303", "2026Q3", "Earnings_Transcript", "bad", slug="Nan-Ya"), "failed"),     # 失敗不算
+        (_doc("HK:1070", "2026Q2", "Presentation", "f", slug="TCL", cat="CUSTOMER"), "success"),
     ])
-    out = mod.candidate_reports(df, categories=["SUPPLIER"], company_keys=[], periods=[]).collect()
-    got = {(r.company_key, r.period): r for r in out}
-    assert set(got) == {("TPE:3481", "2026Q2"), ("NYSE:GLW", "2026Q2")}
-    assert got[("TPE:3481", "2026Q2")].doc_count == 2 and got[("TPE:3481", "2026Q2")].doc_kinds == ["Financial_Statements", "Presentation"]
-    all_periods = mod.candidate_reports(df, categories=[], company_keys=["TPE:3481"], periods=["2026Q1", "2026Q2"]).collect()
-    assert sorted(r.period for r in all_periods) == ["2026Q1", "2026Q2"]
-
-
-def test_select_work_skips_done_unless_changed(mod, spark):
-    df = _text_df(spark, [("TPE:3481", "Innolux", "SUPPLIER", "2026Q2", "Presentation", "b", "success"),
-                          ("NYSE:GLW", "Corning", "SUPPLIER", "2026Q2", "Press_Release", "e", "success")])
-    cand = {r.company_key: r.docs_digest for r in mod.candidate_reports(df, categories=[], company_keys=[], periods=[]).collect()}
-    done = _report_df(spark, [("TPE:3481", "2026Q2", cand["TPE:3481"], "2.0", "20261021"),
-                              ("NYSE:GLW", "2026Q2", "old-digest", "2.0", "20261021")])
-    kw = dict(categories=[], company_keys=[], periods=[], prompt_version="2.0", template_version=mod.TEMPLATE_VERSION)
-    assert [r.company_key for r in mod.select_work(df, done, force=False, **kw).collect()] == ["NYSE:GLW"]   # 文件換版要重做
-    assert len(mod.select_work(df, done, force=True, **kw).collect()) == 2
-    kw["template_version"] = "20261010"
-    assert len(mod.select_work(df, done, force=False, **kw).collect()) == 2                               # 版型升版全部重做
+    df_report = spark.createDataFrame([], "company_key string, period string, docs_digest string, prompt_version string, template_version string")
+    df_sm = spark.createDataFrame([("TPE:1303", "2026Q2", "000010")], "company_key string, period string, batch_id string")
+    df_conf = spark.createDataFrame([("TPE:1303", "2026Q3", 1)], "company_key string, period string, revision int")
+    kw = dict(periods=[], prompt_version="2.1", template_version=mod.TEMPLATE_VERSION, force=False, lookback=2)
+    work = mod.select_work(df_text, df_report, df_sm, df_conf, categories=["SUPPLIER"], company_keys=[], **kw)
+    assert [(w["company_key"], w["period"], w["doc_count"]) for w in work] == [("NYSE:GLW", "2026Q2", 1), ("TPE:1303", "2026Q3", 2)]
+    assert work[1]["summary_batch_id"] == "000010" and work[1]["conference_revision"] == 1 and work[0]["summary_period"] is None
+    assert mod.select_work(df_text, df_report, df_sm, df_conf, categories=["CUSTOMER"], company_keys=["TPE:1303"], **kw) == []
+    assert len(mod.select_work(df_text, df_report, df_sm, df_conf, categories=[], company_keys=[], **kw)) == 3
 
 
 # ---------- [c05] prompt / JSON ----------
@@ -261,7 +317,52 @@ def test_build_user_prompt_contains_sections(mod, facts):
     p = mod.build_user_prompt(facts, packed, skipped)
     assert p.startswith("# 結構化資料") and "# 文件全文" in p and "## 文件：Innolux_Q2CY26_Presentation.pdf" in p
     assert p.rstrip().endswith("請依 system 規格輸出 JSON。")
-    assert mod.PROMPT_VERSION_IN_CELL == "2.0" and "AUO 相關議題" in mod.SYSTEM_PROMPT and "燈號" not in mod.SYSTEM_PROMPT
+    assert mod.PROMPT_VERSION_IN_CELL == "2.1" and "AUO 相關議題" in mod.SYSTEM_PROMPT and "燈號" not in mod.SYSTEM_PROMPT
+    assert "前期文件" in mod.SYSTEM_PROMPT and "期別 2026Q2" in p and "前期文件" not in p      # DOCS 沒標 carried
+
+
+def test_pack_documents_period_carried_and_feed_status(mod, facts):
+    docs = [{**DOCS[0], "period": "2026Q3", "carried": False},
+            {**DOCS[1], "period": "2026Q2", "carried": True},
+            {**DOCS[0], "file_name": "Old_Pres.pdf", "period": "2026Q2", "carried": True}]
+    packed, skipped = mod.pack_documents(docs, max_doc_chars=5000, max_total_chars=20000)
+    # 同一優先序內本期先於前期補位；財報本體最後
+    assert [(p["file_name"], p["period"], p["carried"]) for p in packed] == [
+        (DOCS[0]["file_name"], "2026Q3", False), ("Old_Pres.pdf", "2026Q2", True), (DOCS[1]["file_name"], "2026Q2", True)]
+    prompt = mod.build_user_prompt(facts, packed, skipped)
+    assert f"## 文件：{DOCS[1]['file_name']}（Financial_Statements；期別 2026Q2；前期文件；已截尾）" in prompt
+    assert f"## 文件：{DOCS[0]['file_name']}（Presentation；期別 2026Q3）" in prompt
+    fed = mod.doc_feed_status(docs, packed, skipped)
+    assert [(x["file_name"], x["fed"]) for x in fed] == [(DOCS[0]["file_name"], "full"), (DOCS[1]["file_name"], "truncated"), ("Old_Pres.pdf", "full")]
+    assert fed[0]["chars_fed"] == len(DOCS[0]["text_md"]) and fed[1]["chars_fed"] == 5000 and fed[1]["period"] == "2026Q2"
+    packed2, skipped2 = mod.pack_documents(docs, max_doc_chars=5000, max_total_chars=200)
+    fed2 = {x["file_name"]: x for x in mod.doc_feed_status(docs, packed2, skipped2)}
+    assert fed2[DOCS[1]["file_name"]] == {"file_name": DOCS[1]["file_name"], "period": "2026Q2", "doc_kind": "Financial_Statements", "fed": "skipped", "chars_fed": 0}
+
+
+def test_facts_and_render_with_carried_docs(mod, llm):
+    """南亞型：本期 2026Q3 只有簡報，財報是 2026Q2 的前期補位；彙整也是 Q2 的。"""
+    docs = [{**DOCS[0], "period": "2026Q3", "carried": False}, {**DOCS[1], "period": "2026Q2", "carried": True}]
+    f = mod.build_facts(COMPANY, "2026Q3", ANNUAL + QUARTERLY, {**SUMMARY, "period": "2026Q2"}, None, docs)
+    assert f["source_periods"] == ["2026Q2", "2026Q3"] and f["carried_docs"] == [DOCS[1]["file_name"]]
+    assert f["report_date"] == "2026-08-12" and f["report_date_period"] == "2026Q2"
+    assert f["conference_date"] is None                                     # 前期彙整的法說日不是本期的
+    assert [d["carried"] for d in f["docs"]] == [False, True]
+    txt = mod.facts_to_prompt_text(f)
+    assert "前期補位" in txt and DOCS[1]["file_name"] in txt and "必須標明期別" in txt
+    f["docs_fed"] = [{"file_name": DOCS[0]["file_name"], "period": "2026Q3", "doc_kind": "Presentation", "fed": "full", "chars_fed": 90},
+                     {"file_name": DOCS[1]["file_name"], "period": "2026Q2", "doc_kind": "Financial_Statements", "fed": "skipped", "chars_fed": 0}]
+    out = mod.render_report(f, llm, generated_on="2026-10-28", version="v")
+    assert "財報公布：2026-08-12（2026 Q2 財報；本期財報尚未公布）" in out
+    assert "前期補位 2026 Q2" in out and "LLM 已讀全文" in out and "因長度上限未餵給 LLM</b>" in out
+    assert f"因長度上限未餵給 LLM 的文件：{DOCS[1]['file_name']}" in out and "前期補位：本期尚無部分類型的文件" in out
+    assert '法說會：<span class="na">未取得' in out and "彙整期別與本報告期別不同" in out
+    f["docs_fed"][1] = {**f["docs_fed"][1], "fed": "truncated", "chars_fed": 40000}
+    out2 = mod.render_report(f, llm, generated_on="2026-10-28", version="v")
+    assert "LLM 已讀前 40,000 字" in out2 and "因長度上限未餵給 LLM 的文件" not in out2
+    # 沒標期別的舊呼叫端：一律視為本期，不會標前期
+    f3 = mod.build_facts(COMPANY, "2026Q2", ANNUAL + QUARTERLY, SUMMARY, None, DOCS)
+    assert f3["carried_docs"] == [] and f3["source_periods"] == ["2026Q2"] and "period" not in DOCS[0]
 
 
 def test_parse_llm_json_tolerates_fences(mod):
@@ -439,7 +540,7 @@ def _schema_fields(tag, name):
     nb = nbtool.load(str(ROOT / NB))
     src = nbtool.source_of(nb["cells"][nbtool.find(nb, tag)])
     start = src.index(f"{name} = StructType([")
-    end = src.index("])", start) + 2
+    end = src.index("\n])", start) + 3          # 行首的 ])；docs_fed 的巢狀 StructType 行內也有 ])
     ns = {}
     exec("from pyspark.sql.types import *\n" + src[start:end], ns)
     return [f.name for f in ns[name].fields]

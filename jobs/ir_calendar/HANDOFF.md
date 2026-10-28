@@ -3,7 +3,35 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
-## §0 接續點（2026-10-21 收工；10-22 更新：只剩 build_supplier_report 未匯入）
+## §0 接續點（2026-10-28：來源完整性改好、未貼；10-22 起只剩 build_supplier_report 未匯入）
+
+### 0.0 2026-10-28 改了什麼（repo 已改、測試全綠、**尚未貼 Databricks**；backlog §D）
+
+起因：`build_supplier_report` 一份報告只取同期文件與一份彙整，南亞 `TPE:1303` 2026Q3 只有法說簡報，Q2 財報 PDF 與 Q2 細版彙整（9-21）都進不了報告；文件因長度被略過也沒標示。
+
+| 改動 | 哪裡 | 內容 |
+| --- | --- | --- |
+| 彙整薄的不蓋厚的（D2-2） | `consume_batches` [c06] [c09] | [c06] 加 `SUMMARY_RICHNESS_COLS` / `summary_richness_sql` / `summary_merge_condition` / `latest_summary`；[c09] `_merge` 多 `update_condition`，summary 用 `latest_summary` 去重、MERGE 條件「來源至少一樣豐富才更新」 |
+| 財報本體限頁（D1-3） | `parse_documents` [c02] [c03] | `PAGE_RANGE_BY_DOC_KIND = {Financial_Statements: '1-30'}` → `parse_options` 加 `pageRange`（第三種選項組）。既有 bronze 不自動重解析 |
+| 跨期補位 + 來源雜湊 + 餵入狀態（D2-1 / 2-3 / 2-4） | `build_supplier_report` [c01] [c02] [c03] [c04] [c05] [c07] [c09] [c10] [c11] + 第一個 markdown | widget `lookback_quarters = 2`；[c04] 改成 driver 端純 Python 規劃（`plan_docs` / `pick_summary_period` / `source_digest` / `build_work`，`select_work` 多收 summary / conference 兩張表、回 list）；[c09] 照 `doc_paths` / `summary_period` 撈；[c03] docs 帶 `period` / `carried`、`source_periods`、`report_date_period`、法說日只在彙整同期才取；[c05] prompt **2.1**（規則 11 前期文件標期別）、文件標題帶期別、`doc_feed_status`；[c07] 來源節標期別與餵入狀態、頁首財報公布日標期別；[c10] gold 多 `source_periods` / `summary_batch_id` / `docs_fed`；[c11] 先打包再 LLM、dry_run 印餵入狀態；`TEMPLATE_VERSION = 20261028` |
+| gold 加欄 | `init_tables` [c19b] [c21] | DDL 最後三欄；[c21] `ADD_COLUMNS` 加 gold 一組、`docs_digest` 註解改 |
+| 測試 | `tests/test_ir_calendar_{consume,parse_documents,build_supplier_report}.py` | 99 個全綠（consume 46、parse 19、report 34）：含南亞型補位、彙整退用、雜湊觸發重做、餵入狀態、薄不蓋厚、三種解析選項分組 |
+
+**Databricks 替換清單（照順序；全部未貼）**
+
+| 順序 | notebook | cell | 動作 | 貼完做什麼 |
+| --- | --- | --- | --- | --- |
+| 1 | `init_tables` | [c19b] ddl_g_supplier_report、[c21] add_columns | 替換整個 cell | 跑 [c21]：輸出應有 `add …g_ir_calendar_supplier_report：[source_periods, summary_batch_id, docs_fed]`、`comment …g_ir_calendar_supplier_report：[docs_digest]` |
+| 2 | `consume_batches` | [c06] transform_silver、[c09] io_delta | 替換整個 cell | `rebuild_silver = true` 跑一次；查 `s_ir_calendar_summary` 的 `TPE:1303` 2026Q2 應是 batch_path 9-21 那份（`management_views` 非空） |
+| 3 | `parse_documents` | [c02] imports、[c03] pure_helpers | 替換整個 cell | 先 `dry_run = true`；新解析的 `Financial_Statements` 在 bronze `parse_options` 應含 `pageRange` |
+| 4 | `build_supplier_report` | 整支（第一個 markdown + [c01]～[c11] [c20] [c30]） | 整支匯入 | job parameter `prompt_version = 2.1`；依第一格「首次上線順序」跑 `dry_run` → `TPE:1303` 一份 |
+
+**這次的假設**（之後實測不符就回來改）：
+- 補位只分兩類（財報本體／逐字稿 + 簡報 + 新聞稿），預設往前 2 期（widget `lookback_quarters`）。
+- 彙整「豐富度」= 七個結構化欄位條目數合計；爬蟲若刻意重發條目較少的修正版會被擋，要改得先刪舊列再 `rebuild_silver`。
+- 財報本體限前 30 頁是估計值（封面 / 會計師報告 / 四大表）；短於 30 頁的 PDF `pageRange` 超出範圍會不會報錯官方文件沒說，首次跑看 bronze `status`。
+
+未做：D1-1 / D1-2（上線後 SQL 檢查 payload 形狀與每頁字元數）、D2-6（同業 / SEMI 的 prompt 面向待定）。
 
 ### 0.1 這次改了什麼（repo 已 commit；Databricks 2026-10-22 已貼步驟 1、2、4，只剩步驟 3 `build_supplier_report` **未匯入**）
 
@@ -28,9 +56,12 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 | 1 ✅ | `init_tables` | [c21] add_columns | 替換整個 cell | 整支跑一次：輸出應有 `add …s_ir_calendar_financials：[21 欄]`、`add …s_ir_calendar_summary：[reported_period, business_segments, qa_highlights]`、`comment …`；再跑一次全部 `ok 欄位已齊` |
 | 2 ✅ | `consume_batches` | [c04] table_schemas | 替換整個 cell | — |
 | 2 ✅ | `consume_batches` | [c06] transform_silver | 替換整個 cell | 先 `dry_run = true` 跑一次；再 `rebuild_silver = true` 跑一次（舊批次新欄多為 NULL，正常；爬蟲新版整檔重發後再 rebuild 一次就有值） |
-| 3 | `build_supplier_report` | 整支（第一個 markdown + [c01] [c02] [c03] [c05] [c06] [c07] [c09] [c10] [c11] [c30]；[c04] [c08] [c20] 沒變） | 整支重新匯入最省事（Databricks 上原本就**未貼**） | job parameter `prompt_version = 2.0`；依 notebook 第一格「首次上線順序」：`dry_run` → `max_reports = 1`（`TPE:1303`）→ 無彙整的 `TPE:1763` → 無 financials 的 TYO |
+| 3 | `build_supplier_report` | 整支（2026-10-28 又改了 [c01] [c02] [c03] [c04] [c05] [c07] [c09] [c10] [c11] + 第一個 markdown） | 整支重新匯入最省事（Databricks 上原本就**未貼**） | 先貼 §0.0 的 `init_tables` [c19b] [c21] 並跑 [c21]；job parameter `prompt_version = 2.1`；依 notebook 第一格「首次上線順序」：`dry_run` → `max_reports = 1`（`TPE:1303`）→ 無彙整的 `TPE:1763` → 無 financials 的 TYO |
 | 4 ✅ | `inspect_record` | [c03] pure_helpers | 替換整個 cell | 只讀，隨時可貼 |
-| — | `check_landing` / `check_api_status` / `parse_documents` | — | 不用動 | — |
+| 5（10-28） | `init_tables` | [c19b] [c21] | 替換整個 cell，跑 [c21] | gold 補三欄 |
+| 5（10-28） | `consume_batches` | [c06] [c09] | 替換整個 cell | `rebuild_silver = true` 跑一次（彙整改取內容多的） |
+| 5（10-28） | `parse_documents` | [c02] [c03] | 替換整個 cell | 財報本體限前 30 頁；先 `dry_run` |
+| — | `check_landing` / `check_api_status` | — | 不用動 | — |
 
 比對方法：本機 `python tools/nb.py show <notebook> <tag>` 與 Databricks 上同標籤 cell 逐字對；`python tools/nb.py export <nb> <tag>` 可直接複製。
 
@@ -55,14 +86,17 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 | notebook | cell | repo 版本來源 | Databricks 狀態 | 備註 |
 | --- | --- | --- | --- | --- |
 | `init_tables` | [c13] ddl_s_summary、[c19] ddl_s_financials、[c21] add_columns | **2026-10-21 新版欄位** | 已貼、已跑（2026-10-22） | 新欄位已加到既有表 |
-| `init_tables` | [c02] / [c11] / [c15] / [c19a] / [c19b] | 10-11 / 10-20 | 已貼、已跑 | 12 張表齊；[c19a]/[c19b] 兩張表存在、0 列 |
-| `consume_batches` | [c04] table_schemas、[c06] transform_silver | **2026-10-21 新版欄位** | 已貼（2026-10-22） | `rebuild_silver` 已跑 09:06 UTC；爬蟲新版整檔重發後再 rebuild 一次 |
+| `init_tables` | [c02] / [c11] / [c15] / [c19a] | 10-11 / 10-20 | 已貼、已跑 | 12 張表齊；[c19a]/[c19b] 兩張表存在、0 列 |
+| `init_tables` | [c19b] ddl_g_supplier_report、[c21] add_columns | **2026-10-28 gold 三欄** | **未貼** | 貼完跑 [c21] |
+| `consume_batches` | [c04] table_schemas | **2026-10-21 新版欄位** | 已貼（2026-10-22） | `rebuild_silver` 已跑 09:06 UTC；爬蟲新版整檔重發後再 rebuild 一次 |
+| `consume_batches` | [c06] transform_silver、[c09] io_delta | **2026-10-28 彙整薄不蓋厚** | **未貼**（Databricks 上是 10-21 版 [c06]、原版 [c09]） | 貼完 `rebuild_silver = true` 一次 |
 | `consume_batches` | [c02] [c03] [c05] [c11] [c20] | SEMI / 10-11 §3.1 | 已貼（2026-10-20） | 告警分級；只有 FATAL 才 raise |
 | `check_landing` | [c02] imports、[c13] check_silver | SEMI + 10-11 §2.2 | 已貼（2026-10-20） | 不受這次影響（[c13] 只查鍵與列數） |
 | `inspect_record` | [c03] pure_helpers | **2026-10-21** | 已貼（2026-10-22） | 只讀 |
-| `parse_documents` | [c02] [c03] [c03a] [c05] [c07] [c08] [c10] | 10-11 §3.2 | 未知 | `.htm` 改純 Python 抽文字不計費；貼完先 `dry_run = true` |
+| `parse_documents` | [c03a] [c05] [c07] [c08] [c10] | 10-11 §3.2 | 未知 | `.htm` 改純 Python 抽文字不計費；貼完先 `dry_run = true` |
+| `parse_documents` | [c02] [c03] | **2026-10-28 財報限頁** | **未貼** | 含 10-11 的 HTML 分流；貼完先 `dry_run = true` |
 | `check_api_status` | — | — | 不用動 | |
-| `build_supplier_report` | 整支 | **2026-10-21 新版面（template 20261021 / prompt 2.0）** | **未貼**（10-20 的舊版面也沒貼過） | 整支匯入；job parameter `prompt_version = 2.0` |
+| `build_supplier_report` | 整支 | **2026-10-28 來源完整性（template 20261028 / prompt 2.1）** | **未貼**（10-20、10-21 版也沒貼過） | 先貼 `init_tables` [c19b] [c21]；整支匯入；job parameter `prompt_version = 2.1` |
 
 完整的 10-11 cell 清單與上線順序：`docs/20261011_ir_calendar_crawler_change_updates.md`「要複製到 Databricks 的 cell」。
 
@@ -89,7 +123,8 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 
 ## §4 下一步
 
-1. **匯入 `build_supplier_report` 整支**（§0.2 步驟 3；步驟 1、2、4 已於 2026-10-22 完成）。
+1. **貼 §0.0 的 10-28 改動**：`init_tables` [c19b] [c21] → 跑 [c21]；`consume_batches` [c06] [c09] → `rebuild_silver`；`parse_documents` [c02] [c03]；然後**匯入 `build_supplier_report` 整支**（§0.2 步驟 3，`prompt_version = 2.1`）。
+   上線後做 backlog D1-1 / D1-2：對一列 `b_ir_calendar_document_parse.payload` 形狀；查 `s_document_text` 每頁字元數與 `s_document_element` 的 `doc_kind × element_type` 分布。
 2. **驗 `crawler_alerts` 落表**：下一批 SUCCESS 後
    ```sql
    SELECT batch_id, processed_at, explode(crawler_alerts) AS alert

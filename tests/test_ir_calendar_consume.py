@@ -388,6 +388,37 @@ def test_transform_summary_old_shape_new_fields_null(mod, spark):
                                       "reported_period", "business_segments", "qa_highlights"))
 
 
+def _summary_bronze(mod, spark, items):
+    """items: [(seq, batch_path, summary_obj)] → bronze DataFrame（只有 ir_summary 列）。"""
+    rows = []
+    for seq, path, obj in items:
+        m = _manifest(seq, f"{seq:06d}_20260921T081002", [])
+        rows.append(mod.bronze_row(m, {"path": path, "record_type": "ir_summary"}, json.dumps(obj, ensure_ascii=False),
+                                   volume_path=None, now=NOW))
+    return spark.createDataFrame(rows, schema=mod.BRONZE_SCHEMA)
+
+
+def test_latest_summary_prefers_richer_over_newer(mod, spark):
+    """D2-2：南亞 2026Q2 的情況——9-21 細版（seq 小）與 9-24 只找到公告（seq 大、內容少）。同鍵取內容多的，不是取新的。"""
+    thin = {**SUMMARY, "summary": {**SUMMARY["summary"], "core_points": ["只找到公告"], "key_numbers": [], "risks": [],
+                                   "management_views": [], "business_segments": [], "qa_highlights": [], "headline_metrics": []}}
+    df = _summary_bronze(mod, spark, [(2, "summaries/2026-09-21_HK1070_2026Q2.json", SUMMARY),
+                                      (10, "summaries/2026-09-24_HK1070_2026Q2.json", thin)])
+    rows = mod.transform_summary(df)
+    by_seq = mod.latest_per_key(rows, mod.TABLE_KEYS["summary"]).collect()
+    assert len(by_seq) == 1 and by_seq[0]["seq"] == 10                       # 舊規則：新批次贏
+    rich = mod.latest_summary(rows).collect()
+    assert len(rich) == 1 and rich[0]["seq"] == 2 and rich[0]["core_points"] == ["a", "b"]   # 新規則：厚的贏
+    # 一樣豐富時仍取新批次
+    same = _summary_bronze(mod, spark, [(2, "summaries/a.json", SUMMARY), (10, "summaries/b.json", SUMMARY)])
+    assert mod.latest_summary(mod.transform_summary(same)).collect()[0]["seq"] == 10
+    # 豐富度運算式：NULL 欄位算 0（舊批次沒有新欄位）
+    score = rows.selectExpr("seq", f"({mod.summary_richness_sql()}) AS r").collect()
+    assert {r["seq"]: r["r"] for r in score} == {2: 1 + 1 + 1 + 1 + 1 + 2 + 1, 10: 1}
+    assert "s.management_views" in mod.summary_merge_condition() and ">=" in mod.summary_merge_condition()
+    assert set(mod.SUMMARY_RICHNESS_COLS) <= set(rows.columns)
+
+
 def test_transform_document_file_latest_wins(mod, df_bronze):
     all_rows = mod.transform_document_file(df_bronze).collect()
     assert len(all_rows) == 2
