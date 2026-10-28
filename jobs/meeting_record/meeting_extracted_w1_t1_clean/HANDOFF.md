@@ -25,8 +25,9 @@ SELECT app_name, brief_month, n_brands, submitted_end, prev_submitted_end, has_a
 FROM micenter.mi3_datahub_prod.v_meeting_sb_period WHERE brief_month = '2026-10' ORDER BY app_name;
 ```
 **待辦（2026-10-27 收工；照順序，做完打勾）**
+- [ ] **使用者，10-28 新增**：`meeting_extracted_pm_pack`（repo 完成、tests 10 passed、**Databricks 未貼**；只讀不寫、無 LLM）整支匯入後 `months = 2026-09,2026-10`、`sections = A,B`、`output = html` 跑一次，[c12] 印的 HTML 存成 .html 給 PM 用瀏覽器開（純閱讀、無 JS，版面沿 Sales Brief 快報；使用者 10-28 決定不要頁內意見面板、要給高層看得懂的三層版面；`sample.html` 是假資料樣本）：頂端總覽卡（每月每 app 數字 ＋ 問 PM 三題）→ A 節兩期對照結果（只展開衝突 / 補充，其餘折疊）→ B 節每客戶 × 應用一張卡（輪廓、**LLM 摘要 3–5 句（[c08] prompt 0.1，同 T4 端點，每月 < USD 1，`max_llm_groups` 閘門）**、規則代表句），逐條全列折疊在最後。第一次跑建議 `max_llm_groups = 3` 看摘要品質。同日語意鏡頭審核：使用者已知道流程（`v_meeting_items_sem_q` 看、UPDATE `verified` 填），95 個 SEM 的初判四桶（重複 16 組 / 雜訊 4 / 疑似 event-intel / 真口徑）在對話裡給過，SEM-043 已標 y 5 列；其餘等 PM。
 - [ ] **使用者**：T5 2026-10 的 md（[c21]）掃正文人名後，連同 9 月 md 一起給 PM 審；重點 9 月 6 個 conflict（MNT × Dell × market_outlook、MNT × HP × other 是真的；NB × Acer × market_outlook、TV × TCL × price 是口徑不同的擲硬幣區）。
-- [ ] **使用者，10-28**：跑上面 SQL 看 MNT / NB 的 `submitted_end` 有沒有從 10-27 往後移；有移 → T3 → T4 → T5 `brief_month = 2026-10` 再跑一輪（設定同 10-27：T3 `submitted_at` / T4 0.4 `max_cells 0` / T5 `dry_run false`）。
+- [x] **使用者，10-28 已查**：MNT / NB `submitted_end` 仍是 10-27 13:13、TV 10-22，沒有變動 → 2026-10 的 T3 / T4 / T5 **不用重跑**，10-27 的結果就是定稿。同日跑了 PM_Head `02_meeting_record_應用規劃.md` 附錄 A 七段 SQL，數字已定稿進該檔 v0.4 §1.1 / 附錄 B（重點：無正文 164 封 33%；有效 12,634 / 正本 6,210；customer 空值 38%；S2 506 條 4%；鏡頭 verified 只有 2 + 2；對照 171 格全待審；條目會議日期回溯到 2025-05、2026-01～08 最厚、9 / 10 月最薄）。
 - [ ] **commit**（使用者說要再做）：這次只改 HANDOFF；要一起 commit 的 notebook 先 `py -3.10 tools/nb.py strip`。
 - [ ] **PM 回饋 → T4 prompt 0.5**：若 9 月 6 個 conflict 多數被改 supplement，[c04] 把「同一主體、同一口徑才能判 conflict」講硬並加反例 few-shot（素材 = `review_relation` 填了的格）；升 `PROMPT_VERSION_IN_CELL` 與 widget；兩期 `max_cells 0` 重跑覆寫非審核欄。T5 版面若 PM 有意見一併改 [c04]。
 - [ ] **上游正文人名遮罩**：task 2 或 task 3 加「正文人名」規則 / 讓 L1 標人名（規格 S3）；目前只遮參與者表與 email，9 月 md 露出「Dawei」「彼得黃」。改完 task 3 版本升、只對新信生效（不補舊帳）。
