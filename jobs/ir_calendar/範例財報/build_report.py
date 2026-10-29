@@ -555,9 +555,9 @@ def qa_block(latest):
 
 def auo_block(latest):
     if not latest:
-        return "<mark>資料缺：法說摘要沒有 AUO 視角（四支箭／Micro LED／CPO）的判讀；需在爬蟲 LLM prompt 或 build_supplier_report 的 LLM 步驟加入</mark>"
+        return "<mark>資料缺：法說摘要沒有 AUO 視角（四支箭／Micro LED／CPO）的判讀；需在爬蟲 LLM prompt 或 build_ir_report 的 LLM 步驟加入</mark>"
     if latest["auo"]:
-        return f"{esc(latest['auo'])}<p class=\"mini\">來源：新版爬蟲實測 ir_summary {esc(latest['date'])} 的 notes（彙整備註）——爬蟲 LLM 已檢查過 AUO／Micro LED／CPO 相關說法；要再深一層（對 AUO 料號的影響）需 build_supplier_report 的 LLM 步驟依料號清單判讀。</p>"
+        return f"{esc(latest['auo'])}<p class=\"mini\">來源：新版爬蟲實測 ir_summary {esc(latest['date'])} 的 notes（彙整備註）——爬蟲 LLM 已檢查過 AUO／Micro LED／CPO 相關說法；要再深一層（對 AUO 料號的影響）需 build_ir_report 的 LLM 步驟依料號清單判讀。</p>"
     return "<mark>資料缺：新版爬蟲 notes 未提到是否檢查過 AUO／Micro LED／CPO 相關說法</mark>"
 
 

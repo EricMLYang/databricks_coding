@@ -2,7 +2,7 @@
 """把每家公司的兩個來源檔各轉成一頁 HTML，讓讀者看「目前資料長什麼樣」：
 
 - `<公司>/<公司>.md`（實為 JSON）：Databricks silver 表 join 後的 bundle
-  （`build_supplier_report` [c09] `load_company_bundle` 的回傳形狀）→ `<公司>_原始資料.html`
+  （`build_ir_report` [c09] `load_company_bundle` 的回傳形狀）→ `<公司>_原始資料.html`
 - `<公司>/<公司>_爬蟲.md`：bronze `b_ir_calendar_record.payload` 原文（爬蟲每個 JSON 檔一列）
   → `<公司>_爬蟲資料.html`
 
@@ -458,7 +458,7 @@ def build_bundle_view(name: str, src: pathlib.Path, out: pathlib.Path, today: st
 <section class="card">
   <h2>這是什麼</h2>
   <p>把 Databricks silver 各表以 <code>company_key</code>（＋ <code>period</code>）join 後包成一個 JSON，
-  形狀 = <code>build_supplier_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>{esc(src.name)}</code> 就是這個 JSON，
+  形狀 = <code>build_ir_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>{esc(src.name)}</code> 就是這個 JSON，
   <code>build_report.py</code> 讀它產出財務體質報告。period = <b>{esc(d['period'])}</b>。</p>
   <table><thead><tr><th>鍵</th><th>來源 silver 表</th><th>內容</th></tr></thead><tbody>
   {"".join(f"<tr><td><a href='#{k}'><code>{k}</code></a></td><td><code>{t}</code></td><td>{esc(c)}</td></tr>" for k, t, c in parts)}

@@ -1,7 +1,7 @@
 # ruff: noqa: E501 - 貼進 Databricks cell 用的腳本，SQL 字串不折行
 # [dev] 匯出一家公司一期的報告輸入包（貼回給 Agent 套模板測試用；不是 job 的一部分）
 # 在 Databricks Python cell 執行（預設 SQL 的 notebook 第一行加 %python）。
-# 印出的 JSON 形狀 = build_supplier_report [c09] load_company_bundle 的回傳：
+# 印出的 JSON 形狀 = build_ir_report [c09] load_company_bundle 的回傳：
 #   {company, period, fin_rows, summary, conference, docs[{…, text_md}]}
 # 文件全文每份截 MAX_DOC_CHARS 字、最多 MAX_DOCS 份；分段印避免單一輸出被截，貼回時把 BEGIN～END 整段接起來。
 import json

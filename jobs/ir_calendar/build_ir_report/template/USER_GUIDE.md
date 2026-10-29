@@ -28,7 +28,7 @@
 > 五、交付前檢查
 > 確認採購結論位於「財報資訊」上方、下方沒有重複的五年營收圖、其餘十項指標圖均為單欄、圖上數字不重疊、表格與圖表數值一致、示意資料有清楚標示，且 HTML 內嵌圖片可正常顯示。只交付最終 HTML 檔案及簡短的資料口徑說明。
 
-## §2 job 對應（`ir_calendar_build_supplier_report`，版型 20261021 / prompt 2.0）
+## §2 job 對應（`ir_calendar_build_ir_report`，版型 20261021 / prompt 2.0）
 
 | 說明條目 | job 做法 | 在哪 |
 | --- | --- | --- |
@@ -44,7 +44,7 @@
 | 三 法說七節 | 01–06 取爬蟲 summary `management_views` 六個固定 topic 的原文（事業體／產品線重點、擴產／產能變化、獲利能力變化、未來市場預測、投資／M&A／組織整改、AUO 相關議題）；彙整缺的主題用本 job LLM 讀文件補位；都沒有 → 「未提及」。07 取 `qa_highlights`，缺時 LLM qa。每節標示來源；03 附財報數字對照 | [c02] `CONF_TOPICS`、[c07] `merged_conference` |
 | 三 不得推測 | prompt 規則 5 / 6；AUO 相關議題只收文件明確提到 AUO / 友達 / 面板客戶 / Micro LED / Mini LED / 車用顯示 / CPO 的段落 | [c05] |
 | 四 數字 | **job 只做正式報告**：表格與圖表數字只來自 `s_financials`，LLM 不得編數字；缺值一律「未取得」。不提供示意值模式 | [c03]、[c05] |
-| 五 交付前檢查 | `tests/test_ir_calendar_build_supplier_report.py`：章節順序與編號、沒有第二張五年營收圖、十項圖單欄（`data-indicator` ×10）、標籤框不重疊、表格與圖表同一份數列、彙整優先於 LLM、無殘留 `{{…}}` | tests |
+| 五 交付前檢查 | `tests/test_ir_calendar_build_ir_report.py`：章節順序與編號、沒有第二張五年營收圖、十項圖單欄（`data-indicator` ×10）、標籤框不重疊、表格與圖表同一份數列、彙整優先於 LLM、無殘留 `{{…}}` | tests |
 
 頁首「財報公布日」取 `s_document_file` 該期 `Financial_Statements` 的 `doc_date`（台股 doc.twse 沒給日期時為「未取得」）；「法說會日」取 `s_conference.conference_date`，沒有場次時用 `s_summary.conference_date`；「法說報告期間」用 `summary.reported_period`（10 月法說 `period = 2026Q3` 但可能講上半年）。
 

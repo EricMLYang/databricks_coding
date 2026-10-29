@@ -1,5 +1,6 @@
 # ruff: noqa: E501 - 測試資料與斷言逐字對齊比寬度重要
-"""ir_calendar_build_supplier_report 的純函式 cell 測試（[c02]～[c07]）：facts 換算、工作清單（跨期補位 / 來源雜湊）、prompt / JSON 解析、文件餵入狀態、SVG 標籤不重疊、
+"""ir_calendar_build_ir_report 的純函式 cell 測試（[c02]～[c07]）：facts 換算、工作清單（當季為準 / 只有彙整也產 / 補位預設關 / 來源雜湊 / 視角 supplier · peer · semi）、
+prompt（依視角）/ JSON 解析、文件餵入狀態、SVG 標籤不重疊、
 新版面（20261021）HTML 章節順序、爬蟲彙整與 LLM 的合併規則、「未取得 / 未提及」呈現；並比對建表 notebook [c19a] / [c19b] 的 DDL 欄位與 [c10] 的 schema。
 
 financials 用假資料（台股仟元；含 2026-10-21 新版欄位 quick_ratio / dso_days / dpo_days / net_margin_parent）、
@@ -12,7 +13,7 @@ import re
 import pytest
 from nbload import ROOT, load_cells, nbtool
 
-NB = "jobs/ir_calendar/build_supplier_report/notebook.ipynb"
+NB = "jobs/ir_calendar/build_ir_report/notebook.ipynb"
 INIT_NB = "jobs/ir_calendar/init_tables/notebook.ipynb"
 
 
@@ -95,7 +96,7 @@ SUMMARY = {
 LLM_OUT = {
     "conclusion": "營收回升但本業僅小幅轉正（財報數據）。負債比 50%。",
     "confirmed_facts": ["2026Q2 營收 600 億（財報數據）"], "management_outlook": ["下半年需求審慎（Innolux_Q2CY26_Presentation.pdf）"],
-    "procurement_actions": [{"area": "成本與議價", "advice": "議價時留意毛利率回升"}, {"area": "其他", "advice": "x"}],
+    "actions": [{"area": "成本與議價", "advice": "議價時留意毛利率回升"}, {"area": "其他", "advice": "x"}],
     "financial_highlights": ["毛利率 9.1%（財報數據）"],
     "segments": [{"segment": "LLM 事業群", "revenue": "NT$1 億", "revenue_yoy": None, "operating_margin": None, "opm_yoy": None, "note": "只在彙整缺時用"}],
     "conference": {"business_lines": ["LLM 的事業體（彙整已有，應不採用）"], "capacity": ["新廠 2027 投產"], "profitability": [],
@@ -241,7 +242,7 @@ def test_plan_docs_carries_missing_group_from_previous_period(mod):
 
 def test_pick_summary_period_and_source_digest(mod):
     assert mod.pick_summary_period("2026Q3", ["2026Q2", "2026Q3"]) == "2026Q3"
-    assert mod.pick_summary_period("2026Q3", ["2026Q1", "2026Q2", "2026Q4"]) == "2026Q2"     # 退用最近的前一期，不拿後一期
+    assert mod.pick_summary_period("2026Q3", ["2026Q1", "2026Q2", "2026Q4"]) is None       # 2026-10-29：只用同期，不退用前期、不拿後一期
     assert mod.pick_summary_period("2026Q3", ["2026Q4"]) is None and mod.pick_summary_period("2026Q3", []) is None
     docs = [{"sha256": "b"}, {"sha256": "a"}]
     d1 = mod.source_digest(docs, "000010", 1)
@@ -252,28 +253,98 @@ def test_pick_summary_period_and_source_digest(mod):
     assert mod.source_digest(docs, None, None) != d1
 
 
-def test_build_work_lookback_summary_and_done_filter(mod):
-    sm = [{"company_key": "TPE:1303", "period": "2026Q2", "batch_id": "000010"}]
+def test_build_work_current_period_only_and_done_filter(mod):
+    """預設 lookback = 0：南亞 2026Q3 只帶 Q3 簡報；Q2 彙整不退用；Q3 彙整有才用。"""
+    sm_q2 = [{"company_key": "TPE:1303", "period": "2026Q2", "batch_id": "000010", "category": "SUPPLIER"}]
+    sm_q3 = sm_q2 + [{"company_key": "TPE:1303", "period": "2026Q3", "batch_id": "000011", "category": "SUPPLIER"}]
     conf = [{"company_key": "TPE:1303", "period": "2026Q3", "revision": 1}, {"company_key": "TPE:1303", "period": "2026Q3", "revision": 2}]
-    kw = dict(periods=[], prompt_version="2.1", template_version=mod.TEMPLATE_VERSION, force=False, lookback=2)
-    work = mod.build_work(NANYA, sm, conf, [], **kw)
+    kw = dict(views=["supplier"], periods=[], prompt_versions=mod.PROMPT_VERSIONS, template_version=mod.TEMPLATE_VERSION, force=False, lookback=0)
+    work = mod.build_work(NANYA, sm_q2, conf, [], **kw)
     assert len(work) == 1
     w = work[0]
-    assert w["period"] == "2026Q3" and w["source_periods"] == ["2026Q2", "2026Q3"] and w["doc_count"] == 2
-    assert w["doc_kinds"] == ["Financial_Statements", "Presentation"] and w["company_slug"] == "Nan-Ya" and w["category"] == "SUPPLIER"
-    assert w["summary_period"] == "2026Q2" and w["summary_batch_id"] == "000010" and w["conference_revision"] == 2
-    assert w["doc_paths"] == sorted([NANYA[0]["volume_path"], NANYA[1]["volume_path"]])
+    assert w["period"] == "2026Q3" and w["source_periods"] == ["2026Q3"] and w["doc_count"] == 1 and w["doc_kinds"] == ["Presentation"]
+    assert w["summary_period"] is None and w["summary_batch_id"] is None and w["conference_revision"] == 2   # Q2 彙整不混進 Q3
+    assert w["company_slug"] == "Nan-Ya" and w["category"] == "SUPPLIER" and w["doc_paths"] == [NANYA[0]["volume_path"]]
+    assert w["report_kind"] == "supplier" and w["topics"] == []
     assert set(w) == set(mod.WORK_COLS)
-    done = [{"company_key": "TPE:1303", "period": "2026Q3", "docs_digest": w["docs_digest"], "prompt_version": "2.1",
-             "template_version": mod.TEMPLATE_VERSION}]
-    assert mod.build_work(NANYA, sm, conf, done, **kw) == []                                          # 同來源已做 → 跳過
-    sm2 = [{"company_key": "TPE:1303", "period": "2026Q2", "batch_id": "000012"}]
-    assert len(mod.build_work(NANYA, sm2, conf, done, **kw)) == 1                                     # 彙整更新 → 重做（D2-3）
-    assert len(mod.build_work(NANYA, sm, conf, done, **{**kw, "force": True})) == 1
-    assert len(mod.build_work(NANYA, sm, conf, done, **{**kw, "template_version": "20261021"})) == 1   # 版型升版 → 重做
-    w_all = mod.build_work(NANYA, sm, conf, [], **{**kw, "periods": ["2026Q1", "2026Q4"]})
-    assert [(x["period"], x["doc_count"], x["summary_period"]) for x in w_all] == [("2026Q1", 1, None), ("2026Q4", 2, "2026Q2")]
-    assert mod.build_work([], sm, conf, [], **kw) == []
+    w3 = mod.build_work(NANYA, sm_q3, conf, [], **kw)[0]
+    assert w3["summary_period"] == "2026Q3" and w3["summary_batch_id"] == "000011" and w3["docs_digest"] != w["docs_digest"]   # 同期彙整到了 → 重做
+    done = [{"company_key": "TPE:1303", "period": "2026Q3", "report_kind": "supplier", "docs_digest": w3["docs_digest"],
+             "prompt_version": mod.PROMPT_VERSIONS["supplier"], "template_version": mod.TEMPLATE_VERSION}]
+    assert mod.build_work(NANYA, sm_q3, conf, done, **kw) == []                                       # 來源沒變 → 跳過
+    sm_q3b = sm_q2 + [{"company_key": "TPE:1303", "period": "2026Q3", "batch_id": "000012", "category": "SUPPLIER"}]
+    assert len(mod.build_work(NANYA, sm_q3b, conf, done, **kw)) == 1                                  # 彙整換批次 → 重做（D2-3）
+    new_doc = NANYA + [_doc("TPE:1303", "2026Q3", "Financial_Statements", "f3", slug="Nan-Ya")]
+    assert mod.build_work(new_doc, sm_q3, conf, done, **kw)[0]["doc_count"] == 2                      # 新文件進來 → 重做
+    assert len(mod.build_work(NANYA, sm_q3, conf, done, **{**kw, "force": True})) == 1
+    assert len(mod.build_work(NANYA, sm_q3, conf, done, **{**kw, "template_version": "20261021"})) == 1   # 版型升版 → 重做
+    assert len(mod.build_work(NANYA, sm_q3, conf, done, **{**kw, "prompt_versions": {"supplier": "9.9"}})) == 1   # 該視角 prompt 升版 → 重做
+    old_done = [{**done[0], "report_kind": None}]                                                        # 10-29 前的 gold 列沒有 report_kind → 視為 supplier
+    assert mod.build_work(NANYA, sm_q3, conf, old_done, **kw) == []
+    w_all = mod.build_work(NANYA, sm_q2, conf, [], **{**kw, "periods": ["2026Q1", "2026Q2", "2026Q4"]})
+    assert [(x["period"], x["doc_count"], x["summary_period"]) for x in w_all] == [("2026Q1", 1, None), ("2026Q2", 2, "2026Q2")]   # Q4 沒來源 → 不做
+    assert mod.build_work([], [], conf, [], **kw) == []
+
+
+def test_company_views_and_multi_view_work(mod):
+    """視角（2026-10-29）：分類預設 + override；一家多視角 → 一視角一列、各自 done；友達不產 peer；CUSTOMER 沒有視角。"""
+    assert mod.company_views("TPE:1303", "SUPPLIER") == {"supplier": []}
+    assert mod.company_views("TPE:2330", "SUPPLIER") == {"supplier": [], "semi": ["A", "C"]}          # 台積電：供應商 + 半導體
+    assert mod.company_views("TPE:3481", "PANEL_PEER") == {"peer": [], "semi": ["A"]}                   # 群創：同業 + FOPLP 對標
+    assert mod.company_views("TPE:2409", "PANEL_PEER") == {}                                            # 友達自己只當對照基準
+    assert mod.company_views("NASDAQ:NVDA", "SEMI") == {"semi": ["A", "C"]} and mod.company_views("SZ:300308", "SEMI") == {"semi": ["B"]}
+    assert mod.company_views("HK:992", "CUSTOMER") == {} and mod.company_views("X:1", None) == {}
+    assert set(mod.VIEW_OVERRIDES) == {"TPE:2330", "NYSE:GLW", "TPE:3714", "TPE:3481", "TPE:6770", "TPE:2454", "TPE:6854", "TPE:2303"}
+    for ck, vs in mod.VIEW_OVERRIDES.items():
+        for v, topics in vs.items():
+            assert v in mod.REPORT_VIEWS and set(topics) <= set(mod.SEMI_TOPICS), (ck, v)
+    assert set(mod.PROFILES) == set(mod.REPORT_VIEWS) == set(mod.PROMPT_VERSIONS)
+    for p in mod.PROFILES.values():
+        assert len(p["dimensions"]) == 4 and {"report", "conclusion", "actions", "actions_note", "observe"} <= set(p["titles"])
+
+    tsmc = [_doc("TPE:2330", "2026Q3", "Presentation", "t3", slug="TSMC"), _doc("TPE:2330", "2026Q3", "Financial_Statements", "tf3", slug="TSMC")]
+    kw = dict(views=list(mod.REPORT_VIEWS), periods=[], prompt_versions=mod.PROMPT_VERSIONS, template_version=mod.TEMPLATE_VERSION, force=False, lookback=0)
+    work = mod.build_work(tsmc + NANYA, [], [], [], **kw)
+    assert [(w["company_key"], w["report_kind"], w["topics"]) for w in work] == [
+        ("TPE:1303", "supplier", []), ("TPE:2330", "supplier", []), ("TPE:2330", "semi", ["A", "C"])]      # 依視角排序；同雜湊兩列
+    assert work[1]["docs_digest"] == work[2]["docs_digest"] and work[1]["doc_count"] == 2
+    done = [{"company_key": "TPE:2330", "period": "2026Q3", "report_kind": "supplier", "docs_digest": work[1]["docs_digest"],
+             "prompt_version": mod.PROMPT_VERSIONS["supplier"], "template_version": mod.TEMPLATE_VERSION}]
+    left = mod.build_work(tsmc, [], [], done, **kw)
+    assert [w["report_kind"] for w in left] == ["semi"]                                                 # supplier 做過、semi 還沒
+    assert [w["report_kind"] for w in mod.build_work(tsmc, [], [], done, **{**kw, "views": ["supplier"]})] == []
+    assert [w["report_kind"] for w in mod.build_work(tsmc, [], [], [], **{**kw, "views": ["peer"]})] == []
+    auo = [_doc("TPE:2409", "2026Q3", "Presentation", "a3", slug="AUO", cat="PANEL_PEER")]
+    innolux = [_doc("TPE:3481", "2026Q3", "Presentation", "i3", slug="Innolux", cat="PANEL_PEER")]
+    assert [(w["company_key"], w["report_kind"]) for w in mod.build_work(auo + innolux, [], [], [], **kw)] == [("TPE:3481", "peer"), ("TPE:3481", "semi")]
+
+
+def test_build_work_summary_only_and_next_period(mod):
+    """當季只有爬蟲彙整、沒有任何已解析文件：也要產（0 檔）；下一季任一來源出現就換期。"""
+    sm = [{"company_key": "TPE:1763", "period": "2026Q3", "batch_id": "000011", "category": "SUPPLIER"}]
+    kw = dict(views=["supplier"], periods=[], prompt_versions=mod.PROMPT_VERSIONS, template_version=mod.TEMPLATE_VERSION, force=False, lookback=0)
+    w = mod.build_work([], sm, [], [], **kw)
+    assert len(w) == 1 and w[0]["company_key"] == "TPE:1763" and w[0]["period"] == "2026Q3"
+    assert w[0]["doc_count"] == 0 and w[0]["doc_paths"] == [] and w[0]["doc_kinds"] == [] and w[0]["source_periods"] == ["2026Q3"]
+    assert w[0]["summary_batch_id"] == "000011" and w[0]["company_slug"] is None and w[0]["category"] == "SUPPLIER"
+    # 南亞：文件最新 Q3，但 Q4 彙整先到 → 期別前進到 Q4、只用 Q4 彙整（Q3 簡報不帶）
+    sm_q4 = [{"company_key": "TPE:1303", "period": "2026Q4", "batch_id": "000020", "category": "SUPPLIER"}]
+    w4 = mod.build_work(NANYA, sm_q4, [], [], **kw)
+    assert [(x["period"], x["doc_count"], x["summary_period"]) for x in w4] == [("2026Q4", 0, "2026Q4")]
+    # 只有場次（日期）沒有內容的期別不觸發
+    conf_q4 = [{"company_key": "TPE:1303", "period": "2026Q4", "revision": 1}]
+    assert [x["period"] for x in mod.build_work(NANYA, [], conf_q4, [], **kw)] == ["2026Q3"]
+
+
+def test_build_work_lookback_opt_in(mod):
+    """lookback_quarters > 0 時才補前期文件；補位不會讓期別前進。"""
+    sm = [{"company_key": "TPE:1303", "period": "2026Q2", "batch_id": "000010", "category": "SUPPLIER"}]
+    kw = dict(views=["supplier"], periods=[], prompt_versions=mod.PROMPT_VERSIONS, template_version=mod.TEMPLATE_VERSION, force=False, lookback=2)
+    w = mod.build_work(NANYA, sm, [], [], **kw)[0]
+    assert w["period"] == "2026Q3" and w["source_periods"] == ["2026Q2", "2026Q3"] and w["doc_count"] == 2
+    assert w["doc_kinds"] == ["Financial_Statements", "Presentation"] and w["summary_period"] is None   # 文件可補位，彙整仍只用同期
+    w_all = mod.build_work(NANYA, sm, [], [], **{**kw, "periods": ["2026Q4"]})
+    assert [(x["period"], x["doc_count"]) for x in w_all] == [("2026Q4", 2)]                           # 指定期別：補得到前期文件就做
 
 
 def _text_rows(spark, docs_status):
@@ -290,14 +361,29 @@ def test_select_work_spark_end_to_end(mod, spark):
         (_doc("HK:1070", "2026Q2", "Presentation", "f", slug="TCL", cat="CUSTOMER"), "success"),
     ])
     df_report = spark.createDataFrame([], "company_key string, period string, docs_digest string, prompt_version string, template_version string")
-    df_sm = spark.createDataFrame([("TPE:1303", "2026Q2", "000010")], "company_key string, period string, batch_id string")
+    df_sm = spark.createDataFrame([
+        ("TPE:1303", "SUPPLIER", "2026Q2", "000010", None),
+        ("TPE:1303", "SUPPLIER", "2026Q3", "000011", None),
+        ("TPE:1763", "SUPPLIER", "2026Q3", "000011", None),          # 只有彙整、沒有文件 → 也要產
+        ("HK:1070", "CUSTOMER", "2026Q3", "000011", None),           # 分類外
+        ("TPE:1303", "SUPPLIER", "bad", "000011", None),             # 期別不合法
+    ], "company_key string, category string, period string, batch_id string, updated_at timestamp")
     df_conf = spark.createDataFrame([("TPE:1303", "2026Q3", 1)], "company_key string, period string, revision int")
-    kw = dict(periods=[], prompt_version="2.1", template_version=mod.TEMPLATE_VERSION, force=False, lookback=2)
-    work = mod.select_work(df_text, df_report, df_sm, df_conf, categories=["SUPPLIER"], company_keys=[], **kw)
-    assert [(w["company_key"], w["period"], w["doc_count"]) for w in work] == [("NYSE:GLW", "2026Q2", 1), ("TPE:1303", "2026Q3", 2)]
-    assert work[1]["summary_batch_id"] == "000010" and work[1]["conference_revision"] == 1 and work[0]["summary_period"] is None
-    assert mod.select_work(df_text, df_report, df_sm, df_conf, categories=["CUSTOMER"], company_keys=["TPE:1303"], **kw) == []
-    assert len(mod.select_work(df_text, df_report, df_sm, df_conf, categories=[], company_keys=[], **kw)) == 3
+    kw = dict(periods=[], prompt_versions=mod.PROMPT_VERSIONS, template_version=mod.TEMPLATE_VERSION, force=False, lookback=0)
+    work = mod.select_work(df_text, df_report, df_sm, df_conf, views=["supplier"], company_keys=[], **kw)
+    assert [(w["company_key"], w["period"], w["doc_count"], w["summary_period"]) for w in work] == [
+        ("NYSE:GLW", "2026Q2", 1, None), ("TPE:1303", "2026Q3", 1, "2026Q3"), ("TPE:1763", "2026Q3", 0, "2026Q3")]
+    assert work[1]["summary_batch_id"] == "000011" and work[1]["conference_revision"] == 1 and work[2]["company_slug"] is None
+    assert mod.select_work(df_text, df_report, df_sm, df_conf, views=["peer"], company_keys=["TPE:1303"], **kw) == []      # 南亞沒有 peer 視角
+    assert [w["company_key"] for w in mod.select_work(df_text, df_report, df_sm, df_conf, views=["supplier"], company_keys=["TPE:1763"], **kw)] == ["TPE:1763"]
+    allv = mod.select_work(df_text, df_report, df_sm, df_conf, views=list(mod.REPORT_VIEWS), company_keys=[], **kw)
+    assert [(w["company_key"], w["report_kind"]) for w in allv] == [
+        ("NYSE:GLW", "supplier"), ("TPE:1303", "supplier"), ("TPE:1763", "supplier"), ("NYSE:GLW", "semi")]   # 康寧另掛 semi；HK:1070 CUSTOMER 沒視角
+    assert allv[3]["topics"] == ["A", "B"]
+    # gold 已有 report_kind 欄且 supplier 做過 → 只剩 semi
+    df_report2 = spark.createDataFrame([("NYSE:GLW", "2026Q2", allv[0]["docs_digest"], mod.PROMPT_VERSIONS["supplier"], mod.TEMPLATE_VERSION, "supplier")],
+                                       "company_key string, period string, docs_digest string, prompt_version string, template_version string, report_kind string")
+    assert [w["report_kind"] for w in mod.select_work(df_text, df_report2, df_sm, df_conf, views=list(mod.REPORT_VIEWS), company_keys=["NYSE:GLW"], **kw)] == ["semi"]
 
 
 # ---------- [c05] prompt / JSON ----------
@@ -317,8 +403,24 @@ def test_build_user_prompt_contains_sections(mod, facts):
     p = mod.build_user_prompt(facts, packed, skipped)
     assert p.startswith("# 結構化資料") and "# 文件全文" in p and "## 文件：Innolux_Q2CY26_Presentation.pdf" in p
     assert p.rstrip().endswith("請依 system 規格輸出 JSON。")
-    assert mod.PROMPT_VERSION_IN_CELL == "2.1" and "AUO 相關議題" in mod.SYSTEM_PROMPT and "燈號" not in mod.SYSTEM_PROMPT
+    assert mod.PROMPT_VERSIONS["supplier"] == "2.2" and "AUO 相關議題" in mod.SYSTEM_PROMPT and "燈號" not in mod.SYSTEM_PROMPT
     assert "前期文件" in mod.SYSTEM_PROMPT and "期別 2026Q2" in p and "前期文件" not in p      # DOCS 沒標 carried
+    assert mod.SYSTEM_PROMPT == mod.build_system_prompt("supplier") and "採購部門" in mod.SYSTEM_PROMPT and '"actions"' in mod.SYSTEM_PROMPT
+    assert "procurement_actions" not in mod.SYSTEM_PROMPT and "題目標籤" not in p                  # supplier 沒有題目標籤
+
+
+def test_system_prompt_per_view_and_semi_topics(mod, facts):
+    """視角 prompt：角色 / 四面向 / 第六主題提示依 PROFILES；semi 的題目標籤進 user prompt。"""
+    peer, semi = mod.build_system_prompt("peer"), mod.build_system_prompt("semi")
+    assert "策略與競爭情報分析師" in peer and "威脅、機會、技術與產能須跟進項、客戶與價格面的應對" in peer and "同業財報＋法說分析報告" in peer
+    assert "新事業與策略分析師" in semi and "市場窗口、技術門檻與對標、潛在客戶或夥伴、競爭威脅" in semi and "玻璃核心基板" in semi
+    for sp in (peer, semi):
+        assert "## 輸出 JSON 結構" in sp and '"conference": {' in sp and '"auo_topics"' in sp and "{{" not in sp and "}}" not in sp
+        assert "採購" not in sp.split("## 寫作規則")[0]                                             # 角色段沒有採購字眼
+    f = {**facts, "report_kind": "semi", "topics": ["A", "C"]}
+    p = mod.build_user_prompt(f, [], [])
+    assert "本公司對友達的題目標籤：A＝封裝／載板" in p and "C＝景氣風向" in p and "（本期沒有可用的文件全文）" in p
+    assert mod.topics_prompt_text({**facts, "topics": ["Z"]}) == "" and mod.topics_prompt_text(facts) == ""
 
 
 def test_pack_documents_period_carried_and_feed_status(mod, facts):
@@ -365,6 +467,26 @@ def test_facts_and_render_with_carried_docs(mod, llm):
     assert f3["carried_docs"] == [] and f3["source_periods"] == ["2026Q2"] and "period" not in DOCS[0]
 
 
+def test_facts_prompt_and_render_summary_only(mod, llm):
+    """當季只有爬蟲彙整、沒有任何已解析文件（2026-10-29 定案）：facts / prompt / HTML 都走得完，來源節與限制註明。"""
+    f = mod.build_facts(COMPANY, "2026Q2", ANNUAL + QUARTERLY, SUMMARY, None, [])
+    assert f["docs"] == [] and f["carried_docs"] == [] and f["report_date"] is None and f["report_date_period"] is None
+    assert f["source_periods"] == ["2026Q2"] and f["summary_period"] == "2026Q2" and f["conference_date"] == "2026-08-05"
+    packed, skipped = mod.pack_documents([], max_doc_chars=5000, max_total_chars=6000)
+    assert (packed, skipped) == ([], [])
+    p = mod.build_user_prompt(f, packed, skipped)
+    assert "（本期沒有可用的文件全文）" in p and "前期補位" not in p and "2026Q2 |" in p
+    f["docs_fed"] = mod.doc_feed_status([], packed, skipped)
+    assert f["docs_fed"] == []
+    out = mod.render_report(f, llm, generated_on="2026-10-29", version="v")
+    assert "本期尚無已解析的財報 / 法說文件" in out and "本期尚無已解析文件：LLM 沒有讀到任何本期文件原文" in out
+    assert "前期補位" not in out and "彙整期別與本報告期別不同" not in out and "因長度上限未餵給 LLM 的文件" not in out
+    # 有文件時不會出現「尚無文件」字樣
+    f2 = mod.build_facts(COMPANY, "2026Q2", ANNUAL + QUARTERLY, SUMMARY, None, DOCS)
+    f2["docs_fed"] = mod.doc_feed_status(DOCS, *mod.pack_documents(DOCS, max_doc_chars=5000, max_total_chars=6000))
+    assert "本期尚無已解析" not in mod.render_report(f2, llm, generated_on="2026-10-29", version="v")
+
+
 def test_parse_llm_json_tolerates_fences(mod):
     obj, err = mod.parse_llm_json('```json\n{"a": 1}\n```')
     assert obj == {"a": 1} and err is None
@@ -378,15 +500,19 @@ def test_parse_llm_json_tolerates_fences(mod):
 
 def test_normalize_report_shapes(mod, llm):
     assert llm["conclusion"].startswith("營收回升")
-    assert [a["area"] for a in llm["procurement_actions"]][:4] == mod.ACTION_AREAS
-    assert llm["procurement_actions"][1]["advice"] == "議價時留意毛利率回升" and llm["procurement_actions"][0]["advice"] == ""
-    assert llm["procurement_actions"][-1] == {"area": "其他", "advice": "x"}
+    assert [a["area"] for a in llm["actions"]][:4] == mod.ACTION_AREAS == mod.PROFILES["supplier"]["dimensions"]
+    assert llm["actions"][1]["advice"] == "議價時留意毛利率回升" and llm["actions"][0]["advice"] == ""
+    assert llm["actions"][-1] == {"area": "其他", "advice": "x"}
+    legacy = mod.normalize_report({"procurement_actions": [{"area": "付款條件", "advice": "舊鍵"}]})      # prompt 2.1 以前的 gold llm_json
+    assert legacy["actions"][2] == {"area": "付款條件", "advice": "舊鍵"} and "procurement_actions" not in legacy
+    peer = mod.normalize_report({"actions": [{"area": "機會", "advice": "對手退出 LCD"}]}, "peer")
+    assert [a["area"] for a in peer["actions"]] == mod.PROFILES["peer"]["dimensions"] and peer["actions"][1]["advice"] == "對手退出 LCD"
     assert llm["segments"] == [{"segment": "LLM 事業群", "revenue": "NT$1 億", "revenue_yoy": None, "operating_margin": None, "opm_yoy": None, "note": "只在彙整缺時用"}]
     assert llm["conference"]["capacity"] == ["新廠 2027 投產"] and llm["conference"]["auo_topics"] == []
     assert llm["conference"]["qa"] == [{"q": "LLM 問", "a": "LLM 答"}]
     assert set(llm["conference"]) == set(mod.CONF_KEYS)
     empty = mod.normalize_report(None)
-    assert empty["conclusion"] == "" and empty["segments"] == [] and len(empty["procurement_actions"]) == 4
+    assert empty["conclusion"] == "" and empty["segments"] == [] and len(empty["actions"]) == 4
     assert mod.normalize_report({"financial_highlights": "單一字串"})["financial_highlights"] == ["單一字串"]
 
 
@@ -514,6 +640,45 @@ def test_render_without_financials(mod):
     assert mod.report_file_name(f) == "AGC_2026Q2_supplier_report.html"
 
 
+def test_actuals_fall_back_to_latest_published_quarter(mod, llm):
+    """本期季報未公告（10 月法說講 Q3、Q3 財報 11 月才出）：第 01 / 02 節與財報對照退用最新已公告季並標示；頁首寫「本期財報尚未公布」。"""
+    f = mod.build_facts(COMPANY, "2026Q3", ANNUAL + QUARTERLY, None, None, [])
+    a = f["actuals"]
+    assert a["fallback"] is True and a["base_period"] == "2026Q2" and [c["period"] for c in a["columns"]] == ["2026Q2", "2025Q2"]
+    assert f["kpis"][0]["label"] == "2026 Q2 營收" and f["kpis"][0]["value"] != mod.NOT_AVAILABLE
+    f["docs_fed"] = []
+    out = mod.render_report(f, llm, generated_on="2026-10-29", version="v")
+    assert "最新已公告季：</b>2026 Q2" in out and "02　財報實績（最新已公告季 2026 Q2）" in out
+    assert "財報對照（財報數據，最新已公告季 2026 Q2）" in out and "本期 2026Q3 財報尚未公布：第 01／02 節" in out
+    assert "本期財報尚未公布（無財報檔案）" in out and "財報檔案無 doc_date" not in out
+    # 本期有季報 → 不退用；有財報檔但缺 doc_date → 原措辭
+    f2 = mod.build_facts(COMPANY, "2026Q2", ANNUAL + QUARTERLY, SUMMARY, None, [{**DOCS[1], "doc_date": None}])
+    assert f2["actuals"]["fallback"] is False and f2["actuals"]["base_period"] == "2026Q2"
+    f2["docs_fed"] = []
+    out2 = mod.render_report(f2, llm, generated_on="2026-10-29", version="v")
+    assert "財報檔案無 doc_date" in out2 and "最新已公告季" not in out2 and "02　財報實績</h2>" in out2
+    # 完全沒有財報數據 → 維持 period、不標退用
+    f3 = mod.build_facts(COMPANY, "2026Q3", [], None, None, [])
+    assert f3["actuals"]["fallback"] is False and f3["actuals"]["base_period"] == "2026Q3"
+
+
+def test_render_peer_and_semi_titles(mod, facts, llm):
+    """視角只換報告名 / 結論標題 / 判讀面向標題 / 08 節標題與檔名；財報節、法說節相同。"""
+    sup = mod.render_report(facts, llm, generated_on="2026-10-29", version="v")
+    f_peer = {**facts, "report_kind": "peer", "topics": []}
+    peer_llm = mod.normalize_report({**LLM_OUT, "actions": [{"area": "威脅", "advice": "8.6 代 OLED 2027 量產"}]}, "peer")
+    peer = mod.render_report(f_peer, peer_llm, generated_on="2026-10-29", version="v")
+    assert "群創光電（3481）2026 Q2 同業財報＋法說分析報告" in peer and "給友達經營層的結論" in peer and "<h3>競爭觀察</h3>" in peer
+    assert "<b>威脅：</b>8.6 代 OLED 2027 量產" in peer and "08　競爭觀察" in peer and "採購" not in peer.split('id="financial"')[0]
+    assert "02　財報實績" in peer and "01　事業體／產品線重點" in peer and "07　Q&A 重點" in peer
+    assert mod.report_file_name(f_peer) == "Innolux_2026Q2_peer_report.html" and mod.report_file_name(facts) == "Innolux_2026Q2_supplier_report.html"
+    f_semi = {**facts, "report_kind": "semi", "topics": ["A"]}
+    semi = mod.render_report(f_semi, mod.normalize_report(LLM_OUT, "semi"), generated_on="2026-10-29", version="v")
+    assert "半導體財報＋法說分析報告" in semi and "給友達新事業主管的結論" in semi and "<b>市場窗口：</b>" in semi and "08　新事業觀察" in semi
+    assert mod.report_file_name(f_semi) == "Innolux_2026Q2_semi_report.html"
+    assert "給 AUO 採購主管的結論" in sup and "<h3>採購建議</h3>" in sup and sup.count("<svg") == peer.count("<svg") == semi.count("<svg")
+
+
 def test_html_escapes_text(mod, facts):
     bad = json.loads(json.dumps(LLM_OUT))
     bad["financial_highlights"] = ["<script>alert(1)</script>"]
@@ -548,10 +713,10 @@ def _schema_fields(tag, name):
 
 def test_ddl_matches_write_schema():
     cols, ns = _ddl_columns(["c19a", "c19b"])
-    assert ("bronze", "supplier_report_llm") in ns["TABLES"] and ("gold", "supplier_report") in ns["TABLES"]
+    assert ("bronze", "ir_report_llm") in ns["TABLES"] and ("gold", "ir_report") in ns["TABLES"]
     assert ns["LAYER_PREFIX"]["gold"] == "g_"
-    assert cols[("bronze", "supplier_report_llm")] == _schema_fields("c10", "LLM_SCHEMA")
-    assert cols[("gold", "supplier_report")] == _schema_fields("c10", "REPORT_SCHEMA")
+    assert cols[("bronze", "ir_report_llm")] == _schema_fields("c10", "LLM_SCHEMA")
+    assert cols[("gold", "ir_report")] == _schema_fields("c10", "REPORT_SCHEMA")
 
 
 def test_indicator_sources_exist_in_financials_ddl(mod):

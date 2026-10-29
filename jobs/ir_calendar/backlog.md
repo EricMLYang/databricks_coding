@@ -47,9 +47,12 @@
 - `health.json` 沒有新欄位，告警文字沒變，[c03] 分級不受影響。
 
 
-## D. 待辦（2026-10-28）：`parse_documents` 驗證與 `build_supplier_report` 來源完整性
+## D. 待辦（2026-10-28）：`parse_documents` 驗證與 `build_ir_report` 來源完整性
 
 **2026-10-28 狀態**：D1-3、D2-1～D2-5 已在 repo 改好（測試全綠），**尚未貼 Databricks**（貼法見 HANDOFF §0.2）；D1-1 / D1-2 是上線後的 SQL 檢查；D2-6 待使用者定同業 / SEMI 的面向。
+
+**2026-10-29 定案（使用者）**：報告**只用當季內容、最新一季為準**，不要上一季的過時資訊。D2-1 的跨期補位改成預設關（`lookback_quarters = 0`，機制保留）、彙整不再退用前期；
+改為「期別候選 = 文件 ∪ 彙整」，當季只有彙整也產報告，文件後到時雜湊變了自動重做。詳見 HANDOFF §0.0a。D2-2 / D2-3 / D2-4 不變。
 
 ### D1 `parse_documents`：先驗證、再省費用（未做）
 
@@ -57,11 +60,11 @@
 | --- | --- | --- |
 | D1-1 | 對一列 bronze `payload` 形狀 | [c04] `PARSE_PAYLOAD` 是照官方文件假設的，10-20 手動跑過 10 份後沒紀錄對過。`SELECT payload:metadata, payload:document.elements[0] FROM b_ir_calendar_document_parse LIMIT 1`；不合就改 [c04] 再 `rebuild_silver` |
 | D1-2 | 看解析密度與元素型別 | `s_document_text` 每檔 `text_chars / page_count`（過低 = 掃描檔 OCR 失敗或純圖簡報）；`s_document_element` 依 `doc_kind × element_type` 計數，財報要看得到 table、簡報要有 figure description。人工開一份台股財報的損益表 markdown、一份簡報的圖表描述 |
-| D1-3 ✅ repo | `Financial_Statements` 只解前面幾頁 | 台股合併財報上百頁按頁計費，但 `build_supplier_report` 每份文件截 `max_doc_chars = 40000`、財報排優先序最後，等於付錢解析再丟九成。`ai_parse_document` 支援 `pageRange`（參考腳本 `job_25_all_parse_content_new.py` 有提到），對 `Financial_Statements` 限頁數。等 D1-2 看到真的有大檔再改 [c03] `parse_options` |
+| D1-3 ✅ repo | `Financial_Statements` 只解前面幾頁 | 台股合併財報上百頁按頁計費，但 `build_ir_report` 每份文件截 `max_doc_chars = 40000`、財報排優先序最後，等於付錢解析再丟九成。`ai_parse_document` 支援 `pageRange`（參考腳本 `job_25_all_parse_content_new.py` 有提到），對 `Financial_Statements` 限頁數。等 D1-2 看到真的有大檔再改 [c03] `parse_options` |
 
 不換解析器：數字全部來自 `s_financials`，解析文字只餵 LLM 寫敘事；`ai_parse_document` 有 OCR / 表格 / 圖表描述，job cluster 不用裝套件。第二條路（pdfplumber 之類）只在 D1-2 發現整批掃描檔讀不出來時個案處理。
 
-### D2 `build_supplier_report`：同一家公司的所有來源都要進最終報告（未做；見 2026-10-28 檢討）
+### D2 `build_ir_report`：同一家公司的所有來源都要進最終報告（未做；見 2026-10-28 檢討）
 
 現況一份報告 = (company_key, period)，[c09] 文件、法說場次只取**同期**，summary 同期沒有才退用前一期一份。南亞實例：2026Q3 只有 10-13 法說簡報，Q2 財報 PDF 與 Q2 簡報不會進 Q3 報告；Q2 兩份 ir_summary（9-21 細、9-24 只有公告）silver 只留 seq 大的 9-24。
 
@@ -72,6 +75,6 @@
 | D2-3 ✅ repo | summary 更新要觸發重做 | [c04] `select_work` 只用文件 sha256 算 `docs_digest`；爬蟲新版補上 `management_views` / `business_segments` 後 gold 不會重做。digest 加入 summary 的 `batch_id`（或 `updated_at`）與 conference `revision` |
 | D2-4 ✅ repo | 報告來源節要分「餵了」與「略過」 | [c05] `pack_documents` 因 `max_total_chars` 略過或截尾的文件只寫在 prompt 裡，不回傳；[c07] `render_sources` 列的是 `facts["docs"]` 全部，讀者以為都參考過。把 packed / skipped / truncated 回傳進 facts 與 gold，來源節標「已讀（截尾）」「因長度略過」 |
 | D2-5 ✅ repo（以 D1-3 + D2-4 解） | 字元上限重估 | 台股財報 PDF 解析後 10–15 萬字（長興 151,972、奇美 106,871），`max_doc_chars = 40000` 必截；D2-1 跨期取文件後 `max_total_chars = 120000` 更容易爆、財報整份被略過。配合 D1-3 限頁數，或財報只餵四大表那段元素（`s_document_element` 的 table） |
-| D2-6 | 同業 / SEMI 的 prompt | widget `categories` 預設 `SUPPLIER`；要產同業 / 半導體要填 `PANEL_PEER` / `SEMI`（空 = 全部四類）。[c05] `SYSTEM_PROMPT` 規則 3、6 與結論四面向是採購視角，同業 / SEMI 報告要另一組面向（技術路線、產能、客戶重疊）或至少換 `procurement_actions` 的 `ACTION_AREAS`；`prompt_version` 依分類分版 |
+| D2-6 | 同業 / SEMI 的 prompt → **改成「報告視角」擴充**（10-29 骨架已做進 notebook，HANDOFF §0.0a；剩視角專屬節等使用者模板） | 構想見 `docs/20261029_ir_calendar_report_views_peer_semi_proposal.md`（§6-1、6-2 已定案）。重點：爬蟲分類一家一類，報告端自建 view 對應（supplier / peer / semi / customer）、一家可多視角，解決台積電等半導體供應商在 SEMI 視角被跳過的問題；一支 notebook 三個 profile 不拆支；gold 鍵加 `report_kind`（趁 0 列時改）；peer 視角以友達 TPE:2409 財務為對照基準 |
 
 順序：D1-1 → D1-2（先確定解析結果可用）→ D2-2 / D2-3（資料不要丟、不要漏更新）→ D2-1 + D2-4 + D2-5（一起改 [c04] [c05] [c09] [c07] [c10]，gold 多 `source_periods` / `docs_fed` 欄）→ D1-3 → D2-6。
