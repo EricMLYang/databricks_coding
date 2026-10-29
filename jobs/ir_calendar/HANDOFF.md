@@ -3,9 +3,16 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
-## §0 接續點（2026-10-29 中斷於步驟 7：Databricks 已貼到 20261029b、南亞 Q3 supplier 報告實跑 + render_only 都驗過）
+## §0 接續點（2026-10-29 收工：Databricks 已貼到 20261029b；供應商版實跑驗過；同業 / 半導體**版面草稿待使用者確認、改版與否待決**）
 
-**下次接續先做**：(1) 用 `displayHTML` 看南亞 Q3 報告第 01 / 02 節的「最新已公告季」呈現是否順眼（SQL 已驗 true）。(2) 步驟 7（同參數再跑應 0 列）→ 8（視角 dry_run）→ 9（TPE:1763、TYO）→ 10（排程）。(3) 爬蟲端：財報整檔重發（§0.3）、建議文件（§4-1）。MI_Crawler repo 的 `doc/20261029_給爬蟲端_…建議.md` 與 HANDOFF §0 補記**尚未 commit**（那是另一個 repo）。
+**待使用者決定（擋後續開發）**：
+1. **審兩份版面草稿**：`build_ir_report/template/20261029_同業報告版面_v1_示意.html`（LGD vs 友達）、`…/20261029_半導體報告版面_v1_示意.html`（日月光，題目 A）。章節邏輯與資料來源見 `docs/20261029_ir_calendar_report_views_peer_semi_proposal.md` §7。要回饋的是：哪些節刪 / 留、KPI 卡四格選哪些、對照表指標順序、欄位名稱。
+2. **決定要不要大改版**：(a) 照草稿改版 → 依構想 §7.3 動 [c02] PROFILES（sections / indicators / llm_schema / benchmark）、[c03] 對照與持續性 facts、[c05] 視角 schema、[c07] 渲染器登錄表、[c09] 多撈友達；跨公司總表另開 `build_ir_landscape`。(b) 先不改版 → peer / semi 維持供應商殼 + 視角 prompt（現況），只跑 `views = supplier` 排程。
+   改版前要先補資料（構想 §7.4）：同業 / 半導體文件解析（`parse_documents` 正式跑 + 排程）、爬蟲端財報整檔重發（10-29 dry_run 17 家全 0 檔、多數無財報）。
+
+**10-29 視角 dry_run 結果**（`views = peer,semi`，17 列）：視角分配正確（群創 peer + semi A、台積電 / 康寧 / 聯電 / 力積電 / 富采掛 semi 帶題目、友達未出現）；無文件公司代稱退用 `file_slug` 正常。資料最完整的是聯電 `TPE:2303`（財報 5 年 4 季、彙整 6/6、Q&A 5）與康寧；同業全部無財報數字。若要先看口吻可實跑聯電 semi、三星 peer（參數見對話記錄：`render_only = false`）。
+
+**Databricks 接續**：(1) 用 `displayHTML` 看南亞 Q3 報告第 01 / 02 節的「最新已公告季」呈現是否順眼（SQL 已驗 true）。(2) 步驟 7（同參數再跑應 0 列）→ 8（視角 dry_run）→ 9（TPE:1763、TYO）→ 10（排程）。(3) 爬蟲端：財報整檔重發（§0.3）、建議文件（§4-1）。MI_Crawler repo 的 `doc/20261029_給爬蟲端_…建議.md` 與 HANDOFF §0 補記**尚未 commit**（那是另一個 repo）。
 
 
 ### 0 本次要複製的清單（2026-10-29 合併 10-28 與 10-29 全部未貼項目；照順序做，做完把 ✅ 補上、§1 改成已貼）
@@ -193,7 +200,7 @@ repo 狀態：工作樹含 10-29 全部改動、未 commit；三支測試檔最�
 ## §4 下一步
 
 1. **貼 §0.0 / §0.0a 的 10-28、10-29 改動**：`init_tables` [c19a] [c19b] [c21] → 跑 [c21]；`consume_batches` [c06] [c09] → `rebuild_silver`；`parse_documents` [c02] [c03]；然後**匯入 `build_ir_report` 整支**（§0.2 步驟 3，`views = supplier`、無 `prompt_version`）。
-   視角後續：等使用者給同業 / 半導體模板 HTML → 補 peer「對手 vs 友達同期對照表」（[c09] 撈 `BENCHMARK_COMPANY` 的 financials、[c03] 對照列、[c07] 新節）與 semi 專屬節 → 再把 `views = peer,semi` 放進排程。爬蟲端建議（補 4 家 SEMI、第六主題說明）已寫 `MI_Crawler/ir_calendar/doc/20261029_給爬蟲端_報告視角擴充與新增公司建議.md`。
+   視角後續：Agent 10-29 已出兩份版面草稿（`build_ir_report/template/20261029_同業報告版面_v1_示意.html`、`…半導體報告版面_v1_示意.html`，構想文件 §7），等使用者審章節 / 欄位 → 補 peer「對手 vs 友達同期對照表」（[c09] 撈 `BENCHMARK_COMPANY` 的 financials、[c03] 對照列、[c07] 新節）與 semi 專屬節 → 再把 `views = peer,semi` 放進排程。爬蟲端建議（補 4 家 SEMI、第六主題說明）已寫 `MI_Crawler/ir_calendar/doc/20261029_給爬蟲端_報告視角擴充與新增公司建議.md`。
    上線後做 backlog D1-1 / D1-2：對一列 `b_ir_calendar_document_parse.payload` 形狀；查 `s_document_text` 每頁字元數與 `s_document_element` 的 `doc_kind × element_type` 分布。
 2. ~~查 `TPE:1303` 2026Q3 彙整為何 `management_views` 為 NULL~~ **10-29 已查清**：bronze 三批（9-21 / 9-24 / 10-13）`payload:summary` 都有 `found = true`、`core_points`（6 / 1 / 3 條），但都沒有 `management_views` 等結構化欄位 → 這三批都早於新版部署（彙整自 10-16 批次起才有 `management_views`、10-22 起才有 `reported_period`，見 §0.3），不是 job 問題。等 VM 更新、整檔重發後再 `rebuild_silver` 一次即有值（§4-4）。查法：`payload:summary.<欄位>`（結構化欄位在 `summary` 子物件下，頂層只有 `fallback`）。
 3. **驗 `crawler_alerts` 落表**：下一批 SUCCESS 後
