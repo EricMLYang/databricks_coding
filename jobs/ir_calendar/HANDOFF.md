@@ -3,9 +3,9 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
-## §0 接續點（2026-10-29 中斷於步驟 6b：Databricks 已貼到 20261029b、render_only 已跑、**驗證 SQL 尚未貼回**）
+## §0 接續點（2026-10-29 中斷於步驟 7：Databricks 已貼到 20261029b、南亞 Q3 supplier 報告實跑 + render_only 都驗過）
 
-**下次接續先做**：(1) 跑下面步驤 6b 的驗證 SQL，三個布林應 true、`template_version = 20261029b`；用 `displayHTML` 看南亞 Q3 報告第 01 / 02 節。(2) 步驟 7（同參數再跑應 0 列）→ 8（視角 dry_run）→ 9（TPE:1763、TYO）→ 10（排程）。(3) 爬蟲端：財報整檔重發（§0.3）、建議文件（§4-1）。MI_Crawler repo 的 `doc/20261029_給爬蟲端_…建議.md` 與 HANDOFF §0 補記**尚未 commit**（那是另一個 repo）。
+**下次接續先做**：(1) 用 `displayHTML` 看南亞 Q3 報告第 01 / 02 節的「最新已公告季」呈現是否順眼（SQL 已驗 true）。(2) 步驟 7（同參數再跑應 0 列）→ 8（視角 dry_run）→ 9（TPE:1763、TYO）→ 10（排程）。(3) 爬蟲端：財報整檔重發（§0.3）、建議文件（§4-1）。MI_Crawler repo 的 `doc/20261029_給爬蟲端_…建議.md` 與 HANDOFF §0 補記**尚未 commit**（那是另一個 repo）。
 
 
 ### 0 本次要複製的清單（2026-10-29 合併 10-28 與 10-29 全部未貼項目；照順序做，做完把 ✅ 補上、§1 改成已貼）
@@ -26,8 +26,7 @@ repo 狀態：工作樹含 10-29 全部改動、未 commit；三支測試檔最�
 | 4 | `build_ir_report` | 整支 | 整支匯入（Databricks 上原本沒有），notebook 名稱 **`ir_calendar_build_ir_report`**（10-29 自 build_supplier_report 改名） | job parameters：`views = supplier`、`lookback_quarters = 0`、`max_reports = 1`、`dry_run = true`，**沒有 `prompt_version`**；`api` 類參數同其他 ir_calendar job；LLM secret `llm-api-keys/ms-foundry` | ✅ 10-29 已匯入 |
 | 5 | `build_ir_report` | — | `dry_run = true`、`company_keys = TPE:1303` | 工作清單一列：`supplier  SUPPLIER  TPE:1303  Nan-Ya  2026Q3  1 檔 ['Presentation']  彙整=2026Q3`（或 `彙整=無`），**不得**出現「前期補位」；dry_run 行有 `system_chars`、每份文件餵入狀態、落地路徑 `…/reports/supplier/<slug>/<slug>_2026Q3_supplier_report.html` | ✅ 10-29：`supplier SUPPLIER TPE:1303 Nan-Ya-Plastics 2026Q3 1 檔 ['Presentation'] 彙整=2026Q3`；financials annual=5 quarterly=4、速動比=無、summary views 0/6（10-13 批次無結構化欄位）、docs=1 full 9,518 字、prompt_chars 11,528、system_chars 2,043；slug 實際是 `Nan-Ya-Plastics` |
 | 6 | `build_ir_report` | — | `dry_run = false`、`max_reports = 1`、`company_keys = TPE:1303` | 開 Volume HTML 看章節 01–07 與「採購建議」四面向；gold 一列 `report_kind = supplier`、`topics = []`；bronze 1～2 列 `report_kind = supplier`、`prompt_version = 2.2` | ✅ 10-29 04:52 UTC：1 / 1 ok，LLM 1 次 success（in 8,263 / out 3,431 tokens，prompt 11,528 字）；gold 1 列 supplier / 2.2 / 20261029、html 66,184 字、topics 0；[c30] rows=1 dup_keys=0；HTML 在 `…/reports/supplier/Nan-Ya-Plastics/Nan-Ya-Plastics_2026Q3_supplier_report.html`（內容檢視待使用者回饋） |
-| 6b | `build_ir_report` | [c02] imports、[c03] pure_facts、[c07] render_html | 替換整個 cell | **10-29 看完南亞報告後的修正（template 20261029b）**：本期季報未公告時第 01 / 02 節與法說節財報對照退用「最新已公告季」並標示（南亞 Q3 報告原本整欄「未取得」）；頁首無財報檔案時寫「本期財報尚未公布（無財報檔案）」。貼完 `render_only = true`、`company_keys = TPE:1303` 跑一次（不呼叫 LLM，用 gold 的 llm_json 重套版）：第 01 節應出現「最新已公告季：2026 Q2」、第 02 節標題帶「（最新已公告季 2026 Q2）」、gold `template_version = 20261029b` | ◐ 10-29 已貼三個 cell、render_only 已跑；驗證 SQL 待貼：
-`SELECT template_version, html_chars, html LIKE '%最新已公告季：</b>2026 Q2%' AS a, html LIKE '%02　財報實績（最新已公告季 2026 Q2）%' AS b, html LIKE '%本期財報尚未公布（無財報檔案）%' AS c FROM micenter.mi3_datahub_prod.g_ir_calendar_ir_report WHERE company_key = 'TPE:1303' AND period = '2026Q3'` |
+| 6b | `build_ir_report` | [c02] imports、[c03] pure_facts、[c07] render_html | 替換整個 cell | **10-29 看完南亞報告後的修正（template 20261029b）**：本期季報未公告時第 01 / 02 節與法說節財報對照退用「最新已公告季」並標示（南亞 Q3 報告原本整欄「未取得」）；頁首無財報檔案時寫「本期財報尚未公布（無財報檔案）」。貼完 `render_only = true`、`company_keys = TPE:1303` 跑一次（不呼叫 LLM，用 gold 的 llm_json 重套版）：第 01 節應出現「最新已公告季：2026 Q2」、第 02 節標題帶「（最新已公告季 2026 Q2）」、gold `template_version = 20261029b` | ✅ 10-29 05:33 UTC：render_only 1 / 1 ok、tokens 0；gold `20261029b` / 2.2、html 66,549 字；三個 LIKE 檢查皆 true |
 | 7 | `build_ir_report` | — | 再跑一次同參數 | 工作清單 0 列（來源沒變就跳過） | ☐ |
 | 8 | `build_ir_report` | — | `dry_run = true`：`views = peer` + `company_keys = TPE:3481`；`views = semi` + `TPE:2330`；`views = supplier,semi` + `TPE:2330` | 群創一列 `peer`；台積電一列 `semi` 帶 `題目 A/C`；第三組兩列（同雜湊）。只看清單，不產 | ☐ |
 | 9 | `build_ir_report` | — | 無彙整的 `TPE:1763`、無 financials 的 TYO 各一份 | 法說節「未提及」路徑、「未取得」路徑 | ☐ |
