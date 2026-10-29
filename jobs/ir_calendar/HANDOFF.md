@@ -3,10 +3,19 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
-## §0 接續點（2026-10-29 收工：Databricks 已貼到 20261029b；供應商版實跑驗過；同業 / 半導體**版面草稿待使用者確認、改版與否待決**）
+## §0 接續點（2026-10-29 收工：Databricks 停在 20261029b；repo 已到 20261029c（peer / semi v2 版面），**下次先做步驟 6c 整支重新匯入**）
 
-**待使用者決定（擋後續開發）**：
-1. **審兩份版面草稿**：`build_ir_report/template/20261029_同業報告版面_v1_示意.html`（LGD vs 友達）、`…/20261029_半導體報告版面_v1_示意.html`（日月光，題目 A）。章節邏輯與資料來源見 `docs/20261029_ir_calendar_report_views_peer_semi_proposal.md` §7。要回饋的是：哪些節刪 / 留、KPI 卡四格選哪些、對照表指標順序、欄位名稱。
+**下次接續（照順序）**：
+1. 步驟 6c：`build_ir_report` 整支重新匯入覆蓋（repo `jobs/ir_calendar/build_ir_report/notebook.ipynb`，commit 見 git log 10-29 最後一筆）。widgets 不變（`views` / `lookback_quarters` / `max_reports` / `dry_run` / `render_only`…），仍無 `prompt_version`。
+2. 先 `render_only = true`、`views = supplier`、`company_keys = TPE:1303` 跑一次：南亞報告應與 20261029b 一樣（supplier 版面沒動），gold `template_version` 變 20261029c。
+3. `views = semi`、`company_keys = TPE:2303`、`max_reports = 1`、`dry_run = true` 看清單（題目 C），再 `dry_run = false` 實跑聯電一份：開 `reports/semi/UMC/UMC_2026Q3_semi_report.html`，看 9 節是否都有內容、雷達環與理由、持續性計分 7 列（FOUNDRY 參考帶）、三張圖、生態系六層。貼結論與訊號看板給 Agent 看口吻。
+4. `views = peer`、`company_keys = KRX:005930` 實跑三星一份：開 `reports/peer/Samsung/…_peer_report.html`，看 10 節、威脅等級與理由；三星無財報 → 計分卡只有友達與中位數、定位圖缺三星點（預期）。若要有財報數字的對手，等爬蟲重發財報後跑群創 `TPE:3481`。
+5. 看完回饋要改的章節 / 欄位 → Agent 改 [c07a]（版面）或 [c05a]（LLM 規格）或 [c02]（規則），升 `TEMPLATE_VERSION` / `PROMPT_VERSIONS`，`render_only` 或 `force_rebuild` 重做。
+6. 然後才是原清單步驟 7–10（0 列檢查、TPE:1763 / TYO、排程）。
+資料面前提不變：同業 / 半導體文件尚未解析（`parse_documents` 要正式跑）、財報只有 24 家（爬蟲端整檔重發），所以第一批 v2 報告的文件節與財報節會偏空，看的是版面與規則。
+
+**原待決（已由第五件改版解決，留作紀錄）**：
+1. **審版面草稿**：**v2（從零設計，建議以此為準）** `build_ir_report/template/20261029_同業競爭對照_v2_示意.html`、`…/20261029_新事業產業雷達_v2_示意.html`（構想 §8，含外部範本依據）；v1（供應商殼改）`…/20261029_同業報告版面_v1_示意.html`、`…/20261029_半導體報告版面_v1_示意.html` 留作對照。章節邏輯與資料來源見 `docs/20261029_ir_calendar_report_views_peer_semi_proposal.md` §7。要回饋的是：哪些節刪 / 留、KPI 卡四格選哪些、對照表指標順序、欄位名稱。
 2. **決定要不要大改版**：(a) 照草稿改版 → 依構想 §7.3 動 [c02] PROFILES（sections / indicators / llm_schema / benchmark）、[c03] 對照與持續性 facts、[c05] 視角 schema、[c07] 渲染器登錄表、[c09] 多撈友達；跨公司總表另開 `build_ir_landscape`。(b) 先不改版 → peer / semi 維持供應商殼 + 視角 prompt（現況），只跑 `views = supplier` 排程。
    改版前要先補資料（構想 §7.4）：同業 / 半導體文件解析（`parse_documents` 正式跑 + 排程）、爬蟲端財報整檔重發（10-29 dry_run 17 家全 0 檔、多數無財報）。
 
@@ -34,6 +43,7 @@ repo 狀態：工作樹含 10-29 全部改動、未 commit；三支測試檔最�
 | 5 | `build_ir_report` | — | `dry_run = true`、`company_keys = TPE:1303` | 工作清單一列：`supplier  SUPPLIER  TPE:1303  Nan-Ya  2026Q3  1 檔 ['Presentation']  彙整=2026Q3`（或 `彙整=無`），**不得**出現「前期補位」；dry_run 行有 `system_chars`、每份文件餵入狀態、落地路徑 `…/reports/supplier/<slug>/<slug>_2026Q3_supplier_report.html` | ✅ 10-29：`supplier SUPPLIER TPE:1303 Nan-Ya-Plastics 2026Q3 1 檔 ['Presentation'] 彙整=2026Q3`；financials annual=5 quarterly=4、速動比=無、summary views 0/6（10-13 批次無結構化欄位）、docs=1 full 9,518 字、prompt_chars 11,528、system_chars 2,043；slug 實際是 `Nan-Ya-Plastics` |
 | 6 | `build_ir_report` | — | `dry_run = false`、`max_reports = 1`、`company_keys = TPE:1303` | 開 Volume HTML 看章節 01–07 與「採購建議」四面向；gold 一列 `report_kind = supplier`、`topics = []`；bronze 1～2 列 `report_kind = supplier`、`prompt_version = 2.2` | ✅ 10-29 04:52 UTC：1 / 1 ok，LLM 1 次 success（in 8,263 / out 3,431 tokens，prompt 11,528 字）；gold 1 列 supplier / 2.2 / 20261029、html 66,184 字、topics 0；[c30] rows=1 dup_keys=0；HTML 在 `…/reports/supplier/Nan-Ya-Plastics/Nan-Ya-Plastics_2026Q3_supplier_report.html`（內容檢視待使用者回饋） |
 | 6b | `build_ir_report` | [c02] imports、[c03] pure_facts、[c07] render_html | 替換整個 cell | **10-29 看完南亞報告後的修正（template 20261029b）**：本期季報未公告時第 01 / 02 節與法說節財報對照退用「最新已公告季」並標示（南亞 Q3 報告原本整欄「未取得」）；頁首無財報檔案時寫「本期財報尚未公布（無財報檔案）」。貼完 `render_only = true`、`company_keys = TPE:1303` 跑一次（不呼叫 LLM，用 gold 的 llm_json 重套版）：第 01 節應出現「最新已公告季：2026 Q2」、第 02 節標題帶「（最新已公告季 2026 Q2）」、gold `template_version = 20261029b` | ✅ 10-29 05:33 UTC：render_only 1 / 1 ok、tokens 0；gold `20261029b` / 2.2、html 66,549 字；三個 LIKE 檢查皆 true |
+| 6c | `build_ir_report` | 整支重新匯入（新增 [c03a] [c05a] [c06a] [c07a]，改 [c02] [c05] [c07] [c09] [c11] + 第一格） | 整支匯入覆蓋 | **peer / semi v2 版面**（template 20261029c、prompt peer / semi 2.0）。supplier 不受影響（可用 `render_only` 對南亞重套確認）。驗證：`views = semi`、`company_keys = TPE:2303`、`max_reports = 1` 實跑聯電一份 → 開 HTML 看 9 節、雷達環、持續性計分（FOUNDRY 參考帶）；`views = peer`、`company_keys = KRX:005930` 跑三星一份 → 10 節、威脅等級、計分卡只有友達與中位數（三星無財報） | ☐ |
 | 7 | `build_ir_report` | — | 再跑一次同參數 | 工作清單 0 列（來源沒變就跳過） | ☐ |
 | 8 | `build_ir_report` | — | `dry_run = true`：`views = peer` + `company_keys = TPE:3481`；`views = semi` + `TPE:2330`；`views = supplier,semi` + `TPE:2330` | 群創一列 `peer`；台積電一列 `semi` 帶 `題目 A/C`；第三組兩列（同雜湊）。只看清單，不產 | ☐ |
 | 9 | `build_ir_report` | — | 無彙整的 `TPE:1763`、無 financials 的 TYO 各一份 | 法說節「未提及」路徑、「未取得」路徑 | ☐ |
@@ -55,6 +65,18 @@ repo 狀態：工作樹含 10-29 全部改動、未 commit；三支測試檔最�
 | 只有彙整的公司代稱 | [c09] | `s_summary` 沒有 `company_slug` → 退用 `s_company.file_slug`，再沒有就 [c10] 用 `company_key` 當檔名 |
 | 沒文件時的呈現 | [c07] `render_sources`；[c03] `source_periods` 含彙整期別 | 來源節列「本期尚無已解析文件」、限制節註明 LLM 沒讀到文件原文；`TEMPLATE_VERSION = 20261029`；prompt 文字不變仍 2.1 |
 | 測試 | `tests/test_ir_calendar_build_ir_report.py` | 工作清單改成三個測試（當季為準 + 重做 / 跳過規則、只有彙整 + 下一季換期、補位 opt-in）、Spark 端到端加只有彙整與分類外的彙整、新增只有彙整的 facts / prompt / HTML 測試 |
+
+**同日第五件：peer / semi 改成 v2 版面（使用者要求「用新版面彙整做改版」）**，repo 已改、**未貼 Databricks**：
+
+| 改動 | 哪裡 | 內容 |
+| --- | --- | --- |
+| 規則常數 | [c02] 尾段 | `PEER_SET` / `PEER_NAMES` / `PEER_METRICS` / `APP_BUCKETS` / `OVERLAP_BY_BUCKET` / `THREAT_RULES`；`SEMI_TOPIC_KEYWORDS` / `SIGNAL_*` / `MATURITY_*` / `ECO_LAYERS` / `DURABILITY_METRICS` / `INDUSTRY_BANDS` / `INDUSTRY_TYPE_BY_COMPANY` / `RADAR_*`；PROFILES 加 `template`（supplier v1、peer / semi v2）、peer 加 `benchmark`；`TEMPLATE_VERSION = 20261029c` |
+| 視角 facts | **新 [c03a]** `derived_metrics` / `quarter_metric_series` / `build_peer_facts`（計分卡、中位數、位置、三季趨勢、象限、五季三線、重疊表、差距）/ `build_semi_facts`（7 指標 × 參考帶 × 評等、成長連續季數、題目分部）/ `enrich_view_facts` / `view_facts_prompt_text` | 數字全由規則算，LLM 只判讀 |
+| LLM 規格 | **新 [c05a]** `PEER_SCHEMA` / `SEMI_SCHEMA` / `build_v2_system_prompt` / `normalize_v2`；[c05] `PROMPT_VERSIONS` peer / semi → **2.0**，`build_system_prompt` / `normalize_report` / `build_user_prompt` 分流 | 供應商 prompt 2.2 不變 |
+| 圖 | **新 [c06a]** `svg_lines`（多線、不用雙軸）/ `svg_scatter` / `svg_bars` / `svg_steps` | 友達藍、對手紫、中位數灰虛線 |
+| 版面 | **新 [c07a]** `render_peer_report`（10 節）/ `render_semi_report`（9 節）/ `threat_level` / `radar_ring` / `V2_CSS`；[c07] `render_report` 分流 | 版面稿 `template/20261029_*_v2_示意.html` |
+| 讀取 / 流程 | [c09] peer 多撈友達 + 同業組 financials 與同季彙整；[c11] `prepare_facts` 呼叫 `enrich_view_facts` | |
+| 測試 | `tests/test_ir_calendar_build_ir_report.py` 新增 7 個 v2 測試（derived / peer facts / semi facts / prompts+normalize / charts / render peer / render semi） | |
 
 **同日第四件：看完南亞實跑報告的修正**（[c02] [c03] [c07]，`TEMPLATE_VERSION = 20261029b`，測試 41 綠）：[c03] `build_actuals` 本期季報未公告時退用 ≤ period 的最新季別（`base_period` / `fallback`），[c07] 第 01 節 note、第 02 節標題、法說 03 節財報對照、限制節都標「最新已公告季」；頁首財報公布日在沒有財報檔案時改寫「本期財報尚未公布（無財報檔案）」。財務數字是時間序列，這個退用與文件 / 彙整「只用當季」不衝突。
 

@@ -19,7 +19,7 @@ INIT_NB = "jobs/ir_calendar/init_tables/notebook.ipynb"
 
 @pytest.fixture(scope="module")
 def mod(spark):  # 依賴 spark：cell 內的 F.* 要有 SparkContext
-    return load_cells(NB, ["c02", "c03", "c04", "c05", "c06", "c07"], name="irreport")
+    return load_cells(NB, ["c02", "c03", "c03a", "c04", "c05", "c05a", "c06", "c06a", "c07", "c07a"], name="irreport")
 
 
 # ---------- 測試資料 ----------
@@ -412,11 +412,11 @@ def test_build_user_prompt_contains_sections(mod, facts):
 def test_system_prompt_per_view_and_semi_topics(mod, facts):
     """視角 prompt：角色 / 四面向 / 第六主題提示依 PROFILES；semi 的題目標籤進 user prompt。"""
     peer, semi = mod.build_system_prompt("peer"), mod.build_system_prompt("semi")
-    assert "策略與競爭情報分析師" in peer and "威脅、機會、技術與產能須跟進項、客戶與價格面的應對" in peer and "同業財報＋法說分析報告" in peer
-    assert "新事業與策略分析師" in semi and "市場窗口、技術門檻與對標、潛在客戶或夥伴、競爭威脅" in semi and "玻璃核心基板" in semi
-    for sp in (peer, semi):
-        assert "## 輸出 JSON 結構" in sp and '"conference": {' in sp and '"auo_topics"' in sp and "{{" not in sp and "}}" not in sp
-        assert "採購" not in sp.split("## 寫作規則")[0]                                             # 角色段沒有採購字眼
+    assert "策略與競爭情報分析師" in peer and "威脅、機會、技術與產能須跟進項、客戶與價格面的應對" in peer and "同業競爭對照" in peer
+    assert "新事業與策略分析師" in semi and "市場窗口、技術門檻與對標、潛在客戶或夥伴、競爭威脅" in semi and "新事業產業雷達" in semi
+    for sp in (peer, semi):                                                                           # v2：各自的 JSON，不是供應商的 conference 結構
+        assert "## 輸出 JSON 結構" in sp and "## 共同規則" in sp and '"implications"' in sp and '"conference"' not in sp and "{{" not in sp and "}}" not in sp
+        assert "採購" not in sp
     f = {**facts, "report_kind": "semi", "topics": ["A", "C"]}
     p = mod.build_user_prompt(f, [], [])
     assert "本公司對友達的題目標籤：A＝封裝／載板" in p and "C＝景氣風向" in p and "（本期沒有可用的文件全文）" in p
@@ -505,7 +505,7 @@ def test_normalize_report_shapes(mod, llm):
     assert llm["actions"][-1] == {"area": "其他", "advice": "x"}
     legacy = mod.normalize_report({"procurement_actions": [{"area": "付款條件", "advice": "舊鍵"}]})      # prompt 2.1 以前的 gold llm_json
     assert legacy["actions"][2] == {"area": "付款條件", "advice": "舊鍵"} and "procurement_actions" not in legacy
-    peer = mod.normalize_report({"actions": [{"area": "機會", "advice": "對手退出 LCD"}]}, "peer")
+    peer = mod.normalize_report({"implications": [{"area": "機會", "judgement": "對手退出 LCD"}]}, "peer")     # v2：actions 由 implications 映射
     assert [a["area"] for a in peer["actions"]] == mod.PROFILES["peer"]["dimensions"] and peer["actions"][1]["advice"] == "對手退出 LCD"
     assert llm["segments"] == [{"segment": "LLM 事業群", "revenue": "NT$1 億", "revenue_yoy": None, "operating_margin": None, "opm_yoy": None, "note": "只在彙整缺時用"}]
     assert llm["conference"]["capacity"] == ["新廠 2027 投產"] and llm["conference"]["auo_topics"] == []
@@ -662,21 +662,228 @@ def test_actuals_fall_back_to_latest_published_quarter(mod, llm):
     assert f3["actuals"]["fallback"] is False and f3["actuals"]["base_period"] == "2026Q3"
 
 
-def test_render_peer_and_semi_titles(mod, facts, llm):
-    """視角只換報告名 / 結論標題 / 判讀面向標題 / 08 節標題與檔名；財報節、法說節相同。"""
+def test_render_dispatch_by_view_and_file_names(mod, facts, llm):
+    """supplier 走 v1 版面；peer / semi 走 [c07a] v2，且 facts 沒跑 enrich_view_facts（沒有 peer / semi 鍵）也不崩；檔名帶視角。"""
     sup = mod.render_report(facts, llm, generated_on="2026-10-29", version="v")
+    assert "給 AUO 採購主管的結論" in sup and "<h3>採購建議</h3>" in sup and "02　財報實績" in sup
     f_peer = {**facts, "report_kind": "peer", "topics": []}
-    peer_llm = mod.normalize_report({**LLM_OUT, "actions": [{"area": "威脅", "advice": "8.6 代 OLED 2027 量產"}]}, "peer")
-    peer = mod.render_report(f_peer, peer_llm, generated_on="2026-10-29", version="v")
-    assert "群創光電（3481）2026 Q2 同業財報＋法說分析報告" in peer and "給友達經營層的結論" in peer and "<h3>競爭觀察</h3>" in peer
-    assert "<b>威脅：</b>8.6 代 OLED 2027 量產" in peer and "08　競爭觀察" in peer and "採購" not in peer.split('id="financial"')[0]
-    assert "02　財報實績" in peer and "01　事業體／產品線重點" in peer and "07　Q&A 重點" in peer
-    assert mod.report_file_name(f_peer) == "Innolux_2026Q2_peer_report.html" and mod.report_file_name(facts) == "Innolux_2026Q2_supplier_report.html"
+    peer = mod.render_report(f_peer, mod.normalize_report({"positioning": "p", "implications": [{"area": "威脅", "judgement": "j", "evidence": "e", "confidence": "高"}]}, "peer"),
+                             generated_on="2026-10-29", version="v")
+    assert "群創光電（3481）2026 Q2 同業競爭對照" in peer and '<header class="peer">' in peer and "威脅等級：低" in peer and "02　財報實績" not in peer
+    assert "同業當季無足夠數據" in peer and "無結構化財報數據" in peer and "<td>威脅</td><td>j</td>" in peer
     f_semi = {**facts, "report_kind": "semi", "topics": ["A"]}
-    semi = mod.render_report(f_semi, mod.normalize_report(LLM_OUT, "semi"), generated_on="2026-10-29", version="v")
-    assert "半導體財報＋法說分析報告" in semi and "給友達新事業主管的結論" in semi and "<b>市場窗口：</b>" in semi and "08　新事業觀察" in semi
-    assert mod.report_file_name(f_semi) == "Innolux_2026Q2_semi_report.html"
-    assert "給 AUO 採購主管的結論" in sup and "<h3>採購建議</h3>" in sup and sup.count("<svg") == peer.count("<svg") == semi.count("<svg")
+    semi = mod.render_report(f_semi, mod.normalize_report({"thesis": "t"}, "semi"), generated_on="2026-10-29", version="v")
+    assert "群創光電（3481）2026 Q2 新事業產業雷達" in semi and "雷達環：暫緩" in semi and "無結構化財報數據" in semi and "01　財報重點" not in semi
+    assert mod.report_file_name(f_peer) == "Innolux_2026Q2_peer_report.html" and mod.report_file_name(f_semi) == "Innolux_2026Q2_semi_report.html"
+    assert mod.report_file_name(facts) == "Innolux_2026Q2_supplier_report.html"
+
+
+# ---------- 視角 v2（[c03a] [c05a] [c06a] [c07a]）----------
+
+V2_Q = ["2025Q1", "2025Q2", "2025Q3", "2025Q4", "2026Q1", "2026Q2"]
+
+
+def _vfin(ck, period, rev, *, gm, opm, nmp, inv, cogs, capex, ocf, dr, cur="TWD", unit="thousand"):
+    return {"company_key": ck, "period": period, "period_type": "quarterly", "currency": cur, "unit": unit, "seq": 1, "source": "MOPS", "source_urls": [],
+            "revenue": rev, "gross_margin": gm, "operating_margin": opm, "net_margin_parent": nmp, "net_margin": nmp, "inventory": inv,
+            "cost_of_revenue": cogs, "capex": capex, "operating_cash_flow": ocf, "debt_ratio": dr, "pretax_income": rev * 0.05, "net_income": rev * 0.04,
+            "eps": 0.5, "current_ratio": 1.4, "total_assets": rev * 4, "total_liabilities": rev * 2, "quick_ratio": None, "dso_days": None, "dpo_days": None,
+            "operating_cash_flow_ytd": None}
+
+
+def _vrows(ck, base, growth, opm0, *, cur="TWD", capex_pct=0.08, ocf_pct=0.10, gm_step=1.0, dr0=50):
+    rows = []
+    for i, p in enumerate(V2_Q):
+        rev = base * (1 + growth) ** i
+        rows.append(_vfin(ck, p, rev, gm=12 + i * gm_step, opm=opm0 + i * 0.5, nmp=1 + i * 0.2, inv=rev * 0.5, cogs=rev * 0.85,
+                          capex=-rev * capex_pct, ocf=rev * ocf_pct, dr=dr0 - i, cur=cur))
+    return rows
+
+
+RIVAL = _vrows("TPE:3481", 600e8, 0.02, 1.0)
+AUO = _vrows("TPE:2409", 700e8, 0.01, 1.5)
+PEERS = {"SZ:000725": _vrows("SZ:000725", 5000e8, 0.03, 3.0, cur="CNY"), "KRX:034220": _vrows("KRX:034220", 6e12, 0.04, 2.0, cur="KRW")}
+PEER_SUMMARY = {**SUMMARY, "period": "2026Q3", "conference_date": "2026-10-20", "guidance": "Q4 持平",
+                "business_segments": [{"segment": "IT 面板", "revenue": "NT$ 200 億", "revenue_yoy": "+5%", "operating_margin": "3%", "opm_yoy": None, "note": "n"},
+                                      {"segment": "車用顯示", "revenue": None, "revenue_yoy": None, "operating_margin": "6%", "opm_yoy": None, "note": None},
+                                      {"segment": "手機", "revenue": "NT$ 50 億", "revenue_yoy": "-3%", "operating_margin": None, "opm_yoy": None, "note": None}]}
+PEER_LLM = {"positioning": "群創營益率落後友達 0.5 pt、低於同業中位數（財報數據）", "watch_next": ["8.6 代線良率", "車用客戶", "LCD 處置", "多的第四條"],
+            "confirmed_facts": ["f1"], "management_outlook": ["o1"],
+            "overlap_actions": [{"application": "IT 面板", "action": "IT OLED 量產", "auo_impact": "高階 IT 壓力"}, {"application": "穿戴", "action": "新案", "auo_impact": "—"}],
+            "tech_routes": [{"tech": "FOPLP", "rival": "2027H2 量產", "auo": "未公開", "gap": "對手領先"}, {"tech": "Micro LED", "rival": "穿戴", "auo": "光通訊", "gap": "亂填"}],
+            "moves": [{"when": "2026-09", "what": "出售廠房（文件）"}], "outlook_rival": ["Q4 持平（彙整）"],
+            "implications": [{"area": "機會", "judgement": "LCD 外溢", "evidence": "第 6 節", "confidence": "中"}, {"area": "威脅", "judgement": "IT 重疊", "evidence": "第 5 節", "confidence": "高"}],
+            "watchlist": [{"event": "良率揭露", "trigger": "法說給數字", "when": "2027Q1", "impact": "重估時間窗"}], "qa": [{"q": "q", "a": "a"}],
+            "sources_used": ["Innolux_Q2CY26_Presentation.pdf"], "caveats": ["c"]}
+SEMI_LLM = {"thesis": "題目 A 需求加速（財報數據）", "next_steps": ["追夥伴", "比規格", "看交期"],
+            "topic_segments": [{"segment": "先進封裝與測試", "topic": "A", "revenue": "NT$ 212 億", "share_pct": "19", "yoy": "+48%", "growth_contribution_pct": 41, "note": "AI（文件）"}],
+            "signals": [{"category": "需求", "signal": "能見度到 2027H2", "direction": "up", "specificity": "有訂單／時程", "source": "逐字稿", "confidence": "高"},
+                        {"category": "價格", "signal": "成熟封裝年減", "direction": "down", "specificity": "有數字／規格", "source": "逐字稿", "confidence": "中"},
+                        {"category": "怪類別", "signal": "x", "direction": "sideways", "specificity": "??", "source": "", "confidence": "很高"}],
+            "readiness": [{"item": "FOPLP", "topic": "A", "tech_level": 3, "market_level": "2", "timing": "2027H2", "auo_item": "玻璃核心基板", "gap": "落後約 1 年"},
+                          {"item": "玻璃載板", "topic": "A", "tech_level": 9, "market_level": 0, "timing": "", "auo_item": "", "gap": ""}],
+            "ecosystem": [{"layer": "封裝／測試", "name": "Amkor", "relation": "競爭", "note": "也做 FOPLP"}, {"layer": "亂層", "name": "未點名 AI 客戶", "relation": "客戶", "note": ""}],
+            "risks": [{"claim": "c", "disconfirm": "d", "evidence": "e", "when": "w"}],
+            "implications": [{"area": "市場窗口", "judgement": "2027–2028", "evidence": "第 3 節", "confidence": "高"}],
+            "qa": [{"q": "q", "a": "a", "topic_related": True}, {"q": "q2", "a": "a2", "topic_related": False}], "sources_used": [], "caveats": []}
+
+
+@pytest.fixture(scope="module")
+def peer_facts(mod):
+    f = mod.build_facts(COMPANY, "2026Q3", RIVAL, PEER_SUMMARY, {"conference_date": "2026-10-20"}, DOCS)
+    f["report_kind"], f["topics"] = "peer", []
+    bundle = {"fin_rows": RIVAL, "bench_rows": AUO, "peer_rows": PEERS, "docs": DOCS,
+              "bench_summary": {**PEER_SUMMARY, "company_key": "TPE:2409", "guidance": "友達 Q4 低個位數下滑"},
+              "peer_summaries": {"SZ:000725": {"guidance": "京東方 Q4 持平"}, "KRX:034220": {}}}
+    mod.enrich_view_facts(f, bundle)
+    f["docs_fed"] = mod.doc_feed_status(DOCS, *mod.pack_documents(DOCS, max_doc_chars=5000, max_total_chars=6000))
+    return f
+
+
+@pytest.fixture(scope="module")
+def semi_facts(mod):
+    rows = _vrows("TPE:3711", 1500e8, 0.03, 6.0, capex_pct=0.20, gm_step=0.0)
+    company = {**COMPANY, "company_key": "TPE:3711", "company_name": "日月光投控", "stock_code": "3711", "category": "SEMI", "company_slug": "ASE-Holding", "industry": "半導體業"}
+    sm = {**PEER_SUMMARY, "business_segments": [{"segment": "先進封裝與測試", "revenue": "NT$ 212 億", "revenue_yoy": "+48%", "operating_margin": None, "opm_yoy": None, "note": "AI"},
+                                                 {"segment": "EMS", "revenue": "NT$ 562 億", "revenue_yoy": "+6%", "operating_margin": None, "opm_yoy": None, "note": None}]}
+    f = mod.build_facts(company, "2026Q3", rows, sm, None, [])
+    f["report_kind"], f["topics"] = "semi", ["A"]
+    mod.enrich_view_facts(f, {"fin_rows": rows, "docs": []})
+    f["docs_fed"] = []
+    return f
+
+
+def test_v2_derived_metrics_and_series(mod):
+    row, prev = RIVAL[4], RIVAL[0]
+    m = mod.derived_metrics(row, prev, mod.money_scale("TWD", "thousand"))
+    assert abs(m["revenue_yoy"] - ((1.02 ** 4) - 1) * 100) < 1e-6 and m["gross_margin"] == 16 and m["debt_ratio"] == 46
+    assert abs(m["inventory_days"] - 0.5 / 0.85 * 91.25) < 1e-6 and abs(m["capex_to_revenue"] - 8.0) < 1e-9 and abs(m["ocf_to_capex"] - 1.25) < 1e-9
+    assert abs(m["fcf"] - (row["revenue"] * 0.02 / 1e5)) < 1e-6                      # 仟元 → 億
+    assert mod.derived_metrics(None, None, mod.money_scale("TWD", "thousand"))["revenue_yoy"] is None
+    s = mod.quarter_metric_series(RIVAL, mod.money_scale("TWD", "thousand"), "2026Q3")
+    assert [x["period"] for x in s] == ["2025Q2", "2025Q3", "2025Q4", "2026Q1", "2026Q2"]        # Q3 沒有 → 退用 Q2 往前五季
+    assert s[0]["metrics"]["revenue_yoy"] is None and s[-1]["metrics"]["revenue_yoy"] is not None  # 2025Q2 沒有 2024Q2 可比
+    assert mod.trend_arrow([1, 2, 3]) == "↑" and mod.trend_arrow([3, 2, 1]) == "↓" and mod.trend_arrow([1, 3, 2]) == "→" and mod.trend_arrow([None, 1, 2]) == "—"
+    assert mod.position_vs_median(5, 3, True, 1.0) == "優" and mod.position_vs_median(5, 3, False, 1.0) == "劣"
+    assert mod.position_vs_median(3.5, 3, True, 1.0) == "接近" and mod.position_vs_median(5, 3, None, 1.0) is None
+    assert mod.quadrant_of(5, 2, 3, 3) == "高成長・低獲利" and mod.quadrant_of(None, 2, 3, 3) is None
+    assert mod.app_bucket("IT 面板") == "IT" and mod.app_bucket("Automotive") == "車用" and mod.app_bucket("電視") == "TV" and mod.app_bucket("其它") == "其他"
+
+
+def test_v2_peer_facts(mod, peer_facts):
+    p = peer_facts["peer"]
+    assert p["base_period"] == "2026Q2" and p["auo_period"] == "2026Q2" and p["fallback"] is True and p["n_median"] == 4
+    sc = {r["key"]: r for r in p["scorecard"]}
+    assert [r["key"] for r in p["scorecard"]] == [k for k, *_ in mod.PEER_METRICS]
+    assert abs(sc["operating_margin"]["gap"] - (-0.5)) < 1e-9 and sc["operating_margin"]["gap_good"] is False and sc["operating_margin"]["rival_trend"] == "↑"
+    assert sc["capex_to_revenue"]["rival_pos"] is None and sc["capex_to_revenue"]["gap_good"] is None           # 無方向
+    assert sc["debt_ratio"]["rival_trend"] == "↓" and sc["revenue_yoy"]["rival_pos"] == "劣"                     # 2% 成長低於中位數
+    assert sc["gross_margin"]["median"] == 17.0 and sc["gross_margin"]["rival_pos"] == "接近"
+    q = {x["name"]: (x["quadrant"], x["role"]) for x in p["quadrants"]}
+    assert q["群創"][1] == "rival" and q["友達"][1] == "auo" and q["京東方"][1] == "peer" and q["LGD"][0] == "高成長・高獲利"
+    assert [o["bucket"] for o in p["overlap"]] == ["IT", "車用", "手機"] and [o["overlap"] for o in p["overlap"]] == ["高", "高", "低"]
+    assert p["overlap"][0]["rival_share"] == "NT$ 200 億" and p["overlap"][0]["auo_share"] == "NT$ 200 億"       # 友達彙整同桶分部
+    t = p["trends"]["operating_margin"]
+    assert t["labels"][-1] == "2026 Q2" and len(t["rival"]) == len(t["auo"]) == len(t["median"]) == 5 and t["median"][-1] == 4.25
+    assert abs(p["gaps"]["operating_margin"] - (-0.5)) < 1e-9 and p["gaps"]["operating_margin_prev_year"] is not None
+    assert peer_facts["auo_guidance"]["guidance"] == "友達 Q4 低個位數下滑" and peer_facts["peer_guidance"] == [{"name": "京東方", "guidance": "京東方 Q4 持平"}]
+    txt = mod.view_facts_prompt_text(peer_facts)
+    assert "【同業對照" in txt and "營業利益率：對手 3.50%｜友達 4.00%｜中位數 4.25%" in txt and "友達同季法說指引" in txt and "同業指引［京東方］" in txt
+    # 對手無財報：計分卡空值、不崩
+    f0 = mod.build_peer_facts([], AUO, PEERS, "2026Q3", company_key="KRX:005930")
+    assert f0["base_period"] is None and f0["fallback"] is False and all(r["rival"] is None for r in f0["scorecard"]) and f0["n_median"] == 3
+
+
+def test_v2_semi_facts(mod, semi_facts):
+    s = semi_facts["semi"]
+    assert s["industry_type"] == "OSAT" and s["base_period"] == "2026Q2" and s["fallback"] is True
+    rows = {r["key"]: r for r in s["rows"]}
+    assert [r["key"] for r in s["rows"]] == [k for k, *_ in mod.DURABILITY_METRICS]
+    assert rows["growth_streak"]["value"] == 2 and rows["growth_streak"]["grade"] == "w"                         # 只有 2026Q1/Q2 有去年同季可比
+    assert abs(rows["capex_to_revenue"]["value"] - 20.0) < 1e-9 and rows["capex_to_revenue"]["grade"] == "w" and "高於帶" in rows["capex_to_revenue"]["grade_text"]
+    assert abs(rows["ocf_to_capex"]["value"] - 0.5) < 1e-9 and rows["ocf_to_capex"]["grade"] == "b"
+    assert rows["fcf"]["value"] < 0 and rows["fcf"]["grade"] == "b" and rows["gross_margin"]["grade"] == "b"        # 12% 低於 OSAT 帶 15
+    assert rows["inventory_days"]["grade"] == "g" and rows["debt_ratio"]["grade"] == "g" and len(rows["debt_ratio"]["path"]) == 5
+    assert s["grade_counts"] == {"g": 2, "w": 2, "b": 3}
+    assert [(x["segment"], x["topic"]) for x in s["topic_segments"]] == [("先進封裝與測試", "A"), ("EMS", None)]
+    assert mod.growth_streak(_vrows("X:1", 100, 0.05, 1.0), "2026Q2") == 2 and mod.growth_streak([], "2026Q2") is None
+    txt = mod.view_facts_prompt_text(semi_facts)
+    assert "【行業持續性" in txt and "產業類型 OSAT" in txt and "題目相關分部（關鍵字對到）：先進封裝與測試［A］" in txt
+    assert mod.grade_durability("growth_streak", 5, None, [])[0] == "g" and mod.grade_durability("fcf", None, None, [])[0] is None
+
+
+def test_v2_prompts_and_normalize(mod):
+    assert mod.PROFILES["peer"]["template"] == "v2" and mod.PROFILES["semi"]["template"] == "v2" and mod.PROFILES["supplier"]["template"] == "v1"
+    assert mod.PROMPT_VERSIONS == {"supplier": "2.2", "peer": "2.0", "semi": "2.0"} and mod.TEMPLATE_VERSION == "20261029c"
+    sp = mod.build_system_prompt("peer")
+    assert sp == mod.build_v2_system_prompt("peer") and '"positioning"' in sp and '"watchlist"' in sp and "威脅 / 機會" in sp and "{{" not in sp
+    ss = mod.build_system_prompt("semi")
+    assert '"readiness"' in ss and '"ecosystem"' in ss and "需求端（AI／網通）" in ss and "市場窗口 / 技術門檻與對標" in ss
+    assert "procurement" not in sp and mod.build_system_prompt("supplier") == mod.SYSTEM_PROMPT
+    p = mod.normalize_report(PEER_LLM, "peer")
+    assert p["positioning"].startswith("群創") and p["conclusion"] == p["positioning"] and len(p["watch_next"]) == 3
+    assert [x["area"] for x in p["implications"]] == mod.PROFILES["peer"]["dimensions"] and p["implications"][0]["judgement"] == "IT 重疊"
+    assert p["actions"][1] == {"area": "機會", "advice": "LCD 外溢"} and p["tech_routes"][1]["gap"] == "亂填" and p["tech_routes"][0]["gap"] == "對手領先"
+    assert p["moves"] == [{"when": "2026-09", "what": "出售廠房（文件）"}] and p["watchlist"][0]["impact"] == "重估時間窗"
+    s = mod.normalize_report(SEMI_LLM, "semi")
+    assert s["topic_segments"][0]["share_pct"] == 19.0 and s["topic_segments"][0]["growth_contribution_pct"] == 41.0
+    assert [x["direction"] for x in s["signals"]] == ["up", "down", "flat"] and s["signals"][2]["category"] == "需求" and s["signals"][2]["specificity"] == "定性"
+    assert s["signals"][2]["confidence"] == "" and s["readiness"][0]["market_level"] == 2 and s["readiness"][1]["tech_level"] == 4 and s["readiness"][1]["market_level"] == 1
+    assert s["ecosystem"][1]["layer"] == mod.ECO_LAYERS[0] and s["ecosystem"][0]["relation"] == "競爭"
+    assert [x["topic_related"] for x in s["qa"]] == [True, False] and s["conclusion"] == s["thesis"]
+    empty = mod.normalize_report(None, "semi")
+    assert empty["thesis"] == "" and empty["signals"] == [] and len(empty["implications"]) == 4 and mod.exposure_pct(empty) is None
+
+
+def test_v2_charts(mod):
+    labels = ["2025 Q2", "2025 Q3", "2025 Q4", "2026 Q1", "2026 Q2"]
+    svg = mod.svg_lines(labels, [{"name": "對手", "values": [1, 2, None, 4, 5], "color": mod.C_RIVAL}, {"name": "友達", "values": [2, 2, 2, 2, 2], "color": mod.C_AUO},
+                                 {"name": "中位數", "values": [1.5] * 5, "color": mod.C_MEDIAN, "dashed": True}], kind="pct", title="t")
+    assert svg.startswith("<svg") and svg.count("<path") == 4 and "stroke-dasharray" in svg and "對手 5%" in svg and "友達 2%" in svg and "2026 Q2" in svg
+    assert "chart-missing" in mod.svg_lines([], [], kind="pct", title="t") and "chart-missing" in mod.svg_lines(labels, [{"name": "x", "values": [None] * 5, "color": "#000"}], kind="pct", title="t")
+    sc = mod.svg_scatter([{"name": "A", "x": 1, "y": 2, "role": "rival"}, {"name": "友達", "x": 3, "y": 4, "role": "auo"}, {"name": "P", "x": 2, "y": 3, "role": "peer"}],
+                         x_label="x", y_label="y", x_ref=2, y_ref=3, title="s")
+    assert sc.count("<circle") == 3 and sc.count("stroke-dasharray") >= 2 and ">A<" in sc and ">友達<" in sc
+    assert "chart-missing" in mod.svg_scatter([{"name": "A", "x": None, "y": 1, "role": "rival"}], x_label="x", y_label="y", x_ref=None, y_ref=None, title="s")
+    b = mod.svg_bars(labels, [1.2, -0.5, None, 2.0, 1.0], kind="ratio", title="b", ref=1.0, ref_label="1.0x")
+    assert b.count("<rect") == 4 and "未取得" in b and "1.0x" in b
+    assert 'class="on"' in mod.svg_steps(3, mod.MATURITY_TECH) and mod.svg_steps(3, mod.MATURITY_TECH).count('class="on"') == 3 and "試產" in mod.svg_steps(3, mod.MATURITY_TECH)
+
+
+def test_v2_render_peer(mod, peer_facts):
+    llm = mod.normalize_report(PEER_LLM, "peer")
+    lvl, why = mod.threat_level(peer_facts, llm)
+    assert lvl == "中" and "FOPLP" in why and "IT" in why                       # 高重疊有動作 1 桶 + 對手領先 1 項 → 中
+    out = mod.render_report(peer_facts, llm, generated_on="2026-10-29", version="v")
+    for sid in ("summary", "position", "scorecard", "trend", "overlap", "moves", "outlook", "implication", "watch", "sources"):
+        assert f'id="{sid}"' in out, sid
+    assert "群創光電（3481）2026 Q3 同業競爭對照" in out and "威脅等級：中" in out and '<header class="peer">' in out and "8　對友達的意涵" in out
+    assert "最新已公告季：</b>對手 2026 Q2、友達 2026 Q2" in out and out.count("<svg") == 4 and "同業中位數（n=4）" in out
+    assert "IT OLED 量產" in out and "穿戴" in out and "對手領先" in out and "出售廠房" in out and "友達 Q4 低個位數下滑" in out and "京東方：京東方 Q4 持平" in out
+    assert "低成長・低獲利" in out and "群創（對手）" in out and "友達（友達）" in out
+    assert re.search(r"\{\{[^}]+\}\}", out) is None and "採購" not in out.split('id="sources"')[0] and "供應穩定性" not in out
+    assert "高" in out and "良率揭露" in out and "Innolux_Q2CY26_Presentation.pdf" in out
+    low = mod.render_report(peer_facts, mod.normalize_report({}, "peer"), generated_on="2026-10-29", version="v")
+    assert "威脅等級：低" in low and "LLM 未產出定位" in low and "未提及" in low
+
+
+def test_v2_render_semi(mod, semi_facts):
+    llm = mod.normalize_report(SEMI_LLM, "semi")
+    assert mod.exposure_pct(llm) == 19.0 and mod.radar_ring(semi_facts, llm) == ("立即跟進", "曝險 19%、時程落後")
+    out = mod.render_report(semi_facts, llm, generated_on="2026-10-29", version="v")
+    for sid in ("thesis", "exposure", "signals", "readiness", "durability", "ecosystem", "risks", "implication", "sources"):
+        assert f'id="{sid}"' in out, sid
+    assert "日月光投控（3711）2026 Q3 新事業產業雷達" in out and "雷達環：立即跟進" in out and '<header class="semi">' in out and "A 封裝／載板" in out
+    assert "題目曝險（題目事業體占營收）</span><b>19%</b>" in out and "▲ 1" in out and "▼ 1" in out and "● 1" in out
+    assert "綠 2</span>・<span class=\"grade w\">黃 2</span>・<span class=\"grade b\">紅 3" in out and "參考帶（OSAT）" in out and "高於帶（擴張期）" in out
+    assert "非題目事業體 1 項（摺疊）" in out and "EMS" in out and "落後約 1 年" in out and 'class="on"' in out and out.count("<svg") == 4
+    assert "友達（封裝／載板）" in out and "Amkor（競爭）" in out and "未點名 AI 客戶（客戶）" in out and "其他 Q&A 1 題（摺疊）" in out
+    assert "最新已公告季：</b>2026 Q2" in out and "8　對友達新事業的意涵" in out and re.search(r"\{\{[^}]+\}\}", out) is None
+    assert "採購" not in out.split('id="sources"')[0]
+    # 無分部占比、無訊號 → 曝險未取得、雷達環暫緩、不崩
+    llm0 = mod.normalize_report({"readiness": [{"item": "x", "topic": "A", "tech_level": 1, "market_level": 1, "gap": "同階段"}]}, "semi")
+    out0 = mod.render_report(semi_facts, llm0, generated_on="2026-10-29", version="v")
+    assert mod.radar_ring(semi_facts, llm0)[0] == "暫緩" and "題目曝險（題目事業體占營收）</span><b>未取得</b>" in out0 and "先進封裝與測試" in out0   # 退用規則對到的分部
 
 
 def test_html_escapes_text(mod, facts):
