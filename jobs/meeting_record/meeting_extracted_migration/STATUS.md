@@ -111,7 +111,7 @@
 | W2 T3 `meeting_extracted_w2_t3_label` | ✅ 2026-10-23 repo 建好（11 cells、README；tests 12 passed）並 **Databricks 寫表**：2026-09 436 列 / 420 條 / 23 封、相關 243（[c30] 全過）；2026-10 300 列 / 297 條 / 21 封、相關 145（截止點退回 fixed_day 25 日、brand_in_sb 全 false，brief 填完重跑）。[c12] 踩 Spark 4 ANSI `sum(boolean)` 已改 cast int。窗口 D6 三模式；規則鏈七個純函式；MERGE on `(item_key, app_name)`、整月停用 |
 | W2 T4 `meeting_extracted_w2_t4_reconcile` | 🟡 2026-10-23 repo 建好（13 cells、README；tests 10 passed）；**Databricks 未貼**。三種 L3 模式（格子 / 摘要批次 / app 層）、`UNKNOWN` 品牌格、other 格每標籤 8 條（D36）、shareable 驗證、MERGE 不碰審核欄。先 `brief_month = 2026-09`、`max_cells = 12` dry_run |
 | W2 T5 | ⬜ 關卡彙總 ＋ PM 例外清單 md（§4.6）。10 月 Sales Brief 要 10 月底那週才填，T4 對 2026-10 的實跑要等 |
-| `006_meeting_sender_unit_topic_group`（D38）＋ 002 View ＋ task 1 [c06] [c10]–[c12] ＋ pm_pack C 節 / 分流 | 🟡 2026-11-03 repo 完成（tests：006 29、002 11、task 1 1 新、pm_pack 9 新，全過）；**Databricks 未貼**。順序：006（dry_run → false，backfill）→ 002 重跑（View）→ task 1 四個 cell → pm_pack 整支。接續點 HANDOFF §0.00 |
+| `006_meeting_sender_unit_topic_group`（D38）＋ 002 View ＋ task 1 [c06] [c10]–[c12] ＋ pm_pack C 節 / 分流 | 🟡 2026-11-03 repo 完成並 commit `05831e5`（已 push；tests：006 29、002 11、task 1 1 新、pm_pack 9 新，全過）；**Databricks 未貼**。順序：006（dry_run → false，backfill）→ 002 重跑（View）→ task 1 四個 cell → pm_pack 整支。接續點 HANDOFF §0.00 |
 
 ## 6. 下一步
 

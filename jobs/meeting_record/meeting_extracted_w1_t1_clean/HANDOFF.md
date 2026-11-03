@@ -4,6 +4,8 @@
 
 ## 0.00 2026-11-03：寄件人單位（PM / 業務）＋ 條目內容群（產品 / 客戶）— repo 完成、Databricks 待貼（最新，先讀這段）
 
+**git**：commit `05831e5`（2026-11-03，已 push origin/main）＝ 本節全部改動（14 檔：006 新 notebook、002 / task 1 / pm_pack notebook、三份 README、OVERVIEW、STATUS、本檔、4 個 tests）；commit 前四支 notebook 已 `nb.py strip`。當時工作樹另有 ir_calendar 的未提交修改，不屬本次、未納入。repo-context 留痕：decision:2026-11-03-d19（D38）、交接 d20、待辦 #244（Databricks 同步）/ #245（每季對名單）/ #246（topic_group 分法待看）。
+
 **改版了什麼（D38；使用者決定兩個軸都要、不混在一起）**
 - 新 migration `meeting_extracted_migration/006_meeting_sender_unit_topic_group.ipynb`（13 cells）：兩張種子表 `s_meeting_dept_unit`（部門代碼**前 4 碼** → unit pm / sales / other ＋ app；種子 0.1 = DTDB 業務 MNT、DTDC PM TV、DTDD PM MNT、DNBA 業務 NB、DNBB PM NB、DTVA PM TV（待確認）、DTVB 業務 TV（待確認）、ABSB other）、`s_meeting_topic_group`（14 個 topic_tag → product / customer / other；cost 歸 product 是推測）；mail 表 `ALTER` 補 `forwarder_dept_prefix / forwarder_unit / forwarder_unit_basis` 並整表回填（[c23]，零 LLM）；[c30] 印 unit 分布、未登記前綴、每前綴最近兩封的帳號（對 PM_Head 寄信檢討名單用）。
 - `002` [c04] mail spec 多三欄；[c05] `v_meeting_items_q` 多 `topic_group`（⋈ 主標籤）、`forwarder_unit`（⋈ mail 表），`v_meeting_mail_index` 多 `forwarder_unit / _basis`；[c10] 檢查 006 的表存在。
