@@ -3,6 +3,33 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
+## §0.00 2026-11-03 決定：文件解析不限頁數；LLM 前要先加程式處理流程（使用者確認）
+
+**背景（11-03 查詢）**：`parse_documents` 自 10 月初後沒再跑，SUPPLIER 幾乎所有文件 `未解析`（只有南亞塑與少數 2026Q2 財報有解析）；目前只有南亞塑一份 supplier 報告。
+使用者看過財報檔案多在 **50 頁左右**，決定**不限頁數，整份解析**。另外：Corning 10/27 法說的彙整 / Q3 財報 / 兩份 `.htm` 都已進來（未解析）；
+南亞塑最新是 10-13 那場，南亞科 `TPE:2408`（SEMI）10-20 之後 `s_conference` 沒有任何場次（10/27 若是南亞科 → 疑爬蟲漏抓，待查 bronze `b_ir_calendar_record`）。
+
+| 項目 | 狀態 / 要做的事 |
+| --- | --- |
+| D1-3 限頁 **撤銷** | repo `parse_documents` [c02] 仍是 `PAGE_RANGE_BY_DOC_KIND = {"Financial_Statements": "1-30"}`，**待改成 `{}`**（下次動 parse_documents 時一起改、跑 `tests/test_ir_calendar_parse_documents.py`）。在那之前 **§0 步驟 3（貼 [c02] [c03]）不要做** |
+| Databricks 現況 | 判斷應是 10-28 前的舊版（步驟 3 未貼）＝本來就整份解析，可直接跑 `parse_documents`（`dry_run = true` 看清單 → `false`、`max_files` 視檔數調大、`fail_on_error = false`） |
+| 怎麼確認 Databricks 是不限頁 | (1) 開 `ir_calendar_parse_documents`，在 [c02] 搜 `PAGE_RANGE_BY_DOC_KIND`、在 [c03] 搜 `pageRange`：**都找不到** = 舊版不限頁；找到且值是 `"1-30"` → 改成 `PAGE_RANGE_BY_DOC_KIND = {}` 再跑。(2) 跑完用下方 SQL 驗：`pageRange` 應 0 列、`Financial_Statements` 的 `max_pages` 應 > 30 |
+| **新需求：LLM 前的程式處理流程**（未做，backlog D3） | 整份解析後文字變多，**不能靠 LLM 暴力讀全文**（現況 `build_ir_report` 每份文件截 `max_doc_chars = 40000` 直接塞 prompt）。要先用程式把文件切段 / 分類 / 挑出要的段落與表格，再把精簡後的內容交給 LLM。設計前先做 D1-1 / D1-2（看真實 payload 形狀、元素型別、每頁字元數） |
+
+```sql
+-- 驗證解析沒有限頁（跑完 parse_documents 後）
+SELECT doc_kind,
+       COUNT(*)                                                     AS n_files,
+       SUM(CASE WHEN parse_options LIKE '%pageRange%' THEN 1 ELSE 0 END) AS n_page_limited,
+       MAX(page_count)                                              AS max_pages,
+       percentile_approx(page_count, 0.5)                           AS median_pages
+FROM micenter.mi3_datahub_prod.b_ir_calendar_document_parse
+WHERE status IN ('success', 'partial')
+  AND parsed_at >= to_timestamp('2026-11-03 00:00:00', 'yyyy-MM-dd HH:mm:ss')
+GROUP BY doc_kind
+ORDER BY doc_kind
+```
+
 ## §0 接續點（2026-10-29 收工：Databricks 停在 20261029b；repo 已到 20261029c（peer / semi v2 版面），**下次先做步驟 6c 整支重新匯入**）
 
 **下次接續（照順序）**：

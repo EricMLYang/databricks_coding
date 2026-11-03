@@ -60,9 +60,22 @@
 | --- | --- | --- |
 | D1-1 | 對一列 bronze `payload` 形狀 | [c04] `PARSE_PAYLOAD` 是照官方文件假設的，10-20 手動跑過 10 份後沒紀錄對過。`SELECT payload:metadata, payload:document.elements[0] FROM b_ir_calendar_document_parse LIMIT 1`；不合就改 [c04] 再 `rebuild_silver` |
 | D1-2 | 看解析密度與元素型別 | `s_document_text` 每檔 `text_chars / page_count`（過低 = 掃描檔 OCR 失敗或純圖簡報）；`s_document_element` 依 `doc_kind × element_type` 計數，財報要看得到 table、簡報要有 figure description。人工開一份台股財報的損益表 markdown、一份簡報的圖表描述 |
-| D1-3 ✅ repo | `Financial_Statements` 只解前面幾頁 | 台股合併財報上百頁按頁計費，但 `build_ir_report` 每份文件截 `max_doc_chars = 40000`、財報排優先序最後，等於付錢解析再丟九成。`ai_parse_document` 支援 `pageRange`（參考腳本 `job_25_all_parse_content_new.py` 有提到），對 `Financial_Statements` 限頁數。等 D1-2 看到真的有大檔再改 [c03] `parse_options` |
+| D1-3 ↩ 11-03 撤銷 | `Financial_Statements` 只解前面幾頁（**2026-11-03 使用者決定不限頁、整份解析**：財報多約 50 頁；repo [c02] `PAGE_RANGE_BY_DOC_KIND` 待改回 `{}`；長文字改由 D3 程式前處理解決） | 台股合併財報上百頁按頁計費，但 `build_ir_report` 每份文件截 `max_doc_chars = 40000`、財報排優先序最後，等於付錢解析再丟九成。`ai_parse_document` 支援 `pageRange`（參考腳本 `job_25_all_parse_content_new.py` 有提到），對 `Financial_Statements` 限頁數。等 D1-2 看到真的有大檔再改 [c03] `parse_options` |
 
 不換解析器：數字全部來自 `s_financials`，解析文字只餵 LLM 寫敘事；`ai_parse_document` 有 OCR / 表格 / 圖表描述，job cluster 不用裝套件。第二條路（pdfplumber 之類）只在 D1-2 發現整批掃描檔讀不出來時個案處理。
+
+### D3 LLM 前的程式處理流程（2026-11-03 使用者要求；未做）
+
+整份解析後文件變長，**不能把全文丟給 LLM 暴力處理**（現況 `build_ir_report` 每份文件截 `max_doc_chars = 40000` 直接進 prompt，截掉的部分 LLM 看不到）。
+原則：程式能確定的事程式做（切段、分類、找表格、對期別 / 數字），LLM 只處理程式篩過、精簡後的內容。
+
+| # | 做什麼 | 說明 |
+| --- | --- | --- |
+| D3-1 | 先看真實資料 | 依 D1-1 / D1-2：payload 形狀、`s_document_element` 的 `element_type` 分布、每頁字元數；財報 / 簡報 / EDGAR `.htm` 各挑一份人工看 |
+| D3-2 | 切段與分類（程式） | 依標題 / 頁 / 元素型別把文件切成段落，標成管理層說明、展望、分部、Q&A、四大表、附註…；`DataFrame -> DataFrame` 純函式、可測 |
+| D3-3 | 挑段落（程式） | 依報告各節需要挑段落與表格（例：財報只取四大表與重要附註、略過會計政策樣板），控制每份餵入字數；被略過的段落要記錄（不得無聲丟資訊） |
+| D3-4 | 數字交叉核對（程式） | 文件抽出的數字與 `s_financials` 對照，不一致標示給報告，不交給 LLM 自己判斷 |
+| D3-5 | 再接 LLM | `build_ir_report` 改吃 D3-3 的精簡段落，`docs_fed` 記每段的來源與狀態 |
 
 ### D2 `build_ir_report`：同一家公司的所有來源都要進最終報告（未做；見 2026-10-28 檢討）
 
