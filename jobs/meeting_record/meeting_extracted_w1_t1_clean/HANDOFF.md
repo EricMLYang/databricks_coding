@@ -50,6 +50,12 @@ FROM micenter.mi3_datahub_prod.v_meeting_sb_period WHERE brief_month = '2026-10'
   T3 → T4 → T5 月 Job（`brief_month` 留空 = 本月、T4 `max_cells = 0`、三支 `dry_run = false`），排在 brief 送出後（各 app 20–27 日才填完，排月底最後一天或由人手動觸發）。
   順手：task 2 每次 incremental 會重挑 181 封空信 / 重複信再跳過，把這類 pk 記進水位。
 - [ ] **月報版面**：DIGEST_ISSUES §4 五題（關鍵 4.2 第一層按場合還是主題）；digest §3 右欄與狀態欄接對照表、§2 LLM 摘要。還沒問到：三份 10 月 digest 的 [c10a] 漏斗數字與觀感。
+- [ ] **檢查項目，11-03 新增：部門代碼推不出應用（MNT / NB / TV）**。11-03 寄信檢討對照「預計需要寄信主管」名單時發現，`mail_from` 第 4 段的部門代碼（`forwarder_dept_code`）和應用對不上：
+  - TV 名單上的 3 位 PM 部門代碼都是 `DTDC*`（DTDCA0 / DTDCC0 / DTDCD0），MNT 名單上一位 PM 是 `DTDDA0`。所以「DTD → MNT、DTV → TV」不成立。
+  - 同一人在不同信裡出現過兩種代碼（DTDAB0 / DTVBA0）。
+  - 檢查方式：凡是要「寄件人 → 應用」的地方（寄信追蹤、digest / pm_pack 按應用看寄件人、Job 化後的寄信監控、`forwarder_dept_name` 回填），**都不要用部門代碼前綴推**。目前 repo 只存 `forwarder_dept_code`、`dept_name` 一律 NULL（STATUS 待決 #13），沒有任何 cell 用代碼推應用；新增功能時照這條檢查。
+  - **實際寄件人屬於哪個應用，參考這份**：PM_Head `projects/ForwardDeployedEngineer/15_experiments/MI/mi_datahub_table/ai_function_and_job_info/metting_record/寄信檢討/寄信檢討.md` 的「預計需要寄信主管」名單（Application × 姓名），檔裡也有 11-03 各應用寄信佔比與證據。
+  - **人員會變動，名單只當「對答案」用**：做寄件人 → 應用的功能或報表時，拿名單核對結果對不對。不要把名單寫死成種子或規則。名單外的寄件人、對不上的人，要列出來請使用者確認，不要猜。
 - 固定每月流程（brief 填完後）：查 `v_meeting_sb_period` 該期三 app 都有列且 `submitted_end` 非 NULL → W1 四支 incremental 補信 → T3 → T4 → T5 同一 `brief_month`。repo 這次沒改 notebook，Databricks 與 repo 同步。
 
 #### ▶ 2026-10-23 收工版本（上一個接續點，保留脈絡）
