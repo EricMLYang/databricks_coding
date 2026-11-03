@@ -66,6 +66,8 @@
 
 ### D3 LLM 前的程式處理流程（2026-11-03 使用者要求；未做）
 
+**2026-11-04 檢討定案**：見 `docs/20261104_ir_calendar_llm_preprocessing_review.md`——加一支 `ir_calendar_digest_documents`（規則切段 → 規則挑段 → 每份文件一次 LLM 摘錄，三視角共用），`build_ir_report` 改讀摘錄不讀全文；下表 D3-1～D3-5 對應該文件 §4／§7，落地順序照 §7。
+
 整份解析後文件變長，**不能把全文丟給 LLM 暴力處理**（現況 `build_ir_report` 每份文件截 `max_doc_chars = 40000` 直接進 prompt，截掉的部分 LLM 看不到）。
 原則：程式能確定的事程式做（切段、分類、找表格、對期別 / 數字），LLM 只處理程式篩過、精簡後的內容。
 

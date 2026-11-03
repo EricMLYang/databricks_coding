@@ -3,6 +3,21 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
+## §0.0000 2026-11-04 檢討：LLM 前要多幾個程式處理步驟（文件長文瓶頸）→ `docs/20261104_ir_calendar_llm_preprocessing_review.md`
+
+結論：**要加三步（兩步規則、一步小 LLM），不用做到 meeting_record 那麼細**。瓶頸不是錢，是 `build_ir_report` [c05] `pack_documents` 照位置截尾（每檔 40k、合計 120k 字）：
+台股財報 100–150k 字，**附註十四 部門資訊**與 10-Q 的 **MD&A** 都在被截掉的尾段，付了解析費、文字在 silver，LLM 卻沒看到——01 後兩格、03 事業群表缺數字有一半是這個原因；11-03 不限頁之後只會更明顯。
+
+| 步驟 | 誰做 | 做什麼 |
+| --- | --- | --- |
+| 1 切段分類 | 規則 | `s_document_element` → `s_ir_calendar_document_section`：標題字典＋元素型別切章節、標 `section_kind`（statements / accounting_policy / segment / mdna / subsequent / qa / disclaimer …） |
+| 2 挑段落 | 規則 | 依 doc_kind × section_kind 保留表 keep / skip（理由存表）；財報只留部門資訊／期後／承諾，10-Q 留 MD&A＋三個附註，簡報去前瞻聲明與調節表；一家一季 ≤ 60k 字 |
+| 3 文件摘錄 | LLM（sonnet-5.5，每份文件一次，三視角共用） | 只送 keep 段落，固定 JSON 抽事業群數字／指引／產能／Q&A／AUO／期後事項，每條帶 element_id，程式驗 quote → `b_…_document_digest_llm` / `s_…_document_digest` |
+| build_ir_report | LLM（每視角一次） | 改讀摘錄＋結構化數據＋爬蟲彙整，只寫結論與判讀；prompt 2.3、過渡 widget `use_full_text`；來源節列「已讀／略過章節」 |
+
+分工：爬蟲 `ir_summary` 是法說當下的彙整（媒體、逐字稿，無文件時唯一來源）；Databricks 摘錄是文件本文有出處的抽取；報告規則「同主題文件摘錄 > 彙整」。
+落地順序：D1-1 / D1-2 先確認 `element_type` → 本機用 11-03 沙箱的 Corning / 3M htm 寫 `split_sections` / `select_sections` 純函式＋測試 → 新 notebook `ir_calendar_digest_documents`（關卡：預算、skip 理由、JSON 失敗 < 10%、cite 驗證 < 15%）→ build_ir_report 接摘錄 A/B → 爬蟲 `wanted` 加 transcript。backlog D3 改指到這份文件。
+
 ## §0.000 2026-11-03 晚：範例財報版面第一版調整（需求方回饋）＋ 沙箱重抓 Corning／南亞／3M／明基材
 
 需求方（採購端）核對爬蟲財務數字與指標正確後給了「第一版調整建議」三點，已在 `範例財報/build_report.py`（v5）實作並重產報告；
