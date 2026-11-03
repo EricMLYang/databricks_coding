@@ -12,6 +12,7 @@ import pytest
 from nbload import load_cells
 
 NB = "jobs/meeting_record/meeting_extracted_migration/002_meeting_neutral_tables.ipynb"
+NB_006 = "jobs/meeting_record/meeting_extracted_migration/006_meeting_sender_unit_topic_group.ipynb"
 EXPECT_TABLES = {
     "s_meeting_record_mail_bu",
     "s_meeting_record_clean_bu",
@@ -26,6 +27,11 @@ EXPECT_VIEWS = {"v_meeting_items_q", "v_meeting_item_models", "v_meeting_mail_in
 @pytest.fixture(scope="module")
 def mod():
     return load_cells(NB, ["c02", "c03", "c04", "c05"], name="mig002")
+
+
+@pytest.fixture(scope="module")
+def mod006():
+    return load_cells(NB_006, ["c02", "c03", "c04"], name="mig006_for_002")
 
 
 def test_specs_valid(mod):
@@ -116,14 +122,17 @@ def test_create_view_has_column_comments(mod):
 
 
 @pytest.fixture(scope="module")
-def fake_tables(mod, spark):
-    """依 spec 建 temp view：t_<table>，塞少量假資料。"""
+def fake_tables(mod, mod006, spark):
+    """依 spec 建 temp view：t_<table>，塞少量假資料。006 的兩張種子表（View 引用）也建。"""
     rows = {
         "s_meeting_record_mail_bu": [
             {
                 "pk_seq": 1,
                 "subject_clean": "acer weekly",
                 "forwarder_dept_code": "DTDBB0",
+                "forwarder_dept_prefix": "DTDB",
+                "forwarder_unit": "sales",
+                "forwarder_unit_basis": "dept_prefix",
                 "display_len": 100,
             },
             {"pk_seq": 2, "subject_clean": "dup mail", "dup_of_pk": 1},
@@ -192,6 +201,7 @@ def fake_tables(mod, spark):
                 "app": "NB",
                 "model_nos": ["M1", "M2"],
                 "topic_tags": ["price", "supply"],
+                "topic_tag_primary": "price",
                 "sensitivity": "S1",
                 "extract_status": "ok",
                 "superseded": False,
@@ -238,6 +248,17 @@ def fake_tables(mod, spark):
         cols = [c[0] for c in spec["columns"]]
         data = [tuple(r.get(c) for c in cols) for r in rows[t]]
         spark.createDataFrame(data, mod.schema_ddl(spec)).createOrReplaceTempView(f"t_{t}")
+    seed_rows = {
+        "s_meeting_topic_group": [
+            {"topic_tag": "price", "topic_group": "customer", "is_active": True},
+            {"topic_tag": "spec", "topic_group": "product", "is_active": False},  # 停用列不算
+        ],
+        "s_meeting_dept_unit": [{"dept_prefix": "DTDB", "unit": "sales", "is_active": True}],
+    }
+    for t, rs in seed_rows.items():
+        spec = mod006.TABLES[t]
+        cols = [c[0] for c in spec["columns"]]
+        spark.createDataFrame([tuple(r.get(c) for c in cols) for r in rs], mod006.schema_ddl(spec)).createOrReplaceTempView(f"t_{t}")
     return lambda t: f"t_{t}"
 
 
@@ -262,6 +283,9 @@ def test_items_q_filters_and_speaker_join(mod, spark, fake_tables):
         None,
         "auo",
     )  # token NULL → 採條目自己的 speaker_side
+    # 006：主標籤 price → customer；沒有主標籤 → other；信的寄件人單位帶到條目
+    assert (a.topic_group, a.forwarder_unit) == ("customer", "sales")
+    assert (b.topic_group, b.forwarder_unit) == ("other", "sales")
 
 
 def test_item_models_explode(mod, spark, fake_tables):
@@ -280,6 +304,7 @@ def test_mail_index_aggregates(mod, spark, fake_tables):
     assert m.content_types == "inline_minutes:2,noise:1"
     assert (m.item_count, m.customer, m.sensitivity_max) == (2, "acer", "S2")
     assert m.participant_companies == ["acer", "sumika"]  # 不含 auo
+    assert (m.forwarder_unit, m.forwarder_unit_basis) == ("sales", "dept_prefix")  # 006
     e = got[2]
     assert (e.segment_count, e.item_count, e.customer, e.participant_companies, e.dup_of_pk) == (
         0,

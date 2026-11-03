@@ -1,8 +1,34 @@
-# HANDOFF — 2026-10-27 更新（下次 session 先讀這份）
+# HANDOFF — 2026-11-03 更新（下次 session 先讀這份）
 
-總覽與決定（D1–D37）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
+總覽與決定（D1–D38）在 `../meeting_extracted_migration/STATUS.md`；這份只寫「現在停在哪、下一步做什麼」。
 
-## 0. 接續點（2026-10-27 更新，最新；底下 §1–§6 是歷史脈絡）
+## 0.00 2026-11-03：寄件人單位（PM / 業務）＋ 條目內容群（產品 / 客戶）— repo 完成、Databricks 待貼（最新，先讀這段）
+
+**改版了什麼（D38；使用者決定兩個軸都要、不混在一起）**
+- 新 migration `meeting_extracted_migration/006_meeting_sender_unit_topic_group.ipynb`（13 cells）：兩張種子表 `s_meeting_dept_unit`（部門代碼**前 4 碼** → unit pm / sales / other ＋ app；種子 0.1 = DTDB 業務 MNT、DTDC PM TV、DTDD PM MNT、DNBA 業務 NB、DNBB PM NB、DTVA PM TV（待確認）、DTVB 業務 TV（待確認）、ABSB other）、`s_meeting_topic_group`（14 個 topic_tag → product / customer / other；cost 歸 product 是推測）；mail 表 `ALTER` 補 `forwarder_dept_prefix / forwarder_unit / forwarder_unit_basis` 並整表回填（[c23]，零 LLM）；[c30] 印 unit 分布、未登記前綴、每前綴最近兩封的帳號（對 PM_Head 寄信檢討名單用）。
+- `002` [c04] mail spec 多三欄；[c05] `v_meeting_items_q` 多 `topic_group`（⋈ 主標籤）、`forwarder_unit`（⋈ mail 表），`v_meeting_mail_index` 多 `forwarder_unit / _basis`；[c10] 檢查 006 的表存在。
+- task 1 `meeting_extracted_w1_t1_mail`：[c06] 新 `resolve_forwarder_unit`（規則同 006 回填 SQL）；[c10] 要 `s_meeting_dept_unit`；[c11] 接上並 assert mail 表有新欄；[c12] log 多 `forwarder_unit_dist` / `unknown_dept_prefixes_top20`，未登記前綴印 WARN。`cleaner_version` 維持 0.2。
+- pm_pack：`sections` 多 **C 節「寄件人異動檢查」**（未登記前綴 / 同帳號代碼變了 / 本月第一次寄 / 上月有本月沒；只有帳號與代碼）；`unit_filter` / `group_filter` 只過濾 B 節（要 PM 一包、業務一包就跑兩次）；客戶卡輪廓多「寄件 PM n / 業務 m；內容 產品 a / 客戶 b」、全列多「群」「寄件」欄；總覽卡說明 C 節與分流條件。
+- 對代碼不對人（§0 11-03 檢查項目的延伸）：人換職務新信帶新代碼自動歸新單位；新前綴 → unknown 被 task 1 WARN / pm_pack C 節列出，補 006 [c05] 一列、升版本、重跑 006（`backfill = true`）即回填；代碼不變職務變了資料看不出 → 每季對名單。名單不進程式，tests 用名單上 21 個代碼當答案驗種子（`tests/test_meeting_extracted_migration_006.py`）。
+- tests：006 新 29、002 改（假種子表、新欄）、task 1 新 1、pm_pack 新 9（假表加兩欄）；`pytest tests/test_meeting_extracted_migration_006.py tests/test_meeting_extracted_migration_002.py tests/test_meeting_extracted_w1_t1_mail.py tests/test_meeting_extracted_pm_pack.py` 全過。
+
+**Databricks 同步清單（照順序；前三步是結構，第四步才有報表）**
+1. `meeting_extracted_migration/006_meeting_sender_unit_topic_group`：**新 notebook 整支匯入**。先 `dry_run = true` 看 [c10]「回填預覽 forwarder_unit 分布」「未登記前綴 top20」→ `dry_run = false`、`backfill = true` → 看 [c30]（分布、未登記前綴表、對答案表）。
+2. `meeting_extracted_migration/002_meeting_neutral_tables`：替換 **[c04] [c05] [c10]**（第 0 格 markdown 可一併換）。`dry_run = false` 重跑：表 IF NOT EXISTS 不動、三個 View 重建、[c30] 比對 mail 表欄位（006 已補，不會報缺欄）。
+3. `meeting_extracted_w1_t1_mail`：替換 **[c06] [c10] [c11] [c12]**。可先 `dry_run = true`、`sample_limit = 20` 看 [c12] 的 `forwarder_unit_dist`；之後週跑 incremental 自動填新信，**不用 backfill**（006 已回填舊信）。
+4. `meeting_extracted_pm_pack`：改了 [c01] [c02] [c04] [c05] [c06] [c10] [c11] 七格，**建議整支重新匯入**。`dbutils.widgets.removeAll()` → `months = 2026-09,2026-10`、`sections = A,B,C`（或 `B,C`）、`output = html`。
+5. 不用動：task 2 / task 3 / Stage A / Stage B / T3–T5 / digest / 001 / 003 / 004 / 005。
+
+**複製完要做什麼**
+1. 006 [c30]「未登記前綴」表貼回來或自己判：`DTDA`（Phase 0 111 封）、`DNB0`、`DITA`、`DGMA` 是 PM / 業務 / 其他 → 補 [c05] `DEPT_UNIT_SEED`、升 [c02] `DEPT_UNIT_VERSION` → 重跑 006（`backfill = true`）→ 重跑 002 不用（View 不變）。
+2. 006 [c30]「對答案」表：拿 PM_Head `寄信檢討.md` 名單核對每個前綴的 unit / app；`DTVA` / `DTVB` 各只一位，確認後把 note 的「待確認」拿掉。
+3. 內容群：看 `s_meeting_topic_group` 的分法合不合用（特別是 `cost` 歸 product、`supply_chain` 歸 product）；要改就改 [c05] `TOPIC_GROUP_SEED`、升 `TOPIC_GROUP_VERSION`、重跑 006（View 自動反映，不重萃）。
+4. pm_pack：C 節每月看一次；要分包就 `unit_filter = pm` 跑一次、`sales` 跑一次給不同對象。看 B 節客戶卡輪廓的「寄件 / 內容」數字合不合直覺（例：PM 寄的信是否真的以產品面為主）。
+5. Genie：`v_meeting_items_q` 多了 `topic_group` / `forwarder_unit`，之後建 Genie Space 時在 instructions 說明這兩欄（006 Genie View 那條待辦一起做）。
+
+**假設與需確認**：前 4 碼 = 單位（第 5–6 碼是課別）是依名單 19 人歸納，名單外前綴不猜；`DTVB` 那位名單上應用空白、排在 TV 區塊先算 TV 業務；pm_pack C 節印 `forwarder_account`（登入帳號）當識別，不印姓名 / 工號 / email，輸出 HTML 仍是內部版、已被 `.gitignore` 排除。
+
+## 0. 接續點（2026-10-27 更新；底下 §1–§6 是歷史脈絡）
 
 ### 0.0 現在停在哪（下次 session 從這裡接）
 

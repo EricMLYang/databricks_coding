@@ -254,13 +254,14 @@ def test_render_page_html_shell(mod):
 @pytest.fixture(scope="module")
 def frames(spark, mod):
     items = spark.createDataFrame(
-        [("I1", "k1", 1, 1, 0, "s", "fact", "customer", "acer", "acer", "MNT", None, "demand", "a", "q", date(2026, 9, 3), "2026-09", "S0", 0.9),
-         ("I2", "k2", 2, 1, 0, "s", "fact", "customer", "acer", "acer", "MNT", None, "demand", "a", "q", date(2026, 9, 3), "2026-09", "S2", 0.9),
-         ("I3", "k3", 2, 2, 0, "s", "plan", "auo", None, None, "TV", None, "schedule", "b", "q", date(2026, 8, 30), "2026-08", "S0", 0.9),
-         ("I4", "k4", 3, 1, 0, "s", "plan", "auo", None, "tcl", "TV", None, "schedule", "c", "q", None, None, "S0", 0.9)],
+        [("I1", "k1", 1, 1, 0, "s", "fact", "customer", "acer", "acer", "MNT", None, "demand", "a", "q", date(2026, 9, 3), "2026-09", "S0", 0.9, "customer", "sales"),
+         ("I2", "k2", 2, 1, 0, "s", "fact", "customer", "acer", "acer", "MNT", None, "demand", "a", "q", date(2026, 9, 3), "2026-09", "S2", 0.9, "customer", "pm"),
+         ("I3", "k3", 2, 2, 0, "s", "plan", "auo", None, None, "TV", None, "schedule", "b", "q", date(2026, 8, 30), "2026-08", "S0", 0.9, "product", "pm"),
+         ("I4", "k4", 3, 1, 0, "s", "plan", "auo", None, "tcl", "TV", None, "schedule", "c", "q", None, None, "S0", 0.9, "product", "unknown")],
         "item_id string, item_key string, pk_seq int, segment_no int, sub_no int, subject_clean string, statement_type string, "
         "speaker_side string, speaker_company string, customer string, app string, model_nos_str string, topic_tag_primary string, "
-        "summary string, quote string, event_date date, event_month string, sensitivity string, confidence double")
+        "summary string, quote string, event_date date, event_month string, sensitivity string, confidence double, "
+        "topic_group string, forwarder_unit string")
     mail = spark.createDataFrame(
         [(1, date(2026, 9, 10), "mail_body_md", None), (2, date(2026, 10, 2), "mail_body_md", None),
          (3, date(2026, 10, 5), "none", 2), (4, date(2026, 10, 6), "none", None)],
@@ -305,3 +306,107 @@ def test_select_month_items_and_counts(mod, frames):
     assert cnt == [(None, "TV", 1), ("tcl", "TV", 1)]
     cols = set(mod.select_month_items(frames["items_m"], "2026-09").columns)
     assert {"dup_key", "mail_month", "meeting_month", "summary"} <= cols
+
+
+# ---------- 006：分流與 C 節寄件人異動檢查 ----------
+def _item_row(**kw):
+    base = {"item_id": "i1", "item_key": "k1", "pk_seq": 1, "customer": "acer", "app": "MNT", "topic_tag_primary": "price",
+            "summary": "s", "event_date": date(2026, 9, 3), "statement_type": "fact", "speaker_side": "customer",
+            "sensitivity": "S0", "confidence": 0.9, "topic_group": "customer", "forwarder_unit": "sales", "dup_key": None}
+    return {**base, **kw}
+
+
+def test_unit_group_profile_line(mod):
+    rows = [_item_row(), _item_row(item_id="i2", topic_group="product", forwarder_unit="pm"), _item_row(item_id="i3", topic_group=None, forwarder_unit=None)]
+    p = mod.group_profile(rows)
+    assert dict(p["units"]) == {"sales": 1, "pm": 1, "unknown": 1} and dict(p["groups"]) == {"customer": 1, "product": 1, "other": 1}
+    line = mod.profile_line(p)
+    assert "寄件 PM 1 / 業務 1 / 未登記 1" in line and "內容 產品 1 / 客戶 1 / 其他 1" in line
+    assert mod.unit_group_line({"n": 1}) == ""  # 舊 profile 沒有兩欄 → 不印
+
+
+def test_items_tables_have_group_unit_columns(mod):
+    rows = [_item_row()]
+    md = "\n".join(mod.render_items_md("2026-09", rows, None))
+    assert "| 日期 | 類型 | 主題 | 群 | 寄件 | 發言方 |" in md and "| 客戶 | 業務 |" in md
+    html = mod._items_table_html(rows, None, include_quote=False, max_per_group=0)
+    assert "<th>群</th><th>寄件</th>" in html and ">客戶</td>" in html and ">業務</td>" in html
+
+
+def test_filter_items(mod, spark):
+    df = spark.createDataFrame(
+        [("a", "pm", "product"), ("b", "sales", "customer"), ("c", None, None)],
+        "item_id string, forwarder_unit string, topic_group string",
+    )
+    ids = lambda d: sorted(r.item_id for r in d.collect())  # noqa: E731
+    assert ids(mod.filter_items(df)) == ["a", "b", "c"]
+    assert ids(mod.filter_items(df, unit_filter="pm")) == ["a"]
+    assert ids(mod.filter_items(df, group_filter="customer")) == ["b"]
+    assert ids(mod.filter_items(df, unit_filter="unknown", group_filter="other")) == ["c"]
+    assert ids(mod.filter_items(df, unit_filter="pm", group_filter="customer")) == []
+
+
+@pytest.fixture(scope="module")
+def sender_df(spark):
+    rows = [
+        # pk, mail_date, account, code, prefix, unit, basis
+        (1, date(2026, 8, 5), "u_a", "DTDBB0", "DTDB", "sales", "dept_prefix"),
+        (2, date(2026, 8, 20), "u_b", "DTDDA0", "DTDD", "pm", "dept_prefix"),
+        (3, date(2026, 9, 2), "u_a", "DTDBB0", "DTDB", "sales", "dept_prefix"),
+        (4, date(2026, 9, 10), "u_a", "DTDDC0", "DTDD", "pm", "dept_prefix"),   # u_a 9 月換到 PM 代碼
+        (5, date(2026, 9, 12), "u_c", "ZZZZ00", "ZZZZ", "unknown", "unknown"),   # 新寄件人、未登記前綴
+        (6, date(2026, 9, 15), "u_c", "ZZZZ00", "ZZZZ", "unknown", "unknown"),
+        (7, date(2026, 9, 18), "u_d", None, None, "unknown", "no_dept_code"),    # 新寄件人、無代碼
+        (8, date(2026, 7, 1), "u_e", "DNBAA0", "DNBA", "sales", "dept_prefix"),  # 7 月寄過、8 / 9 月沒寄：9 月不算 stopped（看的是上月）
+    ]
+    return spark.createDataFrame(
+        rows, "pk_seq bigint, mail_date date, forwarder_account string, forwarder_dept_code string, "
+              "forwarder_dept_prefix string, forwarder_unit string, forwarder_unit_basis string"
+    )
+
+
+def test_sender_unknown(mod, sender_df):
+    got = [r.asDict() for r in mod.sender_unknown(sender_df, ["2026-09"]).collect()]
+    assert [(r["dept_prefix"], r["dept_code"], r["mails"], r["senders"]) for r in got] == [("ZZZZ", "ZZZZ00", 2, 1), (None, None, 1, 1)]
+    assert got[0]["first_mail"] == date(2026, 9, 12) and got[0]["last_mail"] == date(2026, 9, 15)
+    assert mod.sender_unknown(sender_df, ["2026-08"]).count() == 0
+
+
+def test_sender_changes(mod, sender_df):
+    got = [r.asDict() for r in mod.sender_changes(sender_df, "2026-09").collect()]
+    assert len(got) == 1 and got[0]["account"] == "u_a"
+    assert (got[0]["prev_dept_code"], got[0]["prev_unit"], got[0]["prev_mail_date"]) == ("DTDBB0", "sales", date(2026, 8, 5))
+    assert (got[0]["dept_code"], got[0]["unit"], got[0]["mail_date"]) == ("DTDDC0", "pm", date(2026, 9, 10))
+    assert mod.sender_changes(sender_df, "2026-08").count() == 0  # u_a 8 月之前沒寄過，不算
+
+
+def test_sender_activity(mod, sender_df):
+    got = {(r.status, r.account): r.asDict() for r in mod.sender_activity(sender_df, "2026-09").collect()}
+    assert {k for k in got} == {("new", "u_c"), ("new", "u_d"), ("stopped", "u_b")}
+    assert got[("new", "u_c")]["mails"] == 2 and got[("new", "u_c")]["unit"] == "unknown"
+    assert got[("stopped", "u_b")]["mails"] == 1 and got[("stopped", "u_b")]["dept_code"] == "DTDDA0"
+    assert mod._prev_month("2026-01") == "2025-12" and mod._prev_month("2026-09") == "2026-08"
+
+
+def test_render_sender_check(mod):
+    chk = {"unknown": [{"dept_prefix": "ZZZZ", "dept_code": "ZZZZ00", "mails": 2, "senders": 1, "first_mail": date(2026, 9, 12), "last_mail": date(2026, 9, 15)}],
+           "changed": [{"account": "u_a", "prev_dept_code": "DTDBB0", "prev_unit": "sales", "prev_mail_date": date(2026, 8, 5),
+                        "dept_code": "DTDDC0", "unit": "pm", "mail_date": date(2026, 9, 10)}],
+           "new": [{"account": "u_c", "dept_code": "ZZZZ00", "unit": "unknown", "mails": 2}],
+           "stopped": []}
+    md = mod.render_sender_check_md("2026-09", chk)
+    assert "未登記的部門前綴（1）" in md and "| ZZZZ | ZZZZ00 | 2 | 1 | 09-12 | 09-15 |" in md
+    assert "| u_a | DTDBB0（業務，08-05） | DTDDC0（PM，09-10） |" in md
+    assert "| u_c | ZZZZ00 | 未登記 | 2 |" in md and "上月有寄、本月沒寄（0）" in md and "無。" in md
+    html = mod.render_sender_check_html("2026-09", chk, badge=3)
+    assert 'id="c-2026-09"' in html and "未登記前綴 1、代碼變動 1、新寄件人 1、停寄 0" in html
+    assert "<td>u_a</td>" in html and "DTDDC0（PM，09-10）" in html and html.count('<p class="muted">無。</p>') == 1
+    assert "<script" not in html
+    md_empty = mod.render_sender_check_md("2026-09", {})
+    assert md_empty.count("無。") == 4
+
+
+def test_overview_has_c_and_filter_note(mod):
+    html = mod.render_overview_html([], badge=1, has_a=False, has_b=True, has_c=True, filter_note="寄件人單位 = PM")
+    assert "C 節" in html and "本包 B 節只含：寄件人單位 = PM" in html
+    assert "C 節" not in mod.render_overview_html([], badge=1, has_a=False, has_b=True)

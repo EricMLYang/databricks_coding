@@ -1,6 +1,6 @@
 # 會議紀錄萃取流程總覽（技術主管版）
 
-把業務轉寄進來的會議紀錄信，清洗、去識別、拆成原子條目，再分成「業務語意 / 背景情報 / 單點事件」彙整成台帳，最後對照 Sales Brief 填報。所有表在 `micenter.mi3_datahub_prod`；規格 PM_Head `metting_record/01_meeting_to_sales_brief_進階規劃.md` v0.4.1；偏離規格的決定與進度在 `meeting_extracted_migration/STATUS.md`。更新日期 2026-10-19。
+把業務轉寄進來的會議紀錄信，清洗、去識別、拆成原子條目，再分成「業務語意 / 背景情報 / 單點事件」彙整成台帳，最後對照 Sales Brief 填報。所有表在 `micenter.mi3_datahub_prod`；規格 PM_Head `metting_record/01_meeting_to_sales_brief_進階規劃.md` v0.4.1；偏離規格的決定與進度在 `meeting_extracted_migration/STATUS.md`。更新日期 2026-11-03（006：寄件人單位 / 內容群）。
 
 ```
 b_internal_meeting_record（ETL 原始信）
@@ -22,7 +22,9 @@ b_internal_meeting_record（ETL 原始信）
   └─ T3 標註 → T4 對照（LLM）→ T5 關卡 → PM 審核例外清單 → 月報
 ```
 
-一次性 migration（`001` 公司別名種子、`002` 中立層表與 View、`003` 鏡頭表、`005` 台帳）只建結構與種子，不在流程裡。W1 / W2 不呼叫 migration。
+一次性 migration（`001` 公司別名種子、`002` 中立層表與 View、`003` 鏡頭表、`004` Sales Brief 鏡頭、`005` 台帳、`006` 寄件人單位 / 內容群種子）只建結構與種子，不在流程裡。W1 / W2 不呼叫 migration。
+
+**兩個分流軸（006，2026-11-03）**：信是誰寄的 → `forwarder_unit`（pm / sales / other / unknown；部門代碼前 4 碼查 `s_meeting_dept_unit`，task 1 每週填）；條目講什麼 → `topic_group`（product / customer / other；主標籤查 `s_meeting_topic_group`，`v_meeting_items_q` 帶出）。pm_pack 用 `unit_filter` / `group_filter` 分包、C 節每月列寄件人異動（未登記前綴 / 代碼變了 / 新寄件人 / 停寄）。
 
 ## 1. W1 中立層：信 → 條目
 
@@ -30,7 +32,7 @@ b_internal_meeting_record（ETL 原始信）
 |---|---|---|---|
 | **輸入** | `b_internal_meeting_record`；001 別名表 | mail 表、participants 表 | clean 表（只送 `inline_minutes` / `thread_reply`、非重複段）；participants（只給 token，不給姓名） |
 | **產出** | `s_meeting_record_mail_bu`（MERGE on `pk_seq`）、`s_meeting_participants_bu` | `s_meeting_record_clean_bu`（鍵 `pk_seq, segment_no, sub_no`） | `g_meeting_items_bu`（鍵 `item_id`；承接鍵 `item_key`） |
-| **程式動作** | 選正文來源（md → 去轉寄 → 原文 → HTML 備援，≥ 150 字）；刪 Word/CSS 殘渣、免責聲明；找 `From/Sent/Subject` 區塊；參與者編號 P01..Pnn、email 網域對別名表定 side / company；整封去重 `body_hash` | 切段（thread 依標頭；紀要依行首型號與 `ITEM 日期`）；姓名 / email 全換 `<Pnn>` / `<Gnn>`、殘留 email 遮 `[email]`；網址 / 圖片佔位；分類 `inline_minutes` / `thread_reply` / `appointment` / `attachment_only` / `noise`；客戶 / 應用提示；段層去重 `content_hash` | 本批段選取（新段、升版段、`retry_failed`）；quote 三層比對必須存在於 `clean_text`；S3 遮罩（人名 → token、email → `<email>`）；`customer_raw` 查別名表 → `customer`；受控 `topic_tags`；敏感度 S0/S1/S2 關鍵字；`item_key = sha1(pk‖seg‖quote)`；重萃舊列標 `superseded` |
+| **程式動作** | 選正文來源（md → 去轉寄 → 原文 → HTML 備援，≥ 150 字）；刪 Word/CSS 殘渣、免責聲明；找 `From/Sent/Subject` 區塊；參與者編號 P01..Pnn、email 網域對別名表定 side / company；寄件人單位 `forwarder_unit`（006）；整封去重 `body_hash` | 切段（thread 依標頭；紀要依行首型號與 `ITEM 日期`）；姓名 / email 全換 `<Pnn>` / `<Gnn>`、殘留 email 遮 `[email]`；網址 / 圖片佔位；分類 `inline_minutes` / `thread_reply` / `appointment` / `attachment_only` / `noise`；客戶 / 應用提示；段層去重 `content_hash` | 本批段選取（新段、升版段、`retry_failed`）；quote 三層比對必須存在於 `clean_text`；S3 遮罩（人名 → token、email → `<email>`）；`customer_raw` 查別名表 → `customer`；受控 `topic_tags`；敏感度 S0/S1/S2 關鍵字；`item_key = sha1(pk‖seg‖quote)`；重萃舊列標 `superseded` |
 | **LLM 動作** | 無 | 無 | 每段一次 claude-sonnet-5（Azure Foundry）：中立紀律、原子化、`statement_type`、quote 逐字抄；截斷精簡重打；JSON 壞再問一次 |
 | **關卡 [c12]** | 0 封、`body_conflict` > 10%、`mail_from` 解析 < 95% 停 | 0 段、`clean_text` 殘留姓名、`dup_of` > 80% 停 | prompt 版號不符、端點失敗過半、S3 遮罩 > 20%、schema 失敗 > 10%、quote 失敗 > 15% 停 |
 | **費用** | 0 | 0 | 全量 1,181 段 ≈ USD 70；每週增量數美元。`max_segments` 是閘門，`dry_run` 也會呼叫 |
@@ -92,7 +94,7 @@ Phase 1 不做：L2 facet fallback、ALL 格跨客戶訊號、可外送摘要。
 
 | View | 給 Genie 回答什麼 |
 |---|---|
-| `v_meeting_items_q` | 「acer 最近對 MNT 價格說了什麼」「哪些客戶提到 allocation」；有 `customer / app / statement_type / topic_tags_str / event_date / speaker_side / sensitivity`，無人名 |
+| `v_meeting_items_q` | 「acer 最近對 MNT 價格說了什麼」「哪些客戶提到 allocation」「PM 寄的信裡講產品的條目」；有 `customer / app / statement_type / topic_tags_str / topic_group / forwarder_unit / event_date / speaker_side / sensitivity`，無人名 |
 | `v_meeting_item_models` | 「M270QAN06.A 相關的所有陳述」（型號橋表） |
 | `v_meeting_mail_index` | 「上週收到哪些客戶的會議紀錄」（一封信一列，計數與分布，無正文） |
 | `v_meeting_items_sem_q` | 「有哪些待審的語意候選」「PM 判定和規則不一致的條目」 |

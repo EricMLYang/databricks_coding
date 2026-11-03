@@ -12,6 +12,7 @@
 | `002_meeting_neutral_tables` | 建中立層五張表（`s_meeting_record_mail_bu`、`s_meeting_record_clean_bu`、`s_meeting_participants_bu`、`g_meeting_items_bu`、`s_meeting_record_skipped_bu`（D34 隔離表，2026-10-23 加；既有環境重跑 002 即建））與三個 View（`v_meeting_items_q`、`v_meeting_item_models`、`v_meeting_mail_index`）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 `ALTER TABLE ADD COLUMNS`（例外：items 表 `s3_masked`（D26）、`customer_basis`（D33）兩欄由 task 3 [c10] 缺欄時自動補；spec 已同步） |
 | `005_semantic_ledgers` | 建方向 C Stage B 的台帳：`g_semantic_record`（SEM id）、`g_semantic_record_evidence`、`g_background_intel`（INT id）＋ `v_semantic_record_q`、`v_background_intel_q`（退場候選旗標）；只建結構。004 留給 Sales Brief 鏡頭 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
 | `003_meeting_semantic_lens` | 建語意鏡頭表 `g_meeting_items_sem_bu`（方向 C，§8.3）與兩個 View：`v_meeting_items_sem_cand`（候選規則 SQL 先算、Stage A 輸入）、`v_meeting_items_sem_q`（消費介面）；只建結構 | 改 [c05] View 後重跑；表欄位要改 → 開新流水號 |
+| `006_meeting_sender_unit_topic_group` | 寄件人單位（PM / 業務）＋ 條目內容群（產品 / 客戶）：種子表 `s_meeting_dept_unit`（部門代碼前 4 碼 → unit / app）、`s_meeting_topic_group`（14 個 topic_tag → product / customer / other）；mail 表 `ALTER TABLE ADD COLUMNS` 補 `forwarder_dept_prefix / forwarder_unit / forwarder_unit_basis` 並整表回填（零 LLM）。**跑完要重跑 002**（View 多 `topic_group` / `forwarder_unit`） | 改 [c05] 種子（升 [c02] 版本）後重跑；`backfill = true` 整表重算三欄 |
 | `004_meeting_sb_lens` | 建 W2 Sales Brief 鏡頭：標註表 `g_meeting_items_sb_bu`（§3.4）、對照格表 `g_meeting_sb_reconcile_bu`（§3.5）、面向映射種子表 `s_meeting_sb_facet_map`（§7.1 + §7.2，從 [c05] 內嵌 CSV MERGE）＋ 四個 View（`v_meeting_sb_brief_text`、`v_meeting_sb_period`、`v_meeting_items_sb_q`、`v_meeting_sb_reconcile_q`） | 改 [c05] 種子（升 `FACET_MAP_VERSION`）或 [c06] View 後重跑；表欄位要改 → 開新流水號 |
 
 ## 001_semantic_entity
@@ -38,7 +39,8 @@
 - 五張表 `CLUSTER BY (pk_seq)`（liquid clustering；全部以 pk_seq 回溯 / MERGE，日量百封級不做 partition）。
 - 冪等：表 `IF NOT EXISTS`、View `CREATE OR REPLACE`。[c30] 比對實際欄位 vs spec，缺欄印 `ALTER TABLE ADD COLUMNS` 語句並 fail，不自動執行。
 - 不在本支：column mask / GRANT、分應用 View、Sales Brief 鏡頭表（§3.4 / §3.5）→ 之後的 003。
-- 負責人 / 更新日期：（填）/ 2026-10-15
+- 2026-11-03（006）：mail spec 多三欄 `forwarder_dept_prefix / forwarder_unit / forwarder_unit_basis`（既有環境由 006 ALTER 補，002 不 ALTER）；`v_meeting_items_q` 多 `topic_group`（⋈ `s_meeting_topic_group` 主標籤）、`forwarder_unit`（⋈ mail 表）；`v_meeting_mail_index` 多 `forwarder_unit / forwarder_unit_basis`。View 引用 006 的種子表，**先跑 006 再重跑 002**（[c10] 會檢查）。
+- 負責人 / 更新日期：（填）/ 2026-11-03
 
 純函式測試：`tests/test_meeting_extracted_migration_002.py`（[c02]～[c05]；View SQL 在本機 Spark 以假資料實跑）。
 
@@ -78,3 +80,18 @@
 - 負責人 / 更新日期：（填）/ 2026-10-23
 
 純函式測試：`tests/test_meeting_extracted_migration_004.py`（[c02]～[c06]；種子驗證與詞表比對；四個 View 在本機 Spark 以 002 / 004 spec 與 Phase 0 探勘到的 Sales Brief 欄位建假表實跑）。
+
+## 006_meeting_sender_unit_topic_group
+
+- 用途（2026-11-03，使用者決定「PM 信 / 業務信」與「產品 / 客戶內容」要分開、不混在一起）：兩個軸各一張種子表。
+  - **寄件人單位**：`mail_from` 第 4 段部門代碼的**前 4 碼** → `s_meeting_dept_unit`（`unit` = pm / sales / other、`app`、`dept_name` NULL、`note`）。mail 表補三欄；本支 [c23] 整表回填；task 1 [c06] `resolve_forwarder_unit` 每週填新信（同規則）。前綴不在種子 → `unknown`（task 1 [c12] WARN、pm_pack C 節列出）。
+  - **條目內容群**：`s_meeting_topic_group`（task 3 的 14 個受控 tag → product / customer / other；tests 驗剛好涵蓋）。不改條目表、不重萃：002 `v_meeting_items_q` 以主標籤 join 出 `topic_group`。
+- 為什麼對「代碼前綴」不對「人」（HANDOFF 2026-11-03 檢查項目）：人會換職務、同一人出現過兩種代碼；每封信帶寄信當時的代碼，對代碼就自動跟著走。名單（PM_Head `寄信檢討.md`）只當答案：`tests/test_meeting_extracted_migration_006.py` 用名單上 21 個代碼驗種子、[c30] 印每前綴最近兩封的帳號供人工核對。前 4 碼在同一事業處內分 PM / 業務（DTD：B 業務、C / D PM；DNB：A 業務、B PM；DTV：A PM、B 業務），不是全公司一條規則，所以一前綴一列。
+- 種子 0.1：DTDB 業務 MNT、DTDC PM TV、DTDD PM MNT、DNBA 業務 NB、DNBB PM NB、DTVA PM TV（待確認）、DTVB 業務 TV（待確認）、ABSB other（測試帳號）。**刻意沒放**：DTDA（Phase 0 111 封）、DNB0、DITA、DGMA → unknown，等使用者確認。內容群 `cost` 歸 product 是推測。
+- 職務換了怎麼知道：換到已登記前綴 → 自動；新前綴 → unknown 被列出；代碼不變職務變 → 資料看不出，每季對名單。
+- 輸入：[c04] `table_specs`、[c05] 兩份種子（正本）；前置：002 的 mail 表。輸出：兩張種子表、mail 表三欄（ALTER ＋ 回填）、`b_meeting_migration_log` 一列。
+- 參數（widgets）：`catalog`、`schema`、`dry_run`（預設 `true`：驗證、印 DDL、印回填預覽與未登記前綴）、`backfill`（預設 `true`）。
+- 怎麼跑：`dry_run = true` 看 [c10] 的 unit 分布與未登記前綴 → `false` → [c30] 看分布、未登記前綴、對答案表 → **重跑 002**（`dry_run = false`）建新 View。
+- 負責人 / 更新日期：（填）/ 2026-11-03
+
+純函式測試：`tests/test_meeting_extracted_migration_006.py`（[c02]～[c05]；種子合法、TOPIC_TAGS 對齊 task 3、前綴規則、名單代碼對答案、002 mail spec 三欄一致）。

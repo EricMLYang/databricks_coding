@@ -661,3 +661,32 @@ def test_with_dup_of_pk_uses_existing_rows(mod, spark, schemas):
     )
     got = {r.pk_seq: r.dup_of_pk for r in mod.with_dup_of_pk(batch, existing).collect()}
     assert got == {5: 1, 7: 1, 8: None}  # 本批的 5 重算仍指向既有的 1；8 首次出現
+
+
+def test_resolve_forwarder_unit(mod, spark, schemas):
+    """006：部門代碼前 4 碼查種子 → unit / basis；大小寫與空白不敏感；短碼 / NULL → no_dept_code；未登記 → unknown；保留欄位順序。"""
+    mail_schema = schemas[0]  # (mail, part) 的 mail schema
+    cols = mail_schema.fieldNames()
+    rows = [
+        {"pk_seq": 1, "forwarder_dept_code": "DTDBB0"},
+        {"pk_seq": 2, "forwarder_dept_code": " dtdda0 "},
+        {"pk_seq": 3, "forwarder_dept_code": "ZZZZ00"},
+        {"pk_seq": 4, "forwarder_dept_code": None},
+        {"pk_seq": 5, "forwarder_dept_code": "AB"},
+        {"pk_seq": 6, "forwarder_dept_code": "XOLD00"},  # 種子停用的前綴 → unknown
+    ]
+    df = spark.createDataFrame([tuple(r.get(c) for c in cols) for r in rows], mail_schema)
+    dept = spark.createDataFrame(
+        [("DTDB", "sales", True), ("DTDD", "pm", True), ("XOLD", "pm", False)], "dept_prefix string, unit string, is_active boolean"
+    )
+    out = mod.resolve_forwarder_unit(df, dept)
+    assert out.columns == cols
+    got = {r.pk_seq: (r.forwarder_dept_prefix, r.forwarder_unit, r.forwarder_unit_basis) for r in out.collect()}
+    assert got == {
+        1: ("DTDB", "sales", "dept_prefix"),
+        2: ("DTDD", "pm", "dept_prefix"),
+        3: ("ZZZZ", "unknown", "unknown"),
+        4: (None, "unknown", "no_dept_code"),
+        5: (None, "unknown", "no_dept_code"),
+        6: ("XOLD", "unknown", "unknown"),
+    }
