@@ -43,14 +43,14 @@ footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
 <header class="hero">
   <div class="badge">ir_calendar｜來源檢視｜silver bundle</div>
   <h1>Corning｜原始資料（silver bundle）</h1>
-  <p>來源檔：Corning.md｜company_key NYSE:GLW｜period 2026Q2｜產出日期：2026-10-21</p>
+  <p>來源檔：Corning.md｜company_key NYSE:GLW｜period 2026Q2｜產出日期：2026-11-03</p>
 </header>
 <main class="wrap">
 
 <section class="card">
   <h2>這是什麼</h2>
   <p>把 Databricks silver 各表以 <code>company_key</code>（＋ <code>period</code>）join 後包成一個 JSON，
-  形狀 = <code>build_supplier_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>Corning.md</code> 就是這個 JSON，
+  形狀 = <code>build_ir_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>Corning.md</code> 就是這個 JSON，
   <code>build_report.py</code> 讀它產出財務體質報告。period = <b>2026Q2</b>。</p>
   <table><thead><tr><th>鍵</th><th>來源 silver 表</th><th>內容</th></tr></thead><tbody>
   <tr><td><a href='#company'><code>company</code></a></td><td><code>s_ir_calendar_company</code></td><td>公司主檔一列</td></tr><tr><td><a href='#fin_rows'><code>fin_rows</code></a></td><td><code>s_ir_calendar_financials</code></td><td>12 列（年度 5、季別 7）</td></tr><tr><td><a href='#summary'><code>summary</code></a></td><td><code>s_ir_calendar_summary</code></td><td>null（無法說彙整）</td></tr><tr><td><a href='#conference'><code>conference</code></a></td><td><code>s_ir_calendar_conference</code></td><td>null（無法說場次）</td></tr><tr><td><a href='#docs'><code>docs</code></a></td><td><code>s_ir_calendar_document_text</code></td><td>2 份（Presentation、Financial_Statements）</td></tr>
@@ -624,6 +624,6 @@ The non-controlling interest recorded on the consolidated financial statements r
 Certain prior year amounts have been reclassified to conform to the current year presentation, including a recast of the Company’s segment related disclosures 
 …（截尾）</pre></details></section>
 </main>
-<footer>由 build_sources.py 產出｜2026-10-21</footer>
+<footer>由 build_sources.py 產出｜2026-11-03</footer>
 </body>
 </html>

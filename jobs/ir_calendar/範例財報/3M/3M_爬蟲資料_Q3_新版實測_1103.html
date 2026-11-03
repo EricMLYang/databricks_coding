@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3M｜爬蟲資料（bronze payload，新版實測）</title>
+<style>
+:root{--navy:#0b1f3a;--blue:#1f5aa6;--cyan:#20a4b7;--ink:#172033;--muted:#65738a;--bg:#f3f6fa;--card:#fff;--green:#16835d;--amber:#bd7300;--red:#c33c3c;--line:#dbe4ef;--fill:#fff3b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:var(--ink);line-height:1.55}
+.hero{background:linear-gradient(120deg,var(--navy),#143d72 65%,#16798f);color:#fff;padding:38px 5vw 30px}
+.hero h1{margin:0;font-size:clamp(22px,3.5vw,36px)}
+.hero p{margin:8px 0 0;color:#d8e8f7}
+.badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff50;font-size:12px;margin-bottom:12px}
+.wrap{max-width:1220px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 26px #1a3b6610}
+.mt{margin-top:16px}
+.note,.small{font-size:12px;color:var(--muted)}
+h2{font-size:20px;margin:6px 0 14px}
+h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+.kv td:first-child{color:var(--muted);white-space:nowrap;width:220px}
+.kv{table-layout:fixed}.kv td{overflow-wrap:anywhere}.kv td table{table-layout:fixed;width:100%}.kv td table td:first-child{white-space:normal;width:auto;color:inherit}
+.null{color:#b0b8c4;font-style:italic}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.t-ir_conference{background:#1f5aa6}.t-ir_summary{background:#16835d}.t-ir_document{background:#bd7300}.t-ir_document_file{background:#8a6d3b}.t-ir_financials{background:#20a4b7}.t-app_company{background:#65738a}
+pre{background:#0b1f3a;color:#e6eefc;padding:14px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;max-height:520px}
+details summary{cursor:pointer;color:var(--blue);font-size:13px;margin:6px 0}
+.callout{border-left:4px solid var(--amber);background:#fff8e8;padding:12px 16px;border-radius:8px;margin-top:12px;font-size:13px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--blue);word-break:break-all}
+mark{background:var(--fill);color:inherit;padding:0 3px;border-radius:3px}
+.toc a{margin-right:14px;font-size:13px}
+footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}pre{max-height:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="badge">ir_calendar｜來源檢視｜bronze b_ir_calendar_record</div>
+  <h1>3M｜爬蟲資料（bronze payload，新版實測）</h1>
+  <p>來源檔：3M_爬蟲_Q3_新版實測_1103.md｜company_key NYSE:MMM｜period 2026Q3｜產出日期：2026-11-03</p>
+</header>
+<main class="wrap">
+
+<section class="card">
+  <h2>這是什麼</h2>
+  <p>Databricks bronze 表 <code>b_ir_calendar_record</code> 裡，爬蟲（MI_Crawler VM）交付的每個 JSON 檔原樣存成一列（<code>payload</code> 欄）。
+  這一頁是 <code>3M_爬蟲_Q3_新版實測_1103.md</code> 的排版版：company_key = <b>NYSE:MMM</b>、period = <b>2026Q3</b>，共 6 檔；
+  同一 record_type ＋ batch_path 只留最新批次。<code>period</code> 為 null 的檔（財報數據）不分期別，一併列出。</p>
+  <table class="kv"><tbody>
+    <tr><td>爬蟲版本</td><td><b>新版實測</b>（批次 dev_20261103T232657）。新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>，<code>tools/dev_sample_crawl.py</code>）跑出的 dev 批次（批次 id 含日期），<b>尚未進 Databricks</b>；ir_conference 的 <code>source</code> 為 DEV_SAMPLE（沙箱指定的場次，不是行事曆爬到的）。</td></tr>
+    <tr><td>抓到的紀錄類型</td><td>法說場次 1 筆、文件清單（manifest） 1 筆、實體檔 2 筆、財報數據 1 筆、法說彙整 1 筆</td></tr>
+    <tr><td>沒有的紀錄類型</td><td>—</td></tr>
+    <tr><td>對應 silver 表</td><td>見各段「進 silver」；原文另存 <code>b_ir_calendar_record.payload</code></td></tr>
+  </tbody></table>
+  <div class="toc mt"><a href="#r0">法說場次（2026-10-20）</a> <a href="#r1">文件清單（manifest）（2026-11-03）</a> <a href="#r2">實體檔（2026-10-20）</a> <a href="#r3">實體檔（2026-10-20）</a> <a href="#r4">財報數據（2026-11-03）</a> <a href="#r5">法說彙整（2026-11-03）</a></div>
+</section><section class="card mt" id="r0"><span class="tag t-ir_conference">ir_conference</span><b>法說場次</b><div class="small">batch_path：<code>calendar/2026-10-20_NYSEMMM_2026Q3.json</code>｜批次：dev_20261103T232657<br>進 silver：s_ir_calendar_conference</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>3M</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>fiscal_period</td><td>2026Q3</td></tr><tr><td>source_fiscal_period</td><td><span class="null">null</span></td></tr><tr><td>conference_date</td><td>2026-10-20</td></tr><tr><td>start_time</td><td><span class="null">null</span></td></tr><tr><td>end_time</td><td><span class="null">null</span></td></tr><tr><td>local_conference_date</td><td>2026-10-20</td></tr><tr><td>local_start_time</td><td><span class="null">null</span></td></tr><tr><td>conference_type</td><td><span class="null">null</span></td></tr><tr><td>location</td><td><span class="null">null</span></td></tr><tr><td>meeting_link</td><td><span class="null">null</span></td></tr><tr><td>document_url</td><td><span class="null">null</span></td></tr><tr><td>status</td><td>SCHEDULED</td></tr><tr><td>importance</td><td>1</td></tr><tr><td>source</td><td>DEV_SAMPLE</td></tr><tr><td>source_url</td><td><span class="null">null</span></td></tr><tr><td>confidence</td><td><span class="null">null</span></td></tr><tr><td>remark</td><td>[當地日 2026-10-20（America/New_York），時間未知，台北日可能為隔日]</td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;C00&quot;
+]</pre></td></tr><tr><td>revision</td><td>0</td></tr><tr><td>crawled_at</td><td>2026-11-03T23:30:43+08:00</td></tr></tbody></table></div><details><summary>原始 JSON（880 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_conference&quot;,
+  &quot;company_key&quot;: &quot;NYSE:MMM&quot;,
+  &quot;company_name&quot;: &quot;3M&quot;,
+  &quot;english_name&quot;: &quot;3M&quot;,
+  &quot;stock_code&quot;: &quot;MMM&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q3&quot;,
+  &quot;source_fiscal_period&quot;: null,
+  &quot;conference_date&quot;: &quot;2026-10-20&quot;,
+  &quot;start_time&quot;: null,
+  &quot;end_time&quot;: null,
+  &quot;time_basis&quot;: &quot;LOCAL_DATE_ONLY&quot;,
+  &quot;local_timezone&quot;: &quot;America/New_York&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-10-20&quot;,
+  &quot;local_start_time&quot;: null,
+  &quot;local_end_time&quot;: null,
+  &quot;conference_type&quot;: null,
+  &quot;location&quot;: null,
+  &quot;meeting_link&quot;: null,
+  &quot;document_url&quot;: null,
+  &quot;status&quot;: &quot;SCHEDULED&quot;,
+  &quot;importance&quot;: 1,
+  &quot;source&quot;: &quot;DEV_SAMPLE&quot;,
+  &quot;source_url&quot;: null,
+  &quot;confidence&quot;: null,
+  &quot;remark&quot;: &quot;[當地日 2026-10-20（America/New_York），時間未知，台北日可能為隔日]&quot;,
+  &quot;recipients&quot;: [
+    &quot;C00&quot;
+  ],
+  &quot;revision&quot;: 0,
+  &quot;crawled_at&quot;: &quot;2026-11-03T23:30:43+08:00&quot;
+}</pre></details></section><section class="card mt" id="r1"><span class="tag t-ir_document">ir_document</span><b>文件清單（manifest）</b><div class="small">batch_path：<code>docs/NYSE_MMM/2026Q3/manifest.json</code>｜批次：dev_20261103T232657<br>進 silver：s_ir_calendar_document_file（展開 files[]）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>3M</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>conference_date</td><td>2026-10-20</td></tr><tr><td>status</td><td>DONE</td></tr><tr><td>wanted</td><td><pre style="max-height:240px;margin:0">[
+  &quot;presentation&quot;,
+  &quot;financial_report&quot;
+]</pre></td></tr><tr><td>missing</td><td><span class="null">[]</span></td></tr><tr><td>generated_at</td><td>2026-11-03T23:30:47+08:00</td></tr></tbody></table><h3>files[]</h3><table><thead><tr><th>type</th><th>title</th><th>doc_date</th><th>source</th><th class="num">bytes</th><th>file（連到來源）</th><th>fetched_at</th></tr></thead><tbody><tr><td>financial_report</td><td>10-Q filing 2026-10-20</td><td>2026-10-20</td><td>EDGAR</td><td class="num">2,405,800</td><td><a href="https://www.sec.gov/Archives/edgar/data/66740/000006674026000311/mmm-20260930.htm">financial_report_20261020_89b79f20.htm</a></td><td>2026-11-03T23:30:46</td></tr><tr><td>presentation</td><td>8-K EX-99 2026-10-20</td><td>2026-10-20</td><td>EDGAR</td><td class="num">1,109,493</td><td><a href="https://www.sec.gov/Archives/edgar/data/66740/000006674026000308/q32026-8kerexx991.htm">presentation_20261020_06d27bfe.htm</a></td><td>2026-11-03T23:30:47</td></tr></tbody></table></div><details><summary>原始 JSON（1,515 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_document&quot;,
+  &quot;company_key&quot;: &quot;NYSE:MMM&quot;,
+  &quot;company_name&quot;: &quot;3M&quot;,
+  &quot;stock_code&quot;: &quot;MMM&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q3&quot;,
+  &quot;conference_date&quot;: &quot;2026-10-20&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-10-20&quot;,
+  &quot;status&quot;: &quot;DONE&quot;,
+  &quot;wanted&quot;: [
+    &quot;presentation&quot;,
+    &quot;financial_report&quot;
+  ],
+  &quot;missing&quot;: [],
+  &quot;files&quot;: [
+    {
+      &quot;type&quot;: &quot;financial_report&quot;,
+      &quot;file&quot;: &quot;financial_report_20261020_89b79f20.htm&quot;,
+      &quot;path&quot;: &quot;docs/NYSE_MMM/2026Q3/financial_report_20261020_89b79f20.htm&quot;,
+      &quot;source&quot;: &quot;EDGAR&quot;,
+      &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/66740/000006674026000311/mmm-20260930.htm&quot;,
+      &quot;title&quot;: &quot;10-Q filing 2026-10-20&quot;,
+      &quot;doc_date&quot;: &quot;2026-10-20&quot;,
+      &quot;sha256&quot;: &quot;89b79f208a60b127fcbecca326283f7c443205ba973de0b7e8e34a2029376f79&quot;,
+      &quot;bytes&quot;: 2405800,
+      &quot;fetched_at&quot;: &quot;2026-11-03T23:30:46+08:00&quot;
+    },
+    {
+      &quot;type&quot;: &quot;presentation&quot;,
+      &quot;file&quot;: &quot;presentation_20261020_06d27bfe.htm&quot;,
+      &quot;path&quot;: &quot;docs/NYSE_MMM/2026Q3/presentation_20261020_06d27bfe.htm&quot;,
+      &quot;source&quot;: &quot;EDGAR&quot;,
+      &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/66740/000006674026000308/q32026-8kerexx991.htm&quot;,
+      &quot;title&quot;: &quot;8-K EX-99 2026-10-20&quot;,
+      &quot;doc_date&quot;: &quot;2026-10-20&quot;,
+      &quot;sha256&quot;: &quot;06d27bfec763d8206e3c9c04f7c5c86775d62dd95f8fc89f02b2dbaf6c8b0335&quot;,
+      &quot;bytes&quot;: 1109493,
+      &quot;fetched_at&quot;: &quot;2026-11-03T23:30:47+08:00&quot;
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-11-03T23:30:47+08:00&quot;
+}</pre></details></section><section class="card mt" id="r2"><span class="tag t-ir_document_file">ir_document_file</span><b>實體檔</b><div class="small">batch_path：<code>docs/NYSE_MMM/2026Q3/3M_Q3CY26_Financial_Statements.htm</code>｜批次：dev_20261103T232657<br>實體檔：<code>/private/tmp/claude-501/-Users-ericmlyang-Coding-databricks-coding/98040114-a886-49ae-8c3d-28d10cb6ed13/scratchpad/ircal_sandbox/out/docs/NYSE_MMM/2026Q3/financial_report_20261020_89b79f20.htm</code><br>進 silver：s_ir_calendar_document_file ＋ Volume 實體檔 → parse_documents → s_ir_calendar_document_text</div><div class="mt"><table class="kv"><tbody><tr><td>company_slug</td><td>3M</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>doc_kind</td><td>Financial_Statements</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>source_file</td><td>financial_report_20261020_89b79f20.htm</td></tr><tr><td>source_url</td><td><a href="https://www.sec.gov/Archives/edgar/data/66740/000006674026000311/mmm-20260930.htm">https://www.sec.gov/Archives/edgar/data/66740/000006674026000311/mmm-20260930.htm</a></td></tr><tr><td>doc_date</td><td>2026-10-20</td></tr><tr><td>bytes</td><td>2405800</td></tr><tr><td>sha256</td><td>89b79f208a60b127fcbecca326283f7c443205ba973de0b7e8e34a2029376f79</td></tr></tbody></table></div><details><summary>原始 JSON（559 字）</summary><pre>{
+  &quot;path&quot;: &quot;docs/NYSE_MMM/2026Q3/3M_Q3CY26_Financial_Statements.htm&quot;,
+  &quot;record_type&quot;: &quot;ir_document_file&quot;,
+  &quot;sha256&quot;: &quot;89b79f208a60b127fcbecca326283f7c443205ba973de0b7e8e34a2029376f79&quot;,
+  &quot;bytes&quot;: 2405800,
+  &quot;company_key&quot;: &quot;NYSE:MMM&quot;,
+  &quot;company_slug&quot;: &quot;3M&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;doc_kind&quot;: &quot;Financial_Statements&quot;,
+  &quot;fiscal_label&quot;: null,
+  &quot;source_file&quot;: &quot;financial_report_20261020_89b79f20.htm&quot;,
+  &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/66740/000006674026000311/mmm-20260930.htm&quot;,
+  &quot;doc_date&quot;: &quot;2026-10-20&quot;
+}</pre></details></section><section class="card mt" id="r3"><span class="tag t-ir_document_file">ir_document_file</span><b>實體檔</b><div class="small">batch_path：<code>docs/NYSE_MMM/2026Q3/3M_Q3CY26_Presentation.htm</code>｜批次：dev_20261103T232657<br>實體檔：<code>/private/tmp/claude-501/-Users-ericmlyang-Coding-databricks-coding/98040114-a886-49ae-8c3d-28d10cb6ed13/scratchpad/ircal_sandbox/out/docs/NYSE_MMM/2026Q3/presentation_20261020_06d27bfe.htm</code><br>進 silver：s_ir_calendar_document_file ＋ Volume 實體檔 → parse_documents → s_ir_calendar_document_text</div><div class="mt"><table class="kv"><tbody><tr><td>company_slug</td><td>3M</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>doc_kind</td><td>Presentation</td></tr><tr><td>fiscal_label</td><td><span class="null">null</span></td></tr><tr><td>source_file</td><td>presentation_20261020_06d27bfe.htm</td></tr><tr><td>source_url</td><td><a href="https://www.sec.gov/Archives/edgar/data/66740/000006674026000308/q32026-8kerexx991.htm">https://www.sec.gov/Archives/edgar/data/66740/000006674026000308/q32026-8kerexx991.htm</a></td></tr><tr><td>doc_date</td><td>2026-10-20</td></tr><tr><td>bytes</td><td>1109493</td></tr><tr><td>sha256</td><td>06d27bfec763d8206e3c9c04f7c5c86775d62dd95f8fc89f02b2dbaf6c8b0335</td></tr></tbody></table></div><details><summary>原始 JSON（544 字）</summary><pre>{
+  &quot;path&quot;: &quot;docs/NYSE_MMM/2026Q3/3M_Q3CY26_Presentation.htm&quot;,
+  &quot;record_type&quot;: &quot;ir_document_file&quot;,
+  &quot;sha256&quot;: &quot;06d27bfec763d8206e3c9c04f7c5c86775d62dd95f8fc89f02b2dbaf6c8b0335&quot;,
+  &quot;bytes&quot;: 1109493,
+  &quot;company_key&quot;: &quot;NYSE:MMM&quot;,
+  &quot;company_slug&quot;: &quot;3M&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;doc_kind&quot;: &quot;Presentation&quot;,
+  &quot;fiscal_label&quot;: null,
+  &quot;source_file&quot;: &quot;presentation_20261020_06d27bfe.htm&quot;,
+  &quot;source_url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/66740/000006674026000308/q32026-8kerexx991.htm&quot;,
+  &quot;doc_date&quot;: &quot;2026-10-20&quot;
+}</pre></details></section><section class="card mt" id="r4"><span class="tag t-ir_financials">ir_financials</span><b>財報數據</b><div class="small">batch_path：<code>financials/NYSE_MMM.json</code>｜批次：dev_20261103T232657<br>進 silver：s_ir_calendar_financials（annual[] + quarterly[] 一期一列）</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>3M</td></tr><tr><td>currency</td><td>USD</td></tr><tr><td>unit</td><td>one</td></tr><tr><td>source</td><td>SEC companyfacts</td></tr><tr><td>generated_at</td><td>2026-11-03T23:27:00</td></tr></tbody></table><h3>annual[]（5 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num">2025-12-31</td><td class="num">24,948,000,000</td><td class="num">14,991,000,000</td><td class="num">9,957,000,000</td><td class="num">4,629,000,000</td><td class="num">4,213,000,000</td><td class="num">3,250,000,000</td><td class="num">3,250,000,000</td><td class="num">6.00</td><td class="num">2,306,000,000</td><td class="num"><span class="null">—</span></td><td class="num">910,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,350,000,000</td><td class="num">37,733,000,000</td><td class="num">32,986,000,000</td><td class="num">4,747,000,000</td><td class="num">39.91</td><td class="num">18.55</td><td class="num">16.89</td><td class="num">13.03</td><td class="num">13.03</td><td class="num">87.42</td><td class="num">1.71</td><td class="num">gross_profit</td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num">2024-12-31</td><td class="num">24,575,000,000</td><td class="num">14,447,000,000</td><td class="num">10,128,000,000</td><td class="num">4,822,000,000</td><td class="num">4,819,000,000</td><td class="num">4,173,000,000</td><td class="num">4,173,000,000</td><td class="num">7.55</td><td class="num">1,819,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,181,000,000</td><td class="num"><span class="null">—</span></td><td class="num">-3,206,000,000</td><td class="num">39,868,000,000</td><td class="num">35,974,000,000</td><td class="num">3,894,000,000</td><td class="num">41.21</td><td class="num">19.62</td><td class="num">19.61</td><td class="num">16.98</td><td class="num">16.98</td><td class="num">90.23</td><td class="num">1.41</td><td class="num">gross_profit</td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num">2023-12-31</td><td class="num">24,610,000,000</td><td class="num">14,983,000,000</td><td class="num">9,627,000,000</td><td class="num">-10,689,000,000</td><td class="num">-11,271,000,000</td><td class="num">-6,995,000,000</td><td class="num">-6,995,000,000</td><td class="num">-12.63</td><td class="num">6,680,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,615,000,000</td><td class="num"><span class="null">—</span></td><td class="num">-1,207,000,000</td><td class="num">50,580,000,000</td><td class="num">45,712,000,000</td><td class="num">4,868,000,000</td><td class="num">39.12</td><td class="num">-43.43</td><td class="num">-45.80</td><td class="num">-28.42</td><td class="num">-28.42</td><td class="num">90.38</td><td class="num">1.07</td><td class="num">gross_profit</td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num">2022-12-31</td><td class="num">26,161,000,000</td><td class="num">15,853,000,000</td><td class="num">10,308,000,000</td><td class="num">4,369,000,000</td><td class="num">4,204,000,000</td><td class="num">5,777,000,000</td><td class="num">5,777,000,000</td><td class="num">10.18</td><td class="num">5,591,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,749,000,000</td><td class="num"><span class="null">—</span></td><td class="num">-1,046,000,000</td><td class="num">46,455,000,000</td><td class="num">31,685,000,000</td><td class="num">14,770,000,000</td><td class="num">39.40</td><td class="num">16.70</td><td class="num">16.07</td><td class="num">22.08</td><td class="num">22.08</td><td class="num">68.21</td><td class="num">1.54</td><td class="num">gross_profit</td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num">2021-12-31</td><td class="num">35,355,000,000</td><td class="num">18,795,000,000</td><td class="num">16,560,000,000</td><td class="num">7,369,000,000</td><td class="num">7,204,000,000</td><td class="num">5,921,000,000</td><td class="num">5,921,000,000</td><td class="num">10.12</td><td class="num">7,454,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,603,000,000</td><td class="num"><span class="null">—</span></td><td class="num">-1,317,000,000</td><td class="num">47,072,000,000</td><td class="num">31,955,000,000</td><td class="num">15,117,000,000</td><td class="num">46.84</td><td class="num">20.84</td><td class="num">20.38</td><td class="num">16.75</td><td class="num">16.75</td><td class="num">67.89</td><td class="num">1.70</td><td class="num">gross_profit</td></tr></tbody></table></div><h3>quarterly[]（8 列）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">期末</th><th class="num">營收</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">營業利益</th><th class="num">稅前</th><th class="num">淨利</th><th class="num">母公司淨利</th><th class="num">EPS</th><th class="num">OCF</th><th class="num">OCF YTD</th><th class="num">資本支出</th><th class="num">資本支出 YTD</th><th class="num">投資現金流</th><th class="num">總資產</th><th class="num">總負債</th><th class="num">權益</th><th class="num">毛利率%</th><th class="num">營益率%</th><th class="num">稅前淨利率%</th><th class="num">淨利率%</th><th class="num">母公司淨利率%</th><th class="num">負債比%</th><th class="num">流動比</th><th class="num">推算欄</th></tr></thead><tbody><tr><td class="num">2026Q3</td><td class="num"></td><td class="num">2026-09-30</td><td class="num">6,584,000,000</td><td class="num">3,801,000,000</td><td class="num">2,783,000,000</td><td class="num">1,558,000,000</td><td class="num">1,670,000,000</td><td class="num">1,373,000,000</td><td class="num">1,373,000,000</td><td class="num">2.63</td><td class="num">486,000,000</td><td class="num">2,046,000,000</td><td class="num">256,000,000</td><td class="num">704,000,000</td><td class="num">-2,089,000,000</td><td class="num">39,526,000,000</td><td class="num">34,386,000,000</td><td class="num">4,169,000,000</td><td class="num">42.27</td><td class="num">23.66</td><td class="num">25.36</td><td class="num">20.85</td><td class="num">20.85</td><td class="num">87.00</td><td class="num">1.41</td><td class="num">gross_profit、operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2026Q2</td><td class="num"></td><td class="num">2026-06-30</td><td class="num">6,500,000,000</td><td class="num">3,817,000,000</td><td class="num">2,683,000,000</td><td class="num">984,000,000</td><td class="num">1,120,000,000</td><td class="num">933,000,000</td><td class="num">933,000,000</td><td class="num">1.78</td><td class="num">986,000,000</td><td class="num">1,560,000,000</td><td class="num">223,000,000</td><td class="num">448,000,000</td><td class="num">-483,000,000</td><td class="num">34,924,000,000</td><td class="num">31,919,000,000</td><td class="num">3,005,000,000</td><td class="num">41.28</td><td class="num">15.14</td><td class="num">17.23</td><td class="num">14.35</td><td class="num">14.35</td><td class="num">91.40</td><td class="num">1.24</td><td class="num">gross_profit、operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num">2026-03-31</td><td class="num">6,030,000,000</td><td class="num">3,574,000,000</td><td class="num">2,456,000,000</td><td class="num">1,397,000,000</td><td class="num">878,000,000</td><td class="num">653,000,000</td><td class="num">653,000,000</td><td class="num">1.23</td><td class="num">574,000,000</td><td class="num">574,000,000</td><td class="num">225,000,000</td><td class="num">225,000,000</td><td class="num">60,000,000</td><td class="num">35,436,000,000</td><td class="num">32,125,000,000</td><td class="num">3,311,000,000</td><td class="num">40.73</td><td class="num">23.17</td><td class="num">14.56</td><td class="num">10.83</td><td class="num">10.83</td><td class="num">90.66</td><td class="num">1.59</td><td class="num">gross_profit</td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num">2025-12-31</td><td class="num">6,133,000,000</td><td class="num"><span class="null">—</span></td><td class="num">2,058,000,000</td><td class="num">796,000,000</td><td class="num">758,000,000</td><td class="num">577,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">1,583,000,000</td><td class="num">2,306,000,000</td><td class="num">248,000,000</td><td class="num">910,000,000</td><td class="num">-405,000,000</td><td class="num">37,733,000,000</td><td class="num">32,986,000,000</td><td class="num">4,747,000,000</td><td class="num">33.56</td><td class="num">12.98</td><td class="num">12.36</td><td class="num">9.41</td><td class="num"><span class="null">—</span></td><td class="num">87.42</td><td class="num">1.71</td><td class="num">revenue、gross_profit、operating_income、pretax_income、net_income、operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num">2025-09-30</td><td class="num">6,517,000,000</td><td class="num">3,792,000,000</td><td class="num">2,725,000,000</td><td class="num">1,447,000,000</td><td class="num">1,147,000,000</td><td class="num">834,000,000</td><td class="num">834,000,000</td><td class="num">1.55</td><td class="num">1,756,000,000</td><td class="num">723,000,000</td><td class="num">218,000,000</td><td class="num">662,000,000</td><td class="num">465,000,000</td><td class="num">37,611,000,000</td><td class="num">32,936,000,000</td><td class="num">4,675,000,000</td><td class="num">41.81</td><td class="num">22.20</td><td class="num">17.60</td><td class="num">12.80</td><td class="num">12.80</td><td class="num">87.57</td><td class="num">1.84</td><td class="num">gross_profit、operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num">2025-06-30</td><td class="num">6,344,000,000</td><td class="num">3,646,000,000</td><td class="num">2,698,000,000</td><td class="num">1,140,000,000</td><td class="num">923,000,000</td><td class="num">723,000,000</td><td class="num">723,000,000</td><td class="num">1.34</td><td class="num">-954,000,000</td><td class="num">-1,033,000,000</td><td class="num">208,000,000</td><td class="num">444,000,000</td><td class="num">70,000,000</td><td class="num">37,989,000,000</td><td class="num">33,638,000,000</td><td class="num">4,351,000,000</td><td class="num">42.53</td><td class="num">17.97</td><td class="num">14.55</td><td class="num">11.40</td><td class="num">11.40</td><td class="num">88.55</td><td class="num">1.72</td><td class="num">gross_profit、operating_cash_flow、capex、investing_cash_flow</td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num">2025-03-31</td><td class="num">5,954,000,000</td><td class="num">3,478,000,000</td><td class="num">2,476,000,000</td><td class="num">1,246,000,000</td><td class="num">1,385,000,000</td><td class="num">1,116,000,000</td><td class="num">1,116,000,000</td><td class="num">2.04</td><td class="num">-79,000,000</td><td class="num">-79,000,000</td><td class="num">236,000,000</td><td class="num">236,000,000</td><td class="num">1,220,000,000</td><td class="num">39,951,000,000</td><td class="num">35,428,000,000</td><td class="num">4,523,000,000</td><td class="num">41.59</td><td class="num">20.93</td><td class="num">23.26</td><td class="num">18.74</td><td class="num">18.74</td><td class="num">88.68</td><td class="num">1.66</td><td class="num">gross_profit</td></tr><tr><td class="num">2024Q4</td><td class="num"></td><td class="num">2024-12-31</td><td class="num">6,010,000,000</td><td class="num">3,744,000,000</td><td class="num">2,266,000,000</td><td class="num">1,085,000,000</td><td class="num">759,000,000</td><td class="num">728,000,000</td><td class="num">728,000,000</td><td class="num">1.33</td><td class="num"><span class="null">—</span></td><td class="num">1,819,000,000</td><td class="num"><span class="null">—</span></td><td class="num">1,181,000,000</td><td class="num"><span class="null">—</span></td><td class="num">39,868,000,000</td><td class="num">35,974,000,000</td><td class="num">3,894,000,000</td><td class="num">37.70</td><td class="num">18.05</td><td class="num">12.63</td><td class="num">12.11</td><td class="num">12.11</td><td class="num">90.23</td><td class="num">1.41</td><td class="num">gross_profit、operating_income、pretax_income</td></tr></tbody></table></div><div class="note">金額為原始單位（台股仟元、美股元）；季別列的 OCF / 資本支出是年初累計（YTD），新版另推算單季值；derived 標示推算值。source_urls 省略，見原始 JSON。</div><h3>新版才有的資產負債表明細與天數（annual[] ＋ quarterly[]）</h3><div style="overflow:auto"><table><thead><tr><th class="num">期別</th><th class="num">年度</th><th class="num">現金</th><th class="num">FVTPL 金融資產</th><th class="num">FVOCI 金融資產</th><th class="num">應收票據</th><th class="num">應收帳款</th><th class="num">應收關係人</th><th class="num">存貨</th><th class="num">應付帳款</th><th class="num">應付關係人</th><th class="num">速動資產</th><th class="num">速動比</th><th class="num">應收天數</th><th class="num">應付天數</th><th class="num">天數基準</th></tr></thead><tbody><tr><td class="num"></td><td class="num">2025</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,533,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,661,000,000</td><td class="num">2,702,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">49.2</td><td class="num">65.3</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2024</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,194,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,698,000,000</td><td class="num">2,660,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">50.5</td><td class="num">68.7</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2023</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,601,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,944,000,000</td><td class="num">2,776,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">60.3</td><td class="num">72.6</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2022</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">4,532,000,000</td><td class="num"><span class="null">—</span></td><td class="num">5,372,000,000</td><td class="num">3,183,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">64.1</td><td class="num">71.1</td><td class="num">avg</td></tr><tr><td class="num"></td><td class="num">2021</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">4,660,000,000</td><td class="num"><span class="null">—</span></td><td class="num">4,985,000,000</td><td class="num">2,994,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">48.1</td><td class="num">58.1</td><td class="num">end</td></tr><tr><td class="num">2026Q3</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">4,116,000,000</td><td class="num"><span class="null">—</span></td><td class="num">4,081,000,000</td><td class="num">3,040,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2026Q2</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,927,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,770,000,000</td><td class="num">3,108,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2026Q1</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,754,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,690,000,000</td><td class="num">2,786,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q4</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,533,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,661,000,000</td><td class="num">2,702,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q3</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,777,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,893,000,000</td><td class="num">2,735,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q2</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,760,000,000</td><td class="num"><span class="null">—</span></td><td class="num">4,077,000,000</td><td class="num">2,840,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2025Q1</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,501,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,869,000,000</td><td class="num">2,756,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr><tr><td class="num">2024Q4</td><td class="num"></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num">3,194,000,000</td><td class="num"><span class="null">—</span></td><td class="num">3,698,000,000</td><td class="num">2,660,000,000</td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"><span class="null">—</span></td><td class="num"></td></tr></tbody></table></div><div class="note">速動資產＝現金及約當現金＋按公允價值衡量之金融資產（流動）＋應收票據＋應收帳款（含關係人）；速動比＝速動資產／流動負債。應收天數＝平均應收帳款／營收×365、應付天數＝平均應付帳款／銷貨成本×365，days_basis＝avg 為期初期末平均、end 為期末值（最早一年）；天數只在年度列。</div></div><details><summary>原始 JSON（18,649 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_financials&quot;,
+  &quot;company_key&quot;: &quot;NYSE:MMM&quot;,
+  &quot;company_name&quot;: &quot;3M&quot;,
+  &quot;stock_code&quot;: &quot;MMM&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;currency&quot;: &quot;USD&quot;,
+  &quot;unit&quot;: &quot;one&quot;,
+  &quot;source&quot;: &quot;SEC companyfacts&quot;,
+  &quot;annual&quot;: [
+    {
+      &quot;fiscal_year&quot;: 2025,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;revenue&quot;: 24948000000,
+      &quot;cost_of_revenue&quot;: 14991000000,
+      &quot;operating_income&quot;: 4629000000,
+      &quot;pretax_income&quot;: 4213000000,
+      &quot;net_income&quot;: 3250000000,
+      &quot;eps&quot;: 6,
+      &quot;net_income_parent&quot;: 3250000000,
+      &quot;operating_cash_flow&quot;: 2306000000,
+      &quot;capex&quot;: 910000000,
+      &quot;investing_cash_flow&quot;: 1350000000,
+      &quot;gross_profit&quot;: 9957000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;equity&quot;: 4747000000,
+      &quot;accounts_receivable&quot;: 3533000000,
+      &quot;accounts_payable&quot;: 2702000000,
+      &quot;current_assets&quot;: 16387000000,
+      &quot;current_liabilities&quot;: 9595000000,
+      &quot;total_assets&quot;: 37733000000,
+      &quot;inventory&quot;: 3661000000,
+      &quot;equity_parent&quot;: 4702000000,
+      &quot;total_liabilities&quot;: 32986000000,
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 39.91,
+      &quot;operating_margin&quot;: 18.55,
+      &quot;pretax_margin&quot;: 16.89,
+      &quot;net_margin&quot;: 13.03,
+      &quot;net_margin_parent&quot;: 13.03,
+      &quot;debt_ratio&quot;: 87.42,
+      &quot;current_ratio&quot;: 1.71,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;dso_days&quot;: 49.2,
+      &quot;dpo_days&quot;: 65.3,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2024,
+      &quot;period_end&quot;: &quot;2024-12-31&quot;,
+      &quot;revenue&quot;: 24575000000,
+      &quot;cost_of_revenue&quot;: 14447000000,
+      &quot;operating_income&quot;: 4822000000,
+      &quot;pretax_income&quot;: 4819000000,
+      &quot;net_income&quot;: 4173000000,
+      &quot;eps&quot;: 7.55,
+      &quot;net_income_parent&quot;: 4173000000,
+      &quot;operating_cash_flow&quot;: 1819000000,
+      &quot;capex&quot;: 1181000000,
+      &quot;investing_cash_flow&quot;: -3206000000,
+      &quot;gross_profit&quot;: 10128000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;equity&quot;: 3894000000,
+      &quot;accounts_receivable&quot;: 3194000000,
+      &quot;accounts_payable&quot;: 2660000000,
+      &quot;current_assets&quot;: 15884000000,
+      &quot;current_liabilities&quot;: 11256000000,
+      &quot;total_assets&quot;: 39868000000,
+      &quot;inventory&quot;: 3698000000,
+      &quot;equity_parent&quot;: 3842000000,
+      &quot;total_liabilities&quot;: 35974000000,
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 41.21,
+      &quot;operating_margin&quot;: 19.62,
+      &quot;pretax_margin&quot;: 19.61,
+      &quot;net_margin&quot;: 16.98,
+      &quot;net_margin_parent&quot;: 16.98,
+      &quot;debt_ratio&quot;: 90.23,
+      &quot;current_ratio&quot;: 1.41,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;dso_days&quot;: 50.5,
+      &quot;dpo_days&quot;: 68.7,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2023,
+      &quot;period_end&quot;: &quot;2023-12-31&quot;,
+      &quot;revenue&quot;: 24610000000,
+      &quot;cost_of_revenue&quot;: 14983000000,
+      &quot;operating_income&quot;: -10689000000,
+      &quot;pretax_income&quot;: -11271000000,
+      &quot;net_income&quot;: -6995000000,
+      &quot;eps&quot;: -12.63,
+      &quot;net_income_parent&quot;: -6995000000,
+      &quot;operating_cash_flow&quot;: 6680000000,
+      &quot;capex&quot;: 1615000000,
+      &quot;investing_cash_flow&quot;: -1207000000,
+      &quot;gross_profit&quot;: 9627000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;equity&quot;: 4868000000,
+      &quot;accounts_receivable&quot;: 3601000000,
+      &quot;accounts_payable&quot;: 2776000000,
+      &quot;current_assets&quot;: 16379000000,
+      &quot;current_liabilities&quot;: 15297000000,
+      &quot;total_assets&quot;: 50580000000,
+      &quot;inventory&quot;: 3944000000,
+      &quot;equity_parent&quot;: 4807000000,
+      &quot;total_liabilities&quot;: 45712000000,
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 39.12,
+      &quot;operating_margin&quot;: -43.43,
+      &quot;pretax_margin&quot;: -45.8,
+      &quot;net_margin&quot;: -28.42,
+      &quot;net_margin_parent&quot;: -28.42,
+      &quot;debt_ratio&quot;: 90.38,
+      &quot;current_ratio&quot;: 1.07,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;dso_days&quot;: 60.3,
+      &quot;dpo_days&quot;: 72.6,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2022,
+      &quot;period_end&quot;: &quot;2022-12-31&quot;,
+      &quot;revenue&quot;: 26161000000,
+      &quot;cost_of_revenue&quot;: 15853000000,
+      &quot;operating_income&quot;: 4369000000,
+      &quot;pretax_income&quot;: 4204000000,
+      &quot;net_income&quot;: 5777000000,
+      &quot;eps&quot;: 10.18,
+      &quot;net_income_parent&quot;: 5777000000,
+      &quot;operating_cash_flow&quot;: 5591000000,
+      &quot;capex&quot;: 1749000000,
+      &quot;investing_cash_flow&quot;: -1046000000,
+      &quot;gross_profit&quot;: 10308000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;equity&quot;: 14770000000,
+      &quot;accounts_receivable&quot;: 4532000000,
+      &quot;accounts_payable&quot;: 3183000000,
+      &quot;current_assets&quot;: 14688000000,
+      &quot;current_liabilities&quot;: 9523000000,
+      &quot;total_assets&quot;: 46455000000,
+      &quot;inventory&quot;: 5372000000,
+      &quot;equity_parent&quot;: 14722000000,
+      &quot;total_liabilities&quot;: 31685000000,
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 39.4,
+      &quot;operating_margin&quot;: 16.7,
+      &quot;pretax_margin&quot;: 16.07,
+      &quot;net_margin&quot;: 22.08,
+      &quot;net_margin_parent&quot;: 22.08,
+      &quot;debt_ratio&quot;: 68.21,
+      &quot;current_ratio&quot;: 1.54,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;dso_days&quot;: 64.1,
+      &quot;dpo_days&quot;: 71.1,
+      &quot;days_basis&quot;: &quot;avg&quot;
+    },
+    {
+      &quot;fiscal_year&quot;: 2021,
+      &quot;period_end&quot;: &quot;2021-12-31&quot;,
+      &quot;revenue&quot;: 35355000000,
+      &quot;cost_of_revenue&quot;: 18795000000,
+      &quot;operating_income&quot;: 7369000000,
+      &quot;pretax_income&quot;: 7204000000,
+      &quot;net_income&quot;: 5921000000,
+      &quot;eps&quot;: 10.12,
+      &quot;net_income_parent&quot;: 5921000000,
+      &quot;operating_cash_flow&quot;: 7454000000,
+      &quot;capex&quot;: 1603000000,
+      &quot;investing_cash_flow&quot;: -1317000000,
+      &quot;gross_profit&quot;: 16560000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;equity&quot;: 15117000000,
+      &quot;accounts_receivable&quot;: 4660000000,
+      &quot;accounts_payable&quot;: 2994000000,
+      &quot;current_assets&quot;: 15403000000,
+      &quot;current_liabilities&quot;: 9035000000,
+      &quot;total_assets&quot;: 47072000000,
+      &quot;inventory&quot;: 4985000000,
+      &quot;equity_parent&quot;: 15046000000,
+      &quot;total_liabilities&quot;: 31955000000,
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 46.84,
+      &quot;operating_margin&quot;: 20.84,
+      &quot;pretax_margin&quot;: 20.38,
+      &quot;net_margin&quot;: 16.75,
+      &quot;net_margin_parent&quot;: 16.75,
+      &quot;debt_ratio&quot;: 67.89,
+      &quot;current_ratio&quot;: 1.7,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;dso_days&quot;: 48.1,
+      &quot;dpo_days&quot;: 58.1,
+      &quot;days_basis&quot;: &quot;end&quot;
+    }
+  ],
+  &quot;quarterly&quot;: [
+    {
+      &quot;period&quot;: &quot;2026Q3&quot;,
+      &quot;period_end&quot;: &quot;2026-09-30&quot;,
+      &quot;revenue&quot;: 6584000000,
+      &quot;cost_of_revenue&quot;: 3801000000,
+      &quot;operating_income&quot;: 1558000000,
+      &quot;pretax_income&quot;: 1670000000,
+      &quot;net_income&quot;: 1373000000,
+      &quot;eps&quot;: 2.63,
+      &quot;net_income_parent&quot;: 1373000000,
+      &quot;operating_cash_flow_ytd&quot;: 2046000000,
+      &quot;capex_ytd&quot;: 704000000,
+      &quot;investing_cash_flow_ytd&quot;: -2512000000,
+      &quot;total_assets&quot;: 39526000000,
+      &quot;total_liabilities&quot;: 34386000000,
+      &quot;current_assets&quot;: 16714000000,
+      &quot;current_liabilities&quot;: 11868000000,
+      &quot;accounts_receivable&quot;: 4116000000,
+      &quot;inventory&quot;: 4081000000,
+      &quot;accounts_payable&quot;: 3040000000,
+      &quot;equity&quot;: 4169000000,
+      &quot;equity_parent&quot;: 4127000000,
+      &quot;gross_profit&quot;: 2783000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 42.27,
+      &quot;operating_margin&quot;: 23.66,
+      &quot;pretax_margin&quot;: 25.36,
+      &quot;net_margin&quot;: 20.85,
+      &quot;net_margin_parent&quot;: 20.85,
+      &quot;debt_ratio&quot;: 87.0,
+      &quot;current_ratio&quot;: 1.41,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;operating_cash_flow&quot;: 486000000,
+      &quot;capex&quot;: 256000000,
+      &quot;investing_cash_flow&quot;: -2089000000
+    },
+    {
+      &quot;period&quot;: &quot;2026Q2&quot;,
+      &quot;period_end&quot;: &quot;2026-06-30&quot;,
+      &quot;revenue&quot;: 6500000000,
+      &quot;cost_of_revenue&quot;: 3817000000,
+      &quot;operating_income&quot;: 984000000,
+      &quot;pretax_income&quot;: 1120000000,
+      &quot;net_income&quot;: 933000000,
+      &quot;eps&quot;: 1.78,
+      &quot;net_income_parent&quot;: 933000000,
+      &quot;operating_cash_flow_ytd&quot;: 1560000000,
+      &quot;capex_ytd&quot;: 448000000,
+      &quot;investing_cash_flow_ytd&quot;: -423000000,
+      &quot;total_assets&quot;: 34924000000,
+      &quot;total_liabilities&quot;: 31919000000,
+      &quot;current_assets&quot;: 14112000000,
+      &quot;current_liabilities&quot;: 11379000000,
+      &quot;accounts_receivable&quot;: 3927000000,
+      &quot;inventory&quot;: 3770000000,
+      &quot;accounts_payable&quot;: 3108000000,
+      &quot;equity&quot;: 3005000000,
+      &quot;equity_parent&quot;: 2952000000,
+      &quot;gross_profit&quot;: 2683000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 41.28,
+      &quot;operating_margin&quot;: 15.14,
+      &quot;pretax_margin&quot;: 17.23,
+      &quot;net_margin&quot;: 14.35,
+      &quot;net_margin_parent&quot;: 14.35,
+      &quot;debt_ratio&quot;: 91.4,
+      &quot;current_ratio&quot;: 1.24,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;operating_cash_flow&quot;: 986000000,
+      &quot;capex&quot;: 223000000,
+      &quot;investing_cash_flow&quot;: -483000000
+    },
+    {
+      &quot;period&quot;: &quot;2026Q1&quot;,
+      &quot;period_end&quot;: &quot;2026-03-31&quot;,
+      &quot;revenue&quot;: 6030000000,
+      &quot;cost_of_revenue&quot;: 3574000000,
+      &quot;operating_income&quot;: 1397000000,
+      &quot;pretax_income&quot;: 878000000,
+      &quot;net_income&quot;: 653000000,
+      &quot;eps&quot;: 1.23,
+      &quot;net_income_parent&quot;: 653000000,
+      &quot;operating_cash_flow&quot;: 574000000,
+      &quot;operating_cash_flow_ytd&quot;: 574000000,
+      &quot;capex&quot;: 225000000,
+      &quot;capex_ytd&quot;: 225000000,
+      &quot;investing_cash_flow&quot;: 60000000,
+      &quot;investing_cash_flow_ytd&quot;: 60000000,
+      &quot;total_assets&quot;: 35436000000,
+      &quot;total_liabilities&quot;: 32125000000,
+      &quot;current_assets&quot;: 14393000000,
+      &quot;current_liabilities&quot;: 9032000000,
+      &quot;accounts_receivable&quot;: 3754000000,
+      &quot;inventory&quot;: 3690000000,
+      &quot;accounts_payable&quot;: 2786000000,
+      &quot;equity&quot;: 3311000000,
+      &quot;equity_parent&quot;: 3263000000,
+      &quot;gross_profit&quot;: 2456000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 40.73,
+      &quot;operating_margin&quot;: 23.17,
+      &quot;pretax_margin&quot;: 14.56,
+      &quot;net_margin&quot;: 10.83,
+      &quot;net_margin_parent&quot;: 10.83,
+      &quot;debt_ratio&quot;: 90.66,
+      &quot;current_ratio&quot;: 1.59,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null
+    },
+    {
+      &quot;period&quot;: &quot;2025Q4&quot;,
+      &quot;period_end&quot;: &quot;2025-12-31&quot;,
+      &quot;total_assets&quot;: 37733000000,
+      &quot;total_liabilities&quot;: 32986000000,
+      &quot;current_assets&quot;: 16387000000,
+      &quot;current_liabilities&quot;: 9595000000,
+      &quot;accounts_receivable&quot;: 3533000000,
+      &quot;inventory&quot;: 3661000000,
+      &quot;accounts_payable&quot;: 2702000000,
+      &quot;equity&quot;: 4747000000,
+      &quot;equity_parent&quot;: 4702000000,
+      &quot;revenue&quot;: 6133000000,
+      &quot;_derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;,
+        &quot;net_income&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;gross_profit&quot;: 2058000000,
+      &quot;operating_income&quot;: 796000000,
+      &quot;pretax_income&quot;: 758000000,
+      &quot;net_income&quot;: 577000000,
+      &quot;derived&quot;: [
+        &quot;revenue&quot;,
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;,
+        &quot;net_income&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 33.56,
+      &quot;operating_margin&quot;: 12.98,
+      &quot;pretax_margin&quot;: 12.36,
+      &quot;net_margin&quot;: 9.41,
+      &quot;net_margin_parent&quot;: null,
+      &quot;debt_ratio&quot;: 87.42,
+      &quot;current_ratio&quot;: 1.71,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;operating_cash_flow_ytd&quot;: 2306000000,
+      &quot;capex_ytd&quot;: 910000000,
+      &quot;investing_cash_flow_ytd&quot;: 1350000000,
+      &quot;operating_cash_flow&quot;: 1583000000,
+      &quot;capex&quot;: 248000000,
+      &quot;investing_cash_flow&quot;: -405000000
+    },
+    {
+      &quot;period&quot;: &quot;2025Q3&quot;,
+      &quot;period_end&quot;: &quot;2025-09-30&quot;,
+      &quot;revenue&quot;: 6517000000,
+      &quot;cost_of_revenue&quot;: 3792000000,
+      &quot;operating_income&quot;: 1447000000,
+      &quot;pretax_income&quot;: 1147000000,
+      &quot;net_income&quot;: 834000000,
+      &quot;eps&quot;: 1.55,
+      &quot;net_income_parent&quot;: 834000000,
+      &quot;operating_cash_flow_ytd&quot;: 723000000,
+      &quot;capex_ytd&quot;: 662000000,
+      &quot;investing_cash_flow_ytd&quot;: 1755000000,
+      &quot;total_assets&quot;: 37611000000,
+      &quot;total_liabilities&quot;: 32936000000,
+      &quot;current_assets&quot;: 16089000000,
+      &quot;current_liabilities&quot;: 8733000000,
+      &quot;accounts_receivable&quot;: 3777000000,
+      &quot;inventory&quot;: 3893000000,
+      &quot;accounts_payable&quot;: 2735000000,
+      &quot;equity&quot;: 4675000000,
+      &quot;equity_parent&quot;: 4628000000,
+      &quot;gross_profit&quot;: 2725000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 41.81,
+      &quot;operating_margin&quot;: 22.2,
+      &quot;pretax_margin&quot;: 17.6,
+      &quot;net_margin&quot;: 12.8,
+      &quot;net_margin_parent&quot;: 12.8,
+      &quot;debt_ratio&quot;: 87.57,
+      &quot;current_ratio&quot;: 1.84,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;operating_cash_flow&quot;: 1756000000,
+      &quot;capex&quot;: 218000000,
+      &quot;investing_cash_flow&quot;: 465000000
+    },
+    {
+      &quot;period&quot;: &quot;2025Q2&quot;,
+      &quot;period_end&quot;: &quot;2025-06-30&quot;,
+      &quot;revenue&quot;: 6344000000,
+      &quot;cost_of_revenue&quot;: 3646000000,
+      &quot;operating_income&quot;: 1140000000,
+      &quot;pretax_income&quot;: 923000000,
+      &quot;net_income&quot;: 723000000,
+      &quot;eps&quot;: 1.34,
+      &quot;net_income_parent&quot;: 723000000,
+      &quot;operating_cash_flow_ytd&quot;: -1033000000,
+      &quot;capex_ytd&quot;: 444000000,
+      &quot;investing_cash_flow_ytd&quot;: 1290000000,
+      &quot;total_assets&quot;: 37989000000,
+      &quot;total_liabilities&quot;: 33638000000,
+      &quot;current_assets&quot;: 13427000000,
+      &quot;current_liabilities&quot;: 7808000000,
+      &quot;accounts_receivable&quot;: 3760000000,
+      &quot;inventory&quot;: 4077000000,
+      &quot;accounts_payable&quot;: 2840000000,
+      &quot;equity&quot;: 4351000000,
+      &quot;equity_parent&quot;: 4290000000,
+      &quot;gross_profit&quot;: 2698000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_cash_flow&quot;,
+        &quot;capex&quot;,
+        &quot;investing_cash_flow&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 42.53,
+      &quot;operating_margin&quot;: 17.97,
+      &quot;pretax_margin&quot;: 14.55,
+      &quot;net_margin&quot;: 11.4,
+      &quot;net_margin_parent&quot;: 11.4,
+      &quot;debt_ratio&quot;: 88.55,
+      &quot;current_ratio&quot;: 1.72,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;operating_cash_flow&quot;: -954000000,
+      &quot;capex&quot;: 208000000,
+      &quot;investing_cash_flow&quot;: 70000000
+    },
+    {
+      &quot;period&quot;: &quot;2025Q1&quot;,
+      &quot;period_end&quot;: &quot;2025-03-31&quot;,
+      &quot;revenue&quot;: 5954000000,
+      &quot;cost_of_revenue&quot;: 3478000000,
+      &quot;operating_income&quot;: 1246000000,
+      &quot;pretax_income&quot;: 1385000000,
+      &quot;net_income&quot;: 1116000000,
+      &quot;eps&quot;: 2.04,
+      &quot;net_income_parent&quot;: 1116000000,
+      &quot;operating_cash_flow&quot;: -79000000,
+      &quot;operating_cash_flow_ytd&quot;: -79000000,
+      &quot;capex&quot;: 236000000,
+      &quot;capex_ytd&quot;: 236000000,
+      &quot;investing_cash_flow&quot;: 1220000000,
+      &quot;investing_cash_flow_ytd&quot;: 1220000000,
+      &quot;total_assets&quot;: 39951000000,
+      &quot;total_liabilities&quot;: 35428000000,
+      &quot;current_assets&quot;: 15657000000,
+      &quot;current_liabilities&quot;: 9451000000,
+      &quot;accounts_receivable&quot;: 3501000000,
+      &quot;inventory&quot;: 3869000000,
+      &quot;accounts_payable&quot;: 2756000000,
+      &quot;equity&quot;: 4523000000,
+      &quot;equity_parent&quot;: 4464000000,
+      &quot;gross_profit&quot;: 2476000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 41.59,
+      &quot;operating_margin&quot;: 20.93,
+      &quot;pretax_margin&quot;: 23.26,
+      &quot;net_margin&quot;: 18.74,
+      &quot;net_margin_parent&quot;: 18.74,
+      &quot;debt_ratio&quot;: 88.68,
+      &quot;current_ratio&quot;: 1.66,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null
+    },
+    {
+      &quot;period&quot;: &quot;2024Q4&quot;,
+      &quot;period_end&quot;: &quot;2024-12-31&quot;,
+      &quot;revenue&quot;: 6010000000,
+      &quot;cost_of_revenue&quot;: 3744000000,
+      &quot;net_income&quot;: 728000000,
+      &quot;eps&quot;: 1.33,
+      &quot;net_income_parent&quot;: 728000000,
+      &quot;total_assets&quot;: 39868000000,
+      &quot;total_liabilities&quot;: 35974000000,
+      &quot;current_assets&quot;: 15884000000,
+      &quot;current_liabilities&quot;: 11256000000,
+      &quot;accounts_receivable&quot;: 3194000000,
+      &quot;inventory&quot;: 3698000000,
+      &quot;accounts_payable&quot;: 2660000000,
+      &quot;equity&quot;: 3894000000,
+      &quot;equity_parent&quot;: 3842000000,
+      &quot;gross_profit&quot;: 2266000000,
+      &quot;_derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;
+      ],
+      &quot;operating_income&quot;: 1085000000,
+      &quot;pretax_income&quot;: 759000000,
+      &quot;derived&quot;: [
+        &quot;gross_profit&quot;,
+        &quot;operating_income&quot;,
+        &quot;pretax_income&quot;
+      ],
+      &quot;source_urls&quot;: [
+        &quot;https://data.sec.gov/api/xbrl/companyfacts/CIK0000066740.json&quot;
+      ],
+      &quot;gross_margin&quot;: 37.7,
+      &quot;operating_margin&quot;: 18.05,
+      &quot;pretax_margin&quot;: 12.63,
+      &quot;net_margin&quot;: 12.11,
+      &quot;net_margin_parent&quot;: 12.11,
+      &quot;debt_ratio&quot;: 90.23,
+      &quot;current_ratio&quot;: 1.41,
+      &quot;quick_assets&quot;: null,
+      &quot;quick_ratio&quot;: null,
+      &quot;operating_cash_flow_ytd&quot;: 1819000000,
+      &quot;capex_ytd&quot;: 1181000000,
+      &quot;investing_cash_flow_ytd&quot;: -3206000000
+    }
+  ],
+  &quot;generated_at&quot;: &quot;2026-11-03T23:27:00&quot;
+}</pre></details></section><section class="card mt" id="r5"><span class="tag t-ir_summary">ir_summary</span><b>法說彙整</b><div class="small">batch_path：<code>summaries/2026-10-20_NYSEMMM_2026Q3.json</code>｜批次：dev_20261103T232657<br>進 silver：s_ir_calendar_summary</div><div class="mt"><table class="kv"><tbody><tr><td>company_name</td><td>3M</td></tr><tr><td>period</td><td>2026Q3</td></tr><tr><td>fiscal_period</td><td>2026Q3</td></tr><tr><td>conference_date</td><td>2026-10-20</td></tr><tr><td>local_conference_date</td><td>2026-10-20</td></tr><tr><td>fallback</td><td>false</td></tr><tr><td>recipients</td><td><pre style="max-height:240px;margin:0">[
+  &quot;C00&quot;
+]</pre></td></tr><tr><td>crawled_at</td><td>2026-11-03T23:37:51+08:00</td></tr></tbody></table><h3>summary 物件</h3><table class="kv"><tbody><tr><td>found</td><td>true</td></tr><tr><td>reported_period（報告期間）</td><td>2026 Q3（2026 年 7～9 月）</td></tr><tr><td>core_points（重點）</td><td><ul><li>2026 Q3 GAAP 營收 US$6.6B（YoY +1.0%），調整後營收 YoY +4.2%、調整後有機成長 3.3%；調整後 EPS US$2.50（YoY +12%），調整後營業利益率 26.2%（YoY +110 bps）</li><li>全年調整後 EPS 指引上修至 US$9.10～9.15；自 Q3 起無形資產攤銷改列調整項目（新基準），使調整後營益率約 +40 bps、調整後 EPS 約 +US$0.04</li><li>Safety &amp; Industrial 有機成長 7% 為主要引擎（Electrical Markets 受資料中心帶動雙位數成長）；Transportation &amp; Electronics 僅 +0.5%，消費性電子下滑 mid-teens 拖累，半導體、航太、商業品牌成長</li><li>資料中心業務 2026 年約 US$700M（2025 年約 US$550M）；EBO 擴束光學 2026 年約 US$40M、2027 年預估 US$80M～100M，2028 年 TAM 約 US$2B；向 Amazon 發行最多 320 萬股 warrant（7 年累計 US$6B 資料中心相關銷售門檻）</li><li>與玉晶光（GSEO）簽署合約製造協議並以私募取得約 4.7% 股權，擴充 EBO ferrule／光連接產能</li><li>Q3 推出 87 款新產品（YoY +24%），全年目標 350+；中國營收下滑高個位數、亞太有機 -6.2%</li></ul></td></tr><tr><td>guidance（展望）</td><td>2026 全年：調整後總營收成長 &gt;4.5%、調整後有機成長 &gt;3.5%、調整後 EPS US$9.10～9.15（YoY 約 +11～12%）、調整後營業利益率約 24.6%（新基準）、調整後營業現金流約 US$5.9B、調整後自由現金流約 US$4.8B、資本支出約 US$1.0B、調整後有效稅率約 20%；油價相關通膨約 US$185M 預期由定價完全抵銷。Q4 有機成長略高於 4%，消費性電子 Q4 可能再惡化。2027 正式指引於 1 月發布，管理層預期有機成長接近下半年出口率並加速、調整後營益率超過 Investor Day 目標 25.4%（新基準）。</td></tr><tr><td>key_numbers（關鍵數字）</td><td><ul><li>2026 Q3 GAAP 營收 US$6,584M（YoY +1.0%）；調整後營收 YoY +4.2%；GAAP 有機成長 0.2%、調整後有機成長 3.3%</li><li>2026 Q3 GAAP EPS US$2.63（YoY +70%，Q3 2025 為 US$1.55）；調整後 EPS US$2.50（YoY +12%，Q3 2025 為 US$2.23）</li><li>2026 Q3 GAAP 營業利益率 23.7%（YoY +150 bps）；調整後營業利益率 26.2%（YoY +110 bps）；毛利率 42.3%（YoY +230 bps）</li><li>2026 Q3 營業現金流 US$486M（約 US$0.5B）；調整後自由現金流 US$1.2B；股東回報 US$0.6B（股利 US$0.4B、回購 US$0.2B）</li><li>2026 前九個月調整後營收 US$19,087M（有機成長 3.3%）、調整後 EPS US$7.11、股利＋回購合計 US$4,441M</li><li>2026 Q3 Solventum 持股公允價值收益 US$281M（EPS 影響約 US$0.60）；重大訴訟及 PFAS 退出淨成本 EPS 影響 US$0.19</li><li>Madison Fire &amp; Rescue 2026 年 7 月以 US$1.9B 完成收購，Q3 貢獻約 US$90M 營收</li></ul></td></tr><tr><td>risks（風險）</td><td><ul><li>消費性電子（LCD 顯示器膜材、中國 OEM）需求疲弱，管理層預期 Q4 續降 mid-teens</li><li>中國有機營收下滑 10.7%（10-Q）／高個位數（法說口徑），亞太整體 -6.2%</li><li>關稅（Investor Day 後新增約 US$280M）與油價通膨（US$185M）持續壓力，雖以定價抵銷但稀釋營益率約 20 bps</li><li>PFAS 與 Combat Arms 和解付款延續至 2036 年；Q3 營業現金流因約 US$1B 訴訟和解與 PFAS 退出付款而 YoY -72.3%</li><li>Solventum 持股（約 US$2.3B）公允價值波動影響 GAAP 盈餘，且須在分拆後五年內出售</li></ul></td></tr><tr><td>headline_metrics（法說揭露的重點數字）</td><td><div style="overflow:auto"><table><thead><tr><th>指標</th><th>期間</th><th>值</th><th>YoY</th><th>註</th></tr></thead><tbody><tr><td>營收</td><td>2026 Q3</td><td>US$6,584M（GAAP）</td><td>+1.0%</td><td>調整後營收 YoY +4.2%；GAAP 有機成長 0.2%、調整後有機成長 3.3%</td></tr><tr><td>毛利率</td><td>2026 Q3</td><td>42.3%</td><td>+230 bps</td><td>管理層稱為歷史最高；採購節省、產能利用率、品質改善帶動</td></tr><tr><td>營業利益率</td><td>2026 Q3</td><td>23.7%（GAAP）／26.2%（調整後）</td><td>+150 bps（GAAP）／+110 bps（調整後）</td><td>新基準：無形資產攤銷列為調整項目，使調整後營益率約 +40 bps</td></tr><tr><td>稅後淨利</td><td>2026 Q3</td><td>US$1,373M（GAAP）</td><td>+64.6%</td><td>含 Solventum 持股公允價值收益 US$281M</td></tr><tr><td>EPS</td><td>2026 Q3</td><td>US$2.63（GAAP）／US$2.50（調整後）</td><td>+70%（GAAP）／+12%（調整後）</td><td>Q3 2025 分別為 US$1.55／US$2.23</td></tr><tr><td>營業現金流</td><td>2026 Q3</td><td>US$486M</td><td>-72.3%</td><td>單季約 US$1B 訴訟和解及 PFAS 退出付款；調整後自由現金流 US$1,197M（YoY -8.6%）</td></tr><tr><td>資本支出</td><td>2026 全年指引</td><td>約 US$1.0B</td><td><span class="null">null</span></td><td>聚焦成長、生產力與永續投資</td></tr><tr><td>其他</td><td>2026 Q3</td><td>股東回報 US$0.6B（股利 US$0.4B、回購 US$0.2B）</td><td><span class="null">null</span></td><td>自 2025 年初累計 US$9.3B，接近 US$10B 目標；流通股數 516.7M（2025/12/31 為 530.3M）</td></tr></tbody></table></div></td></tr><tr><td>business_segments（事業群）</td><td><div style="overflow:auto"><table><thead><tr><th>事業群</th><th>營收</th><th>營收 YoY</th><th>營益率</th><th>營益率 YoY</th><th>註</th></tr></thead><tbody><tr><td>Safety and Industrial</td><td>US$3,182M</td><td>+9.1%（有機 +7.0%）</td><td>約 30.2%（營業利益 US$960M）</td><td>約 +3 個百分點（Q3 2025 約 27.2%）</td><td>Electrical Markets 雙位數成長（資料中心）；Madison Fire &amp; Rescue 貢獻約 US$90M、外延成長 3.1 個百分點；除屋面顆粒外各事業部有機成長；訂單與 backlog 雙位數成長</td></tr><tr><td>Transportation and Electronics</td><td>US$1,999M</td><td>+0.4%（有機 +0.5%）</td><td>約 23.4%（營業利益 US$468M）</td><td>約 -1 個百分點</td><td>消費性電子下滑 mid-teens（Electronics 子業務 US$616M vs 去年 US$668M）；半導體、航太（雙位數）、商業品牌（中個位數）成長，汽車下滑中個位數；扣除消費性電子約 +5%；利潤率下滑因成長投資與 PFAS 退出相關 stranded costs</td></tr><tr><td>Consumer</td><td>US$1,307M</td><td>-0.4%（有機 -0.2%）</td><td>約 23.0%（營業利益 US$300M）</td><td><span class="null">null</span></td><td>美國 POS +2% 以上但大型零售商去庫存使 sell-in 下滑低個位數；國際中個位數成長</td></tr><tr><td>Corporate and Unallocated</td><td>US$96M</td><td>-67.6%</td><td><span class="null">null</span></td><td><span class="null">null</span></td><td>PFAS 製成品退出後本季無相關銷售（去年同期 US$199M）；營業損失 US$170M</td></tr></tbody></table></div></td></tr><tr><td>management_views（管理層觀點，固定五類＝模板法說 01–05）</td><td><div style="overflow:auto"><table><thead><tr><th>主題</th><th>內容</th></tr></thead><tbody><tr><td>事業體／產品線重點</td><td>SIBG 有機 +7%，Electrical Markets 因資料中心滲透雙位數成長；TEBG +0.5%，消費性電子下滑 mid-teens（LCD 與中國 OEM 疲弱），半導體、航太、商業品牌成長、汽車下滑中個位數；Consumer 持平。地區上美加 +7%（疫情後最高）、印度雙位數、中國下滑高個位數。Q3 新品 87 款（+24%）。</td></tr><tr><td>擴產／產能變化</td><td>EBO ferrule 內部產能已翻倍至每年超過 1,000 萬顆，GSEO（玉晶光）合約製造可再提供數倍月產能；今年已關閉 16 處製造與配送據點，未來 12 個月再關 10 處。</td></tr><tr><td>獲利能力變化</td><td>調整後營益率 26.2%（+110 bps，三事業群 +140 bps、總部 -30 bps）；毛利率 +230 bps 來自採購節省、產能利用率與品質改善（不良品成本 -40 bps），抵銷關稅、油價通膨與 stranded costs；增量利潤率接近 40%。管理層預期毛利率 4～5 年內由 mid-40% 升至 high-40%。</td></tr><tr><td>未來市場預測</td><td>Q4 有機成長略高於 4%，backlog YoY 約 +18%、約 25% 營收來自 backlog；消費性電子 Q4 可能再惡化、2027 可望恢復成長；2027 有機成長接近下半年出口率並加速，營益率超過 25.4%（新基準）。</td></tr><tr><td>投資／M&amp;A／組織整改</td><td>Madison Fire &amp; Rescue（US$1.9B，與 Bain 合資，3M 持 50.1% 表決權）已併入，2026～2027 對 EPS 中性、2027 約增 US$200M 營收；私募入股玉晶光約 4.7% 並簽合約製造協議；Amazon warrant 最多 320 萬股（7 年累計 US$6B 門檻）；Q2 完成 Dyneon 與精密研磨業務剝離；R&amp;D 主管由 Tushar 接任。</td></tr><tr><td>AUO 相關議題</td><td>CPO／光通訊與資料中心光學：EBO 擴束光學 2026 約 US$40M、2027 預估 US$80M～100M、2028 TAM 約 US$2B，已導入 Microsoft Azure 並與另 5 家 hyperscaler（含 AWS）做 PoC，EBO MSA 成員由 17 家增至 63 家；資料中心整體業務 2026 約 US$700M。顯示器方面，LCD 顯示器膜材需求疲弱、中國 OEM 下滑，高階裝置（摺疊、AI 裝置熱管理）表現佳；車用 OE 偏弱、售後市場略佳。未提及與友達的直接合作。</td></tr></tbody></table></div></td></tr><tr><td>qa_highlights（Q&amp;A）</td><td><div style="overflow:auto"><table><thead><tr><th>問</th><th>答</th></tr></thead><tbody><tr><td>Scott Davis（Melius）：Amazon warrant 協議的條款與漲價來源？</td><td>僅揭露 US$6B 累計銷售門檻與 7 年期限，其他條款不揭露；漲價來自新品、服務與交期改善，全年價格略高於 1.5%、下半年 &gt;2%。</td></tr><tr><td>Joe O&#x27;Dea（Vertical Research）：EBO 業務規模與產能？</td><td>2026 約 US$40M、2027 可能翻倍；內部產能已翻倍至每年超過 1,000 萬顆 ferrule，GSEO 月產能可達數倍。</td></tr><tr><td>Andrew Obin（BofA）：資料中心營收規模？</td><td>2026 約 US$700M（2025 約 US$550M），多數為外部電氣連接，光學與銅纜仍為少數。</td></tr><tr><td>Nigel Coe（Wolfe）：Amazon 是否有最低採購承諾？</td><td>無銷量承諾，需自行「贏得」；EBO 2027 約 US$80M～100M，2028 TAM 約 US$2B。</td></tr><tr><td>Nicole DeBlase（Deutsche Bank）：消費性電子 2027 是否轉正？</td><td>Q4 壓力加大，約 70% 客戶為高階裝置廠，LCD 與中國 OEM 疲弱，預期 2027 可恢復成長。</td></tr></tbody></table></div></td></tr><tr><td>positive_signals（正向訊號）</td><td><ul><li>資料中心／光通訊為明確成長主軸：EBO 2027 預估倍增、Amazon warrant 與 Microsoft Azure 導入，並以入股玉晶光擴充台灣供應鏈產能</li><li>SIBG 訂單與 backlog 雙位數成長、TEBG backlog 雙位數成長，Q4 約 25% 營收來自 backlog</li><li>新產品活力由 2024 年 11% 升至 mid-teens，全年 350+ 新品目標可望超越</li><li>毛利率創高、增量利潤率約 40%，顯示供應鏈生產力改善持續</li></ul></td></tr><tr><td>watch_items（觀察項）</td><td><ul><li>消費性電子（LCD 顯示器膜材、中國 OEM）Q4 續降 mid-teens，拖累 TEBG</li><li>中國營收下滑高個位數至 -10.7%（媒體說法不一：法說口徑為高個位數、10-Q 為 -10.7%），亞太 -6.2%</li><li>關稅約 US$280M 與油價通膨 US$185M 持續，靠定價抵銷但稀釋營益率</li><li>EBO 規模仍小（2026 約 US$40M），Amazon 協議無銷量承諾，放量依賴 hyperscaler 驗證進度</li></ul></td></tr><tr><td>open_questions（未答問題）</td><td><ul><li>Amazon warrant 除 US$6B／7 年門檻外的其他商業條款未揭露</li><li>EBO 長期是否需增加第二家以上供應商以確保多元化，管理層僅稱目前產能足夠</li><li>消費性電子何時觸底，管理層只給「2027 可望恢復成長」的方向、未給數字</li><li>太空（space films）業務規模與客戶未揭露，僅稱 2027 為提升年、2028 可能更佳</li></ul></td></tr><tr><td>notes（彙整備註）</td><td>原全年調整後 EPS 指引媒體說法不一：Sharecast／InsiderFinance／TradingPedia 稱由 US$8.80～8.95 上修（7 月舊基準），Motley Fool 逐字稿與 Beta Finch 稱由 US$8.95～9.10 上修（新基準，含無形資產攤銷調整），差異源於非 GAAP 口徑變更。各事業群營業利益率為依新聞稿揭露之營業利益／銷售額計算，新聞稿未直接列示利潤率。玉晶光入股報導發布於 10/15（法說前 5 天），法說會中管理層確認該筆投資與合約製造協議。</td></tr><tr><td>sources（來源）</td><td><ul><li><a href="https://www.sec.gov/Archives/edgar/data/66740/000006674026000308/q32026-8kerexx991.htm">3M Reports Third-Quarter 2026 Results; Raises Full-Year EPS Guidance（8-K Exhibit 99.1）</a>｜SEC EDGAR</li><li><a href="https://www.sec.gov/Archives/edgar/data/66740/000006674026000311/mmm-20260930.htm">3M Form 10-Q for quarter ended September 30, 2026</a>｜SEC EDGAR</li><li><a href="https://www.fool.com/earnings/call-transcripts/2026/10/20/3m-mmm-q3-2026-earnings-call-transcript/">3M (MMM) Q3 2026 Earnings Call Transcript</a>｜The Motley Fool</li><li><a href="https://www.insiderfinance.io/news/3m-raises-2026-guidance-as-q3-profit-jumps">3M Raises 2026 Guidance as Q3 Profit Jumps</a>｜InsiderFinance</li><li><a href="https://www.hl.co.uk/shares/stock-market-news/company--news/3m-lifts-annual-earnings-guidance,-shares-jump">3M lifts annual earnings guidance, shares jump</a>｜Hargreaves Lansdown／Sharecast</li><li><a href="https://www.tradingpedia.com/2026/10/20/3m-lifts-earnings-forecast-on-stronger-profit-margins/">3M lifts earnings forecast on stronger profit margins</a>｜TradingPedia</li><li><a href="https://beancount.io/zh/blog/2026/10/21/3m-fy2026-q3-earnings-analysis">3M FY2026 Q3 財報分析</a>｜Beancount.io</li><li><a href="https://betafinch.com/episodes/MMM_2026_Q3_es">MMM 2026 Q3 法說摘要</a>｜Beta Finch</li><li><a href="https://www.bnext.com.tw/article/92651/genius-3406-3m-private-placement-cpo">3M 砸 48 億元入股玉晶光 攻 CPO</a>｜數位時代</li></ul></td></tr></tbody></table></div><details><summary>原始 JSON（10,658 字）</summary><pre>{
+  &quot;record_type&quot;: &quot;ir_summary&quot;,
+  &quot;company_key&quot;: &quot;NYSE:MMM&quot;,
+  &quot;company_name&quot;: &quot;3M&quot;,
+  &quot;stock_code&quot;: &quot;MMM&quot;,
+  &quot;market&quot;: &quot;NYSE&quot;,
+  &quot;category&quot;: &quot;SUPPLIER&quot;,
+  &quot;period&quot;: &quot;2026Q3&quot;,
+  &quot;fiscal_period&quot;: &quot;2026Q3&quot;,
+  &quot;conference_date&quot;: &quot;2026-10-20&quot;,
+  &quot;time_basis&quot;: &quot;LOCAL_DATE_ONLY&quot;,
+  &quot;local_conference_date&quot;: &quot;2026-10-20&quot;,
+  &quot;fallback&quot;: false,
+  &quot;summary&quot;: {
+    &quot;found&quot;: true,
+    &quot;reported_period&quot;: &quot;2026 Q3（2026 年 7～9 月）&quot;,
+    &quot;core_points&quot;: [
+      &quot;2026 Q3 GAAP 營收 US$6.6B（YoY +1.0%），調整後營收 YoY +4.2%、調整後有機成長 3.3%；調整後 EPS US$2.50（YoY +12%），調整後營業利益率 26.2%（YoY +110 bps）&quot;,
+      &quot;全年調整後 EPS 指引上修至 US$9.10～9.15；自 Q3 起無形資產攤銷改列調整項目（新基準），使調整後營益率約 +40 bps、調整後 EPS 約 +US$0.04&quot;,
+      &quot;Safety &amp; Industrial 有機成長 7% 為主要引擎（Electrical Markets 受資料中心帶動雙位數成長）；Transportation &amp; Electronics 僅 +0.5%，消費性電子下滑 mid-teens 拖累，半導體、航太、商業品牌成長&quot;,
+      &quot;資料中心業務 2026 年約 US$700M（2025 年約 US$550M）；EBO 擴束光學 2026 年約 US$40M、2027 年預估 US$80M～100M，2028 年 TAM 約 US$2B；向 Amazon 發行最多 320 萬股 warrant（7 年累計 US$6B 資料中心相關銷售門檻）&quot;,
+      &quot;與玉晶光（GSEO）簽署合約製造協議並以私募取得約 4.7% 股權，擴充 EBO ferrule／光連接產能&quot;,
+      &quot;Q3 推出 87 款新產品（YoY +24%），全年目標 350+；中國營收下滑高個位數、亞太有機 -6.2%&quot;
+    ],
+    &quot;guidance&quot;: &quot;2026 全年：調整後總營收成長 &gt;4.5%、調整後有機成長 &gt;3.5%、調整後 EPS US$9.10～9.15（YoY 約 +11～12%）、調整後營業利益率約 24.6%（新基準）、調整後營業現金流約 US$5.9B、調整後自由現金流約 US$4.8B、資本支出約 US$1.0B、調整後有效稅率約 20%；油價相關通膨約 US$185M 預期由定價完全抵銷。Q4 有機成長略高於 4%，消費性電子 Q4 可能再惡化。2027 正式指引於 1 月發布，管理層預期有機成長接近下半年出口率並加速、調整後營益率超過 Investor Day 目標 25.4%（新基準）。&quot;,
+    &quot;key_numbers&quot;: [
+      &quot;2026 Q3 GAAP 營收 US$6,584M（YoY +1.0%）；調整後營收 YoY +4.2%；GAAP 有機成長 0.2%、調整後有機成長 3.3%&quot;,
+      &quot;2026 Q3 GAAP EPS US$2.63（YoY +70%，Q3 2025 為 US$1.55）；調整後 EPS US$2.50（YoY +12%，Q3 2025 為 US$2.23）&quot;,
+      &quot;2026 Q3 GAAP 營業利益率 23.7%（YoY +150 bps）；調整後營業利益率 26.2%（YoY +110 bps）；毛利率 42.3%（YoY +230 bps）&quot;,
+      &quot;2026 Q3 營業現金流 US$486M（約 US$0.5B）；調整後自由現金流 US$1.2B；股東回報 US$0.6B（股利 US$0.4B、回購 US$0.2B）&quot;,
+      &quot;2026 前九個月調整後營收 US$19,087M（有機成長 3.3%）、調整後 EPS US$7.11、股利＋回購合計 US$4,441M&quot;,
+      &quot;2026 Q3 Solventum 持股公允價值收益 US$281M（EPS 影響約 US$0.60）；重大訴訟及 PFAS 退出淨成本 EPS 影響 US$0.19&quot;,
+      &quot;Madison Fire &amp; Rescue 2026 年 7 月以 US$1.9B 完成收購，Q3 貢獻約 US$90M 營收&quot;
+    ],
+    &quot;risks&quot;: [
+      &quot;消費性電子（LCD 顯示器膜材、中國 OEM）需求疲弱，管理層預期 Q4 續降 mid-teens&quot;,
+      &quot;中國有機營收下滑 10.7%（10-Q）／高個位數（法說口徑），亞太整體 -6.2%&quot;,
+      &quot;關稅（Investor Day 後新增約 US$280M）與油價通膨（US$185M）持續壓力，雖以定價抵銷但稀釋營益率約 20 bps&quot;,
+      &quot;PFAS 與 Combat Arms 和解付款延續至 2036 年；Q3 營業現金流因約 US$1B 訴訟和解與 PFAS 退出付款而 YoY -72.3%&quot;,
+      &quot;Solventum 持股（約 US$2.3B）公允價值波動影響 GAAP 盈餘，且須在分拆後五年內出售&quot;
+    ],
+    &quot;headline_metrics&quot;: [
+      {
+        &quot;metric&quot;: &quot;營收&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;US$6,584M（GAAP）&quot;,
+        &quot;yoy&quot;: &quot;+1.0%&quot;,
+        &quot;note&quot;: &quot;調整後營收 YoY +4.2%；GAAP 有機成長 0.2%、調整後有機成長 3.3%&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;毛利率&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;42.3%&quot;,
+        &quot;yoy&quot;: &quot;+230 bps&quot;,
+        &quot;note&quot;: &quot;管理層稱為歷史最高；採購節省、產能利用率、品質改善帶動&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;營業利益率&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;23.7%（GAAP）／26.2%（調整後）&quot;,
+        &quot;yoy&quot;: &quot;+150 bps（GAAP）／+110 bps（調整後）&quot;,
+        &quot;note&quot;: &quot;新基準：無形資產攤銷列為調整項目，使調整後營益率約 +40 bps&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;稅後淨利&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;US$1,373M（GAAP）&quot;,
+        &quot;yoy&quot;: &quot;+64.6%&quot;,
+        &quot;note&quot;: &quot;含 Solventum 持股公允價值收益 US$281M&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;EPS&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;US$2.63（GAAP）／US$2.50（調整後）&quot;,
+        &quot;yoy&quot;: &quot;+70%（GAAP）／+12%（調整後）&quot;,
+        &quot;note&quot;: &quot;Q3 2025 分別為 US$1.55／US$2.23&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;營業現金流&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;US$486M&quot;,
+        &quot;yoy&quot;: &quot;-72.3%&quot;,
+        &quot;note&quot;: &quot;單季約 US$1B 訴訟和解及 PFAS 退出付款；調整後自由現金流 US$1,197M（YoY -8.6%）&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;資本支出&quot;,
+        &quot;period&quot;: &quot;2026 全年指引&quot;,
+        &quot;value&quot;: &quot;約 US$1.0B&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;聚焦成長、生產力與永續投資&quot;
+      },
+      {
+        &quot;metric&quot;: &quot;其他&quot;,
+        &quot;period&quot;: &quot;2026 Q3&quot;,
+        &quot;value&quot;: &quot;股東回報 US$0.6B（股利 US$0.4B、回購 US$0.2B）&quot;,
+        &quot;yoy&quot;: null,
+        &quot;note&quot;: &quot;自 2025 年初累計 US$9.3B，接近 US$10B 目標；流通股數 516.7M（2025/12/31 為 530.3M）&quot;
+      }
+    ],
+    &quot;business_segments&quot;: [
+      {
+        &quot;segment&quot;: &quot;Safety and Industrial&quot;,
+        &quot;revenue&quot;: &quot;US$3,182M&quot;,
+        &quot;revenue_yoy&quot;: &quot;+9.1%（有機 +7.0%）&quot;,
+        &quot;operating_margin&quot;: &quot;約 30.2%（營業利益 US$960M）&quot;,
+        &quot;opm_yoy&quot;: &quot;約 +3 個百分點（Q3 2025 約 27.2%）&quot;,
+        &quot;note&quot;: &quot;Electrical Markets 雙位數成長（資料中心）；Madison Fire &amp; Rescue 貢獻約 US$90M、外延成長 3.1 個百分點；除屋面顆粒外各事業部有機成長；訂單與 backlog 雙位數成長&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;Transportation and Electronics&quot;,
+        &quot;revenue&quot;: &quot;US$1,999M&quot;,
+        &quot;revenue_yoy&quot;: &quot;+0.4%（有機 +0.5%）&quot;,
+        &quot;operating_margin&quot;: &quot;約 23.4%（營業利益 US$468M）&quot;,
+        &quot;opm_yoy&quot;: &quot;約 -1 個百分點&quot;,
+        &quot;note&quot;: &quot;消費性電子下滑 mid-teens（Electronics 子業務 US$616M vs 去年 US$668M）；半導體、航太（雙位數）、商業品牌（中個位數）成長，汽車下滑中個位數；扣除消費性電子約 +5%；利潤率下滑因成長投資與 PFAS 退出相關 stranded costs&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;Consumer&quot;,
+        &quot;revenue&quot;: &quot;US$1,307M&quot;,
+        &quot;revenue_yoy&quot;: &quot;-0.4%（有機 -0.2%）&quot;,
+        &quot;operating_margin&quot;: &quot;約 23.0%（營業利益 US$300M）&quot;,
+        &quot;opm_yoy&quot;: null,
+        &quot;note&quot;: &quot;美國 POS +2% 以上但大型零售商去庫存使 sell-in 下滑低個位數；國際中個位數成長&quot;
+      },
+      {
+        &quot;segment&quot;: &quot;Corporate and Unallocated&quot;,
+        &quot;revenue&quot;: &quot;US$96M&quot;,
+        &quot;revenue_yoy&quot;: &quot;-67.6%&quot;,
+        &quot;operating_margin&quot;: null,
+        &quot;opm_yoy&quot;: null,
+        &quot;note&quot;: &quot;PFAS 製成品退出後本季無相關銷售（去年同期 US$199M）；營業損失 US$170M&quot;
+      }
+    ],
+    &quot;management_views&quot;: [
+      {
+        &quot;topic&quot;: &quot;事業體／產品線重點&quot;,
+        &quot;view&quot;: &quot;SIBG 有機 +7%，Electrical Markets 因資料中心滲透雙位數成長；TEBG +0.5%，消費性電子下滑 mid-teens（LCD 與中國 OEM 疲弱），半導體、航太、商業品牌成長、汽車下滑中個位數；Consumer 持平。地區上美加 +7%（疫情後最高）、印度雙位數、中國下滑高個位數。Q3 新品 87 款（+24%）。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;擴產／產能變化&quot;,
+        &quot;view&quot;: &quot;EBO ferrule 內部產能已翻倍至每年超過 1,000 萬顆，GSEO（玉晶光）合約製造可再提供數倍月產能；今年已關閉 16 處製造與配送據點，未來 12 個月再關 10 處。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;獲利能力變化&quot;,
+        &quot;view&quot;: &quot;調整後營益率 26.2%（+110 bps，三事業群 +140 bps、總部 -30 bps）；毛利率 +230 bps 來自採購節省、產能利用率與品質改善（不良品成本 -40 bps），抵銷關稅、油價通膨與 stranded costs；增量利潤率接近 40%。管理層預期毛利率 4～5 年內由 mid-40% 升至 high-40%。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;未來市場預測&quot;,
+        &quot;view&quot;: &quot;Q4 有機成長略高於 4%，backlog YoY 約 +18%、約 25% 營收來自 backlog；消費性電子 Q4 可能再惡化、2027 可望恢復成長；2027 有機成長接近下半年出口率並加速，營益率超過 25.4%（新基準）。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;投資／M&amp;A／組織整改&quot;,
+        &quot;view&quot;: &quot;Madison Fire &amp; Rescue（US$1.9B，與 Bain 合資，3M 持 50.1% 表決權）已併入，2026～2027 對 EPS 中性、2027 約增 US$200M 營收；私募入股玉晶光約 4.7% 並簽合約製造協議；Amazon warrant 最多 320 萬股（7 年累計 US$6B 門檻）；Q2 完成 Dyneon 與精密研磨業務剝離；R&amp;D 主管由 Tushar 接任。&quot;
+      },
+      {
+        &quot;topic&quot;: &quot;AUO 相關議題&quot;,
+        &quot;view&quot;: &quot;CPO／光通訊與資料中心光學：EBO 擴束光學 2026 約 US$40M、2027 預估 US$80M～100M、2028 TAM 約 US$2B，已導入 Microsoft Azure 並與另 5 家 hyperscaler（含 AWS）做 PoC，EBO MSA 成員由 17 家增至 63 家；資料中心整體業務 2026 約 US$700M。顯示器方面，LCD 顯示器膜材需求疲弱、中國 OEM 下滑，高階裝置（摺疊、AI 裝置熱管理）表現佳；車用 OE 偏弱、售後市場略佳。未提及與友達的直接合作。&quot;
+      }
+    ],
+    &quot;qa_highlights&quot;: [
+      {
+        &quot;question&quot;: &quot;Scott Davis（Melius）：Amazon warrant 協議的條款與漲價來源？&quot;,
+        &quot;answer&quot;: &quot;僅揭露 US$6B 累計銷售門檻與 7 年期限，其他條款不揭露；漲價來自新品、服務與交期改善，全年價格略高於 1.5%、下半年 &gt;2%。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;Joe O&#x27;Dea（Vertical Research）：EBO 業務規模與產能？&quot;,
+        &quot;answer&quot;: &quot;2026 約 US$40M、2027 可能翻倍；內部產能已翻倍至每年超過 1,000 萬顆 ferrule，GSEO 月產能可達數倍。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;Andrew Obin（BofA）：資料中心營收規模？&quot;,
+        &quot;answer&quot;: &quot;2026 約 US$700M（2025 約 US$550M），多數為外部電氣連接，光學與銅纜仍為少數。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;Nigel Coe（Wolfe）：Amazon 是否有最低採購承諾？&quot;,
+        &quot;answer&quot;: &quot;無銷量承諾，需自行「贏得」；EBO 2027 約 US$80M～100M，2028 TAM 約 US$2B。&quot;
+      },
+      {
+        &quot;question&quot;: &quot;Nicole DeBlase（Deutsche Bank）：消費性電子 2027 是否轉正？&quot;,
+        &quot;answer&quot;: &quot;Q4 壓力加大，約 70% 客戶為高階裝置廠，LCD 與中國 OEM 疲弱，預期 2027 可恢復成長。&quot;
+      }
+    ],
+    &quot;positive_signals&quot;: [
+      &quot;資料中心／光通訊為明確成長主軸：EBO 2027 預估倍增、Amazon warrant 與 Microsoft Azure 導入，並以入股玉晶光擴充台灣供應鏈產能&quot;,
+      &quot;SIBG 訂單與 backlog 雙位數成長、TEBG backlog 雙位數成長，Q4 約 25% 營收來自 backlog&quot;,
+      &quot;新產品活力由 2024 年 11% 升至 mid-teens，全年 350+ 新品目標可望超越&quot;,
+      &quot;毛利率創高、增量利潤率約 40%，顯示供應鏈生產力改善持續&quot;
+    ],
+    &quot;watch_items&quot;: [
+      &quot;消費性電子（LCD 顯示器膜材、中國 OEM）Q4 續降 mid-teens，拖累 TEBG&quot;,
+      &quot;中國營收下滑高個位數至 -10.7%（媒體說法不一：法說口徑為高個位數、10-Q 為 -10.7%），亞太 -6.2%&quot;,
+      &quot;關稅約 US$280M 與油價通膨 US$185M 持續，靠定價抵銷但稀釋營益率&quot;,
+      &quot;EBO 規模仍小（2026 約 US$40M），Amazon 協議無銷量承諾，放量依賴 hyperscaler 驗證進度&quot;
+    ],
+    &quot;open_questions&quot;: [
+      &quot;Amazon warrant 除 US$6B／7 年門檻外的其他商業條款未揭露&quot;,
+      &quot;EBO 長期是否需增加第二家以上供應商以確保多元化，管理層僅稱目前產能足夠&quot;,
+      &quot;消費性電子何時觸底，管理層只給「2027 可望恢復成長」的方向、未給數字&quot;,
+      &quot;太空（space films）業務規模與客戶未揭露，僅稱 2027 為提升年、2028 可能更佳&quot;
+    ],
+    &quot;sources&quot;: [
+      {
+        &quot;title&quot;: &quot;3M Reports Third-Quarter 2026 Results; Raises Full-Year EPS Guidance（8-K Exhibit 99.1）&quot;,
+        &quot;url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/66740/000006674026000308/q32026-8kerexx991.htm&quot;,
+        &quot;media&quot;: &quot;SEC EDGAR&quot;
+      },
+      {
+        &quot;title&quot;: &quot;3M Form 10-Q for quarter ended September 30, 2026&quot;,
+        &quot;url&quot;: &quot;https://www.sec.gov/Archives/edgar/data/66740/000006674026000311/mmm-20260930.htm&quot;,
+        &quot;media&quot;: &quot;SEC EDGAR&quot;
+      },
+      {
+        &quot;title&quot;: &quot;3M (MMM) Q3 2026 Earnings Call Transcript&quot;,
+        &quot;url&quot;: &quot;https://www.fool.com/earnings/call-transcripts/2026/10/20/3m-mmm-q3-2026-earnings-call-transcript/&quot;,
+        &quot;media&quot;: &quot;The Motley Fool&quot;
+      },
+      {
+        &quot;title&quot;: &quot;3M Raises 2026 Guidance as Q3 Profit Jumps&quot;,
+        &quot;url&quot;: &quot;https://www.insiderfinance.io/news/3m-raises-2026-guidance-as-q3-profit-jumps&quot;,
+        &quot;media&quot;: &quot;InsiderFinance&quot;
+      },
+      {
+        &quot;title&quot;: &quot;3M lifts annual earnings guidance, shares jump&quot;,
+        &quot;url&quot;: &quot;https://www.hl.co.uk/shares/stock-market-news/company--news/3m-lifts-annual-earnings-guidance,-shares-jump&quot;,
+        &quot;media&quot;: &quot;Hargreaves Lansdown／Sharecast&quot;
+      },
+      {
+        &quot;title&quot;: &quot;3M lifts earnings forecast on stronger profit margins&quot;,
+        &quot;url&quot;: &quot;https://www.tradingpedia.com/2026/10/20/3m-lifts-earnings-forecast-on-stronger-profit-margins/&quot;,
+        &quot;media&quot;: &quot;TradingPedia&quot;
+      },
+      {
+        &quot;title&quot;: &quot;3M FY2026 Q3 財報分析&quot;,
+        &quot;url&quot;: &quot;https://beancount.io/zh/blog/2026/10/21/3m-fy2026-q3-earnings-analysis&quot;,
+        &quot;media&quot;: &quot;Beancount.io&quot;
+      },
+      {
+        &quot;title&quot;: &quot;MMM 2026 Q3 法說摘要&quot;,
+        &quot;url&quot;: &quot;https://betafinch.com/episodes/MMM_2026_Q3_es&quot;,
+        &quot;media&quot;: &quot;Beta Finch&quot;
+      },
+      {
+        &quot;title&quot;: &quot;3M 砸 48 億元入股玉晶光 攻 CPO&quot;,
+        &quot;url&quot;: &quot;https://www.bnext.com.tw/article/92651/genius-3406-3m-private-placement-cpo&quot;,
+        &quot;media&quot;: &quot;數位時代&quot;
+      }
+    ],
+    &quot;notes&quot;: &quot;原全年調整後 EPS 指引媒體說法不一：Sharecast／InsiderFinance／TradingPedia 稱由 US$8.80～8.95 上修（7 月舊基準），Motley Fool 逐字稿與 Beta Finch 稱由 US$8.95～9.10 上修（新基準，含無形資產攤銷調整），差異源於非 GAAP 口徑變更。各事業群營業利益率為依新聞稿揭露之營業利益／銷售額計算，新聞稿未直接列示利潤率。玉晶光入股報導發布於 10/15（法說前 5 天），法說會中管理層確認該筆投資與合約製造協議。&quot;
+  },
+  &quot;recipients&quot;: [
+    &quot;C00&quot;
+  ],
+  &quot;crawled_at&quot;: &quot;2026-11-03T23:37:51+08:00&quot;
+}</pre></details></section>
+</main>
+<footer>由 build_sources.py 產出｜2026-11-03</footer>
+</body>
+</html>

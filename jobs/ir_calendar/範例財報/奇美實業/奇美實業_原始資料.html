@@ -43,14 +43,14 @@ footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
 <header class="hero">
   <div class="badge">ir_calendar｜來源檢視｜silver bundle</div>
   <h1>奇美實業｜原始資料（silver bundle）</h1>
-  <p>來源檔：奇美實業.md｜company_key TPE:1763｜period 2026Q2｜產出日期：2026-10-21</p>
+  <p>來源檔：奇美實業.md｜company_key TPE:1763｜period 2026Q2｜產出日期：2026-11-03</p>
 </header>
 <main class="wrap">
 
 <section class="card">
   <h2>這是什麼</h2>
   <p>把 Databricks silver 各表以 <code>company_key</code>（＋ <code>period</code>）join 後包成一個 JSON，
-  形狀 = <code>build_supplier_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>奇美實業.md</code> 就是這個 JSON，
+  形狀 = <code>build_ir_report</code> [c09] <code>load_company_bundle</code> 的回傳；<code>奇美實業.md</code> 就是這個 JSON，
   <code>build_report.py</code> 讀它產出財務體質報告。period = <b>2026Q2</b>。</p>
   <table><thead><tr><th>鍵</th><th>來源 silver 表</th><th>內容</th></tr></thead><tbody>
   <tr><td><a href='#company'><code>company</code></a></td><td><code>s_ir_calendar_company</code></td><td>公司主檔一列</td></tr><tr><td><a href='#fin_rows'><code>fin_rows</code></a></td><td><code>s_ir_calendar_financials</code></td><td>7 列（年度 5、季別 2）</td></tr><tr><td><a href='#summary'><code>summary</code></a></td><td><code>s_ir_calendar_summary</code></td><td>null（無法說彙整）</td></tr><tr><td><a href='#conference'><code>conference</code></a></td><td><code>s_ir_calendar_conference</code></td><td>null（無法說場次）</td></tr><tr><td><a href='#docs'><code>docs</code></a></td><td><code>s_ir_calendar_document_text</code></td><td>1 份（Financial_Statements）</td></tr>
@@ -258,6 +258,6 @@ KPMG
 &lt;table&gt;&lt;tr&gt;&lt;th&gt;&lt;/th&gt;&lt;th&gt;115年1月至6月&lt;/th&gt;&lt;th&gt;114年1月至6月&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;營業活動之現金流量：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;本期稅前淨利(損)&lt;/td&gt;&lt;td&gt;$ 440,640&lt;/td&gt;&lt;td&gt;436,505&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;調整項目：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;收益費損項目&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;折舊費用&lt;/td&gt;&lt;td&gt;3,365,863&lt;/td&gt;&lt;td&gt;2,920,644&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;攤銷費用&lt;/td&gt;&lt;td&gt;217,391&lt;/td&gt;&lt;td&gt;180,814&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;利息費用&lt;/td&gt;&lt;td&gt;346,982&lt;/td&gt;&lt;td&gt;252,047&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;利息收入&lt;/td&gt;&lt;td&gt;(290,137)&lt;/td&gt;&lt;td&gt;(280,256)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;股利收入&lt;/td&gt;&lt;td&gt;(67,985)&lt;/td&gt;&lt;td&gt;(47,179)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;員工酬勞成本&lt;/td&gt;&lt;td&gt;(1,281)&lt;/td&gt;&lt;td&gt;896&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;採用權益法認列之關聯企業及合資利益之份額&lt;/td&gt;&lt;td&gt;(64,960)&lt;/td&gt;&lt;td&gt;(44,428)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;處分及報廢不動產、廠房及設備利益&lt;/td&gt;&lt;td&gt;(21,576)&lt;/td&gt;&lt;td&gt;(723,232)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;處分投資利益&lt;/td&gt;&lt;td&gt;(21,080)&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他&lt;/td&gt;&lt;td&gt;78,905&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;收益費損項目合計&lt;/td&gt;&lt;td&gt;3,542,122&lt;/td&gt;&lt;td&gt;2,259,306&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之資產／負債變動數：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之資產之淨變動：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;強制透過損益按公允價值衡量之金融資產&lt;/td&gt;&lt;td&gt;(56,591)&lt;/td&gt;&lt;td&gt;558,626&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;應收票據及帳款&lt;/td&gt;&lt;td&gt;(279,209)&lt;/td&gt;&lt;td&gt;289,649&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;存貨&lt;/td&gt;&lt;td&gt;(6,494,358)&lt;/td&gt;&lt;td&gt;(800,529)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他流動資產&lt;/td&gt;&lt;td&gt;(594,360)&lt;/td&gt;&lt;td&gt;(1,210,378)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之資產之淨變動合計&lt;/td&gt;&lt;td&gt;(7,424,518)&lt;/td&gt;&lt;td&gt;(1,162,632)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;與營業活動相關之負債之淨變動：&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;應付票據及帳款&lt;/td&gt;&lt;td&gt;107,091&lt;/td&gt;&lt;td&gt;(284,038)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他應付款&lt;/td&gt;&lt;td&gt;(652,279)&lt;/td&gt;&lt;td&gt;176,764&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;其他流動負債&lt;/td&gt;&lt;td&gt;40,125&lt;/td&gt;&lt;td&gt;(41,958)&lt;/td&gt;&lt;/tr
 …（截尾）</pre></details></section>
 </main>
-<footer>由 build_sources.py 產出｜2026-10-21</footer>
+<footer>由 build_sources.py 產出｜2026-11-03</footer>
 </body>
 </html>

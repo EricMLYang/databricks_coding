@@ -3,6 +3,29 @@
 給下一次任務或其他 Agent 的接續資訊。靜態說明（用途、參數、表設計）在各 `README.md` 與 `docs/`，這裡只記**動態狀態**：
 Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一步。每次改完 Databricks 更新本檔 §0 與 §1。
 
+## §0.000 2026-11-03 晚：範例財報版面第一版調整（需求方回饋）＋ 沙箱重抓 Corning／南亞／3M／明基材
+
+需求方（採購端）核對爬蟲財務數字與指標正確後給了「第一版調整建議」三點，已在 `範例財報/build_report.py`（v5）實作並重產報告；
+**`build_ir_report` notebook 尚未同步**，下次貼 Databricks 前要把下表「管線怎麼做」搬進 [c03]／[c05a]／[c07]／[c07a]。細節與沙箱重抓的發現見 `範例財報/模板覆蓋度評估.md` §9。
+
+**原則（使用者 2026-11-03 指示，之後每個版面需求都照這條）：滿足版面的功能一律「程式做得到的用程式、程式做不到的才合理使用 LLM（claude-sonnet-5.5，需求方 2026-10-15 指定）」。**
+數字取位、靠右、負數括弧、同比變動、SVG 圖、候選指標與退位順序都是程式；LLM 只做「從程式算好的候選裡挑哪兩個最值得看」「寫結論敘事」「從簡報抽事業群數字」這種判斷與文字工作，而且程式要把候選、數值、來源全部算好餵進 prompt，LLM 不自己算數、不自己查數。
+
+| 需求方要求 | 範例財報（純程式，已做） | `build_ir_report` 管線（待改） |
+| --- | --- | --- |
+| 一、01 財報重點後兩格：缺事業群營收／占比時由 AI 判斷要顯示的重點，不出現「資料缺」 | `pick_highlights()`：事業群有數字的列優先 → 不足時從毛利率／稅後淨利率／EPS／營業現金流／速動比／負債比／流動比挑同比變動最大的補位 → 再不足用法說 `headline_metrics`；格下註明是自動挑的。事業群只在前一場法說有數字時沿用並註明（`segments_for`） | [c03] `build_kpis` 做同樣的候選清單與退位順序（程式）；候選＋數值＋同比交給 [c05a] 結論 prompt，由 LLM 選兩個並給一句理由（LLM）；LLM 沒回或回的不在候選內就用程式的順位 |
+| 二、取位：營收／營業現金流／應收付天數整數；毛利率／淨利率／負債比／流動比／速動比一位；EPS 一位；數字靠右；負數紅字括弧 (0.89) | `fmt()` / `fmt_plain()` ＋ `DECIMALS`；`td.num` 靠右 `tabular-nums`；`.neg` 紅字括弧；SVG 柱頂標籤同規則；同比正綠 `+2.4%`、負紅 `(2.9%)` | [c03] `fmt_value` / `fmt_delta` 改取位（現在 pct／eps 兩位、days 一位）、負數括弧；[c07]／[c07a] 表格 `class=num`、CSS `.neg`；SVG 函式同步。純程式，不碰 LLM |
+| 三、南亞、Corning 10/27 法說再撈一次 | 本機沙箱 `tools/dev_sample_crawl.py` 重抓（批次 `dev_20261103T…`，檔名 `_新版實測_1103`）：Corning 2026Q3（10-27）、南亞 2026Q3（10-27 台新線上，原 10/23 颱風順延；Q3 財報未申報）、另加 3M 2026Q3（10-20）、明基材 2026Q3（10-30，Q3 財報已申報） | VM 排程會抓；Databricks `consume_batches` 收到後重產。**南亞 10-27 這場 `s_conference` 有沒有**要查（10-23 公告改期，行事曆可能還記 10-23） |
+
+沙箱重抓的發現（要回饋爬蟲端）：
+- **中光電投控 3718**：MOPS 財報 API 只有 2026Q3（2026-09-03 股份轉換新設控股，歷史在舊代號 5371），年度 0 筆 → 報告五年節全空，未列入範例。主檔要有「前身代號」對照（5371→3718、6173→6120 同類），財報基本資料庫才接得上歷史。
+- **3M 速動比全缺**：SEC companyfacts 抓不到 3M 的現金（`cash` 全 null，應收、流動負債都有），`connectors/edgar_facts.py` 的現金 tag 要加候選（3M 用的 tag 與 Corning 不同）。
+- 爬蟲 2026-10-21 新版 prompt 的第六類 `management_views.topic = "AUO 相關議題"` 這批起真的出現（Corning、3M 都有），報告法說 06 已優先用它；Databricks `s_ir_calendar_summary` 的 `management_views` 是 ARRAY<STRUCT> 直接收，`build_ir_report` [c05a]／[c07a] 要認這個 topic。
+- 南亞 10-27 彙整：簡報（MOPS 130320261027M001.pdf）已抓到、Q3 財報 doc.twse 尚無檔（manifest PARTIAL）；`business_segments` 四部門 3Q26 營益率（電子材料 30.9%）＋營收占比，`qa_highlights` 空、notes 註明未提及 AUO；報告頁首法說時間軸 8-21／9-24／10-13／10-27 四場。
+- 3M 的 LLM 彙整第一次回傳不合 schema（`call.py` 重試一次成功）；claude `-p` 含 WebSearch 一場 3～6 分鐘。
+
+**下次接續**：(1) 把上表第三欄改進 `build_ir_report`（純程式部分先做，LLM 挑格與結論 prompt 一起改 `PROMPT_VERSIONS`），跑 `tests/test_ir_calendar_build_ir_report.py`；(2) §0 步驟 6c 整支重新匯入時一併帶上；(3) 範例財報的 HTML 給需求方看第一版調整是否符合，再決定要不要再調。
+
 ## §0.00 2026-11-03 決定：文件解析不限頁數；LLM 前要先加程式處理流程（使用者確認）
 
 **背景（11-03 查詢）**：`parse_documents` 自 10 月初後沒再跑，SUPPLIER 幾乎所有文件 `未解析`（只有南亞塑與少數 2026Q2 財報有解析）；目前只有南亞塑一份 supplier 報告。
@@ -168,7 +191,7 @@ repo 狀態：工作樹含 10-29 全部改動、未 commit；三支測試檔最�
 | 換版面 | `build_ir_report` [c01] [c02] [c03] [c05] [c06] [c07] [c09] [c10] [c11] [c30] + 第一個 markdown | `TEMPLATE_VERSION = 20261021`、prompt **2.0**（無燈號／分數／War Room／Watchlist；法說六主題用爬蟲固定詞彙、事業群六欄）；`INDICATORS` 11 項全接欄位（速動比／應收付天數／母公司淨利率）；第 02 節本季 vs 去年同季＋同比變動；法說 01–06 先用 `management_views`、07 用 `qa_highlights`、03 事業群先用 `business_segments`，缺的才 LLM；頁首財報公布日取 `document_file.doc_date`、法說報告期間取 `reported_period`；[c09] 同期沒彙整退用最近一期；gold `light`/`score` 一律 NULL（DDL 不動）；新模板檔與 `USER_GUIDE.md` 放 `template/` |
 | 檢視 | `inspect_record` [c03] | `summary_report` 多印法說報告期間、事業群表、Q&A |
 | 測試 | `tests/test_ir_calendar_{consume,build_ir_report,inspect_record}.py` | 86 個全綠（consume 45、report 30、inspect 11）：含 DDL ↔ transform 欄位順序、新欄位值、彙整優先於 LLM、十項圖單欄、標籤不重疊 |
-| 範例 | `範例財報/` | 五家用新版面 + 爬蟲新版實測資料的純 Python 版（`build_report.py`），黃底數 Corning 2／南亞 5／長興 3／奇美 14／永光 13；`模板覆蓋度評估.md` |
+| 範例 | `範例財報/` | 七家（原五家＋3M、明基材）用新版面 + 爬蟲新版實測資料的純 Python 版（`build_report.py` v5，2026-11-03 第一版調整）；`模板覆蓋度評估.md` §9 |
 
 ### 0.2 要複製到 Databricks 的檔案與 cell（照順序）
 

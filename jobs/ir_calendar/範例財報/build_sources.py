@@ -19,7 +19,15 @@ import re
 HERE = pathlib.Path(__file__).resolve().parent
 SEP = "=" * 100
 
-COMPANIES = ["Corning", "南亞塑膠工業", "奇美實業", "臺灣永光化學工業", "長興材料工業"]
+COMPANIES = ["Corning", "南亞塑膠工業", "奇美實業", "臺灣永光化學工業", "長興材料工業"]   # 2026-10-21 五家（有 silver bundle）
+
+
+def discover_companies() -> list[str]:
+    """公司資料夾：原五家在前，其餘有 <公司>_爬蟲*.md 或 <公司>.md 的子資料夾依名稱排在後（例：2026-11-03 新增 3M、中光電投控）。"""
+    extra = sorted(d.name for d in HERE.iterdir()
+                   if d.is_dir() and d.name not in COMPANIES and not d.name.startswith((".", "_"))
+                   and (list(d.glob(f"{d.name}_爬蟲*.md")) or (d / f"{d.name}.md").exists()))
+    return [c for c in COMPANIES if (HERE / c).is_dir()] + extra
 
 RECORD_LABEL = {
     "ir_conference": "法說場次",
@@ -419,8 +427,8 @@ def build_crawler_view(name: str, src: pathlib.Path, out: pathlib.Path, today: s
     absent = [t for t in ("ir_conference", "ir_summary", "ir_document", "ir_financials") if t not in counts]
     batches = "、".join(sorted({r["batch_id"] for r in c["records"]}))
     version = c.get("version") or "正式批次"
-    ver_note = ("新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>）跑出的 dev 批次，<b>尚未進 Databricks</b>；"
-                "ir_conference 的 <code>source</code> 為 DEV_SAMPLE（測試時種的場次，不是行事曆爬到的）。" if version == "新版實測"
+    ver_note = ("新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>，<code>tools/dev_sample_crawl.py</code>）跑出的 dev 批次（批次 id 含日期），<b>尚未進 Databricks</b>；"
+                "ir_conference 的 <code>source</code> 為 DEV_SAMPLE（沙箱指定的場次，不是行事曆爬到的）。" if version == "新版實測"
                 else "正式批次：已進 Databricks bronze／silver。")
     intro = f"""
 <section class="card">
@@ -514,15 +522,16 @@ def crawler_version(stem: str) -> str:
 
 
 def build_all(today: str) -> dict:
-    """五家各產原始資料頁 + 每個 <公司>_爬蟲*.md 一頁；回傳 {name: {"bundle": dict, "crawler": 合併後 dict|None}}。
+    """每家（discover_companies）產原始資料頁（有 bundle 才產）+ 每個 <公司>_爬蟲*.md 一頁；回傳 {name: {"bundle": dict, "crawler": 合併後 dict|None}}。
 
     檔名規則：<公司>_爬蟲[_<期別>][_新版實測].md → <公司>_爬蟲資料[_<期別>][_新版實測].html；
     「新版實測」= 2026-10-21 爬蟲新版在沙箱跑出的 dev 批次（未進 Databricks），其餘為正式批次。
     """
     out = {}
-    for name in COMPANIES:
+    for name in discover_companies():
         folder = HERE / name
-        d = build_bundle_view(name, folder / f"{name}.md", folder / f"{name}_原始資料.html", today)
+        src = folder / f"{name}.md"
+        d = build_bundle_view(name, src, folder / f"{name}_原始資料.html", today) if src.exists() else None   # 無 bundle 的公司由 build_report 從爬蟲檔組
         parts = []
         for cp in sorted(folder.glob(f"{name}_爬蟲*.md")):
             suffix = cp.stem[len(f"{name}_爬蟲"):]          # ""、"_Q3"、"_新版實測"、"_Q3_新版實測"
@@ -536,7 +545,7 @@ def build_all(today: str) -> dict:
             parts.append(c)
         parts.sort(key=lambda c: (c["version"] == "新版實測", c["period"]))
         out[name] = {"bundle": d, "crawler": merge_crawlers(parts)}
-        print(f"{name:12s} 原始資料.html + 爬蟲資料 {len(parts)} 頁  records={out[name]['crawler']['n'] if parts else 0}")
+        print(f"{name:12s} {'原始資料.html' if d else '（無 bundle）'} + 爬蟲資料 {len(parts)} 頁  records={out[name]['crawler']['n'] if parts else 0}")
     return out
 
 

@@ -43,7 +43,7 @@ footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
 <header class="hero">
   <div class="badge">ir_calendar｜來源檢視｜bronze b_ir_calendar_record</div>
   <h1>奇美實業｜爬蟲資料（bronze payload，新版實測）</h1>
-  <p>來源檔：奇美實業_爬蟲_新版實測.md｜company_key TPE:1763｜period 2026Q2｜產出日期：2026-10-21</p>
+  <p>來源檔：奇美實業_爬蟲_新版實測.md｜company_key TPE:1763｜period 2026Q2｜產出日期：2026-11-03</p>
 </header>
 <main class="wrap">
 
@@ -53,7 +53,7 @@ footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
   這一頁是 <code>奇美實業_爬蟲_新版實測.md</code> 的排版版：company_key = <b>TPE:1763</b>、period = <b>2026Q2</b>，共 3 檔；
   同一 record_type ＋ batch_path 只留最新批次。<code>period</code> 為 null 的檔（財報數據）不分期別，一併列出。</p>
   <table class="kv"><tbody>
-    <tr><td>爬蟲版本</td><td><b>新版實測</b>（批次 dev_20261021T103341）。新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>）跑出的 dev 批次，<b>尚未進 Databricks</b>；ir_conference 的 <code>source</code> 為 DEV_SAMPLE（測試時種的場次，不是行事曆爬到的）。</td></tr>
+    <tr><td>爬蟲版本</td><td><b>新版實測</b>（批次 dev_20261021T103341）。新版爬蟲在 MI_Crawler 開發沙箱（<code>ircal_sandbox</code>，<code>tools/dev_sample_crawl.py</code>）跑出的 dev 批次（批次 id 含日期），<b>尚未進 Databricks</b>；ir_conference 的 <code>source</code> 為 DEV_SAMPLE（沙箱指定的場次，不是行事曆爬到的）。</td></tr>
     <tr><td>抓到的紀錄類型</td><td>文件清單（manifest） 1 筆、實體檔 1 筆、財報數據 1 筆</td></tr>
     <tr><td>沒有的紀錄類型</td><td><mark>法說場次、法說彙整</mark></td></tr>
     <tr><td>對應 silver 表</td><td>見各段「進 silver」；原文另存 <code>b_ir_calendar_record.payload</code></td></tr>
@@ -477,6 +477,6 @@ footer{padding:18px 0 42px;color:var(--muted);font-size:12px;text-align:center}
   &quot;generated_at&quot;: &quot;2026-10-21T10:33:41&quot;
 }</pre></details></section>
 </main>
-<footer>由 build_sources.py 產出｜2026-10-21</footer>
+<footer>由 build_sources.py 產出｜2026-11-03</footer>
 </body>
 </html>
