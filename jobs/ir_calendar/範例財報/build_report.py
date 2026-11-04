@@ -19,6 +19,10 @@
 3. 敘事層不再逐家手寫（舊版 NARRATIVE 把 Q2 的數字寫死，換期別就錯）：結論、限制由資料自動組句；
    「對 AUO 採購的意義」一句維持人工（PROCUREMENT_NOTES，不隨期別變）。
 
+2026-11-04 期別錯開（法說已到下一季、財報還沒公布，例：南亞 財報 2026 Q2／法說 2026 Q3）：
+4. 財報資訊區塊只放財報那一季的數字：01 後兩格不拿法說事業群數字（不同期），改由財報指標補位；
+   03 事業群表標題與欄名標出法說期別。區塊標題、結論句、法說 03 的財報對照都寫明各自期別。
+
 用法：python3 build_report.py            # 在本資料夾執行，另產 index.html
 """
 from __future__ import annotations
@@ -40,8 +44,8 @@ from build_sources import (
 )
 
 HERE = pathlib.Path(__file__).resolve().parent
-TODAY = "2026-11-03"
-VERSION = "v5"
+TODAY = "2026-11-04"
+VERSION = "v5.1"
 TEMPLATE_REF = "doc/20261021_SCM財報和法說報告html格式v20261007.html"
 LAYOUT_NOTE = "2026-11-03 第一版調整：數字取位／靠右／負數紅字括弧；01 重點格無事業群數字時自動改列變動最大的指標"
 
@@ -310,7 +314,7 @@ def segments_for(sums: list[dict]):
     """第 03 節的列：最新一場 summary 的 business_segments；最新一場沒有數字就往前找有數字的那場（註明沿用）。
     回傳 (segs, 利潤率欄名, 註, 來源說明)。"""
     if not sums:
-        return None, "營益率", None, None
+        return None, "營益率", None, None, None
     latest = sums[-1]
     chosen, note = None, None
     for s in reversed(sums):
@@ -322,13 +326,13 @@ def segments_for(sums: list[dict]):
             chosen = latest
             note = "法說未揭露各事業群金額與利潤率，只有文字描述。"
         else:
-            return None, "營益率", "法說摘要沒有事業群資料。", None
+            return None, "營益率", "法說摘要沒有事業群資料。", None, None
     elif chosen is not latest:
         note = f"最新一場法說（{latest['date']}）未給事業群數字，沿用 {chosen['date']}（{chosen['period']}）那場。"
     segs = [dict(name=x.get("segment"), revenue=x.get("revenue"), revenue_yoy=x.get("revenue_yoy"), margin=x.get("operating_margin"),
                  margin_yoy=x.get("opm_yoy"), note=x.get("note")) for x in chosen["segments"]]
     src = f"新版爬蟲實測 ir_summary {chosen['date']}（{chosen['period']}）的 business_segments，LLM 自簡報／新聞稿抽取；欄位為原文字串"
-    return segs, "營益率（法說口徑）", note, src
+    return segs, "營益率（法說口徑）", note, src, chosen["period"]
 
 
 # ---------------------------------------------------------------- SVG 圖（取代模板的 12 張 PNG）
@@ -664,7 +668,7 @@ def ir_sections(n, latest, k):
             text, src = n["ir"][key], '<p class="mini">來源：無法說文字，由財報數字自動組句</p>'
         extra = src
         if key == "profit":
-            extra = (f'<p class="mini"><b>財報對照（fin_rows）</b>：營益率 {esc(k["OPM"])}（去年同季 {esc(k["OPM_LY"])}，{esc(k["OPM_D"])}）、毛利率 {esc(k["GM"])}（{esc(k["GM_LY"])}）；'
+            extra = (f'<p class="mini"><b>財報對照（{esc(k["q_label"])} 財報' + ('，與本場法說不同期' if latest and latest["period"] and latest["period"] > k["q"]["period"] else '') + f'）</b>：營益率 {esc(k["OPM"])}（去年同季 {esc(k["OPM_LY"])}，{esc(k["OPM_D"])}）、毛利率 {esc(k["GM"])}（{esc(k["GM_LY"])}）；'
                      f'稅前淨利 {esc(k["cur_label"])} {esc(k["PT"])} 億中業外 {esc(k["NONOP"])} 億（{esc(k["NONOP_PCT"])}）。</p>') + src
         out.append(ir_section(IR_TITLES[key], text, extra))
     return "\n".join(out)
@@ -864,7 +868,8 @@ def auto_narrative(k: dict, sums: list[dict]) -> dict:
     """結論／限制／法說 03 退回句，全部從 k（財報數字）與新版 summary 組句；不寫死任何期別數字。"""
     cl, latest = k["cur_label"], (sums[-1] if sums else None)
     name = k["name"]
-    s = [f"{name} {k['q_label']} 營收 {cl} {k['REV_Q']} 億（YoY {k['YOY']}），毛利率 {k['GM']}（去年同季 {k['GM_LY']}）、營益率 {k['OPM']}（{k['OPM_LY']}，{k['OPM_D']}）、EPS {k['cur']} {k['EPS']}（{k['EPS_LY']}）。"]
+    lag = bool(latest and latest["period"] and latest["period"] > k["q"]["period"])
+    s = [f"{name} {k['q_label']} 財報" + (f"（{q_label(latest['period'])} 財報尚未公布）" if lag else "") + f"：營收 {cl} {k['REV_Q']} 億（YoY {k['YOY']}），毛利率 {k['GM']}（去年同季 {k['GM_LY']}）、營益率 {k['OPM']}（{k['OPM_LY']}，{k['OPM_D']}）、EPS {k['cur']} {k['EPS']}（{k['EPS_LY']}）。"]
     if k["oi"] is not None and k["oi"] < 0:
         s.append(f"本業虧損（營益率 {k['OPM']}）。")
     if k["nonop_pct"] is not None and k["pt"] and k["pt"] > 0 and k["nonop_pct"] >= 30:
@@ -877,7 +882,7 @@ def auto_narrative(k: dict, sums: list[dict]) -> dict:
     if latest:
         pos = "；".join(latest["positive"][:2]) if latest["positive"] else ""
         wat = "；".join(latest["watch"][:2]) if latest["watch"] else ""
-        s.append(f"法說（{latest['date']}）" + (f"正向訊號：{pos}。" if pos else "") + (f"觀察項：{wat}。" if wat else ""))
+        s.append(f"{q_label(latest['period']) + ' ' if latest['period'] else ''}法說（{latest['date']}）" + (f"正向訊號：{pos}。" if pos else "") + (f"觀察項：{wat}。" if wat else ""))
     else:
         s.append("本期沒有法說會摘要，以下法說七節除「獲利能力變化」用財報數字反推外皆空缺。")
     s.append(PROCUREMENT_NOTES.get(k["key"], "對 AUO 採購的意義：依上列指標追蹤供應連續性；本業虧損、營業現金流轉負或負債比明顯上升時升級 QBR。"))
@@ -958,8 +963,21 @@ def render(k: dict, n: dict, crawler: dict | None, new: dict, cmp: dict | None) 
     latest = sums[-1] if sums else None
     ir_period = latest["period"] if latest and latest["period"] else k["period"]
     period_line = f"{k['q_label']} 財報" + (f"＋{q_label(ir_period)} 法說" if ir_period != k["q"]["period"] else "")
-    segs, seg_label, seg_note, seg_src = segments_for(sums)
-    kpis, kpi_note = kpi_cards(k, segs, latest)
+    segs, seg_label, seg_note, seg_src, seg_period = segments_for(sums)
+    lag = bool(latest and latest["period"] and latest["period"] > k["q"]["period"])
+    seg_title = "03　事業群財務表現"
+    if segs and seg_period:
+        seg_label = f"營益率（{q_label(seg_period)} 法說口徑）"
+        if seg_period != k["q"]["period"]:
+            seg_title += f"｜{q_label(seg_period)} 法說口徑"
+            seg_note = "　".join(x for x in (seg_note, f"本表期別為 {q_label(seg_period)}（法說），與本區塊其他各節的 {k['q_label']} 財報不同期；財報 fin_rows 無部門別。") if x)
+    kpi_segs = None if (segs and seg_period and seg_period != k["q"]["period"]) else segs
+    kpis, kpi_note = kpi_cards(k, kpi_segs, None if lag else latest)
+    if kpi_segs is None and segs:
+        kpi_note = (f"法說事業群數字為 {q_label(seg_period)}，與本節 {k['q_label']} 財報不同期（見第 03 節），"
+                    + (kpi_note.replace("法說未揭露事業群營收／占比，", "") if kpi_note else "第 3、4 格改列財報指標。"))
+    fin_band = f"財報資訊｜{k['q_label']}" + (f"（{q_label(latest['period'])} 財報尚未公布）" if lag else "")
+    ir_band = "法說會資訊" + (f"｜{q_label(latest['period'])}（{latest['date']} 法說）" if latest and latest["period"] else "")
     if latest:
         ir_src = (f'<p class="mini">法說資料來源：新版爬蟲實測 ir_summary {esc("、".join(s["date"] for s in sums))}（最新批次 {esc(new["batch"])}；最新一場 {esc(latest["date"])}，報告期間「{esc(latest["reported"] or "")}」）</p>')
     else:
@@ -1003,7 +1021,7 @@ def render(k: dict, n: dict, crawler: dict | None, new: dict, cmp: dict | None) 
 
 <section><h2>給 AUO 採購主管的結論</h2><p>{esc(n['conclusion'])}</p><p class="mini">結論由財報數字與法說彙整自動組句；「對 AUO 採購的意義」一句為人工維護。</p></section>
 
-<div class="band">財報資訊</div>
+<div class="band">{esc(fin_band)}</div>
 
 <section><h2>01　財報重點</h2><div class="grid">
 {kpis}
@@ -1016,7 +1034,7 @@ def render(k: dict, n: dict, crawler: dict | None, new: dict, cmp: dict | None) 
 <div class="mini" style="margin-top:12px;line-height:1.7"><p style="margin:0 0 8px">營業現金流為年初累計（YTD）對去年同期累計，非單季；流動比為資產負債表時點數據。營業利益率的同比以百分點（pt）表示。{rounding_note}</p>
 <p style="margin:0">{quick_note}</p></div></section>
 
-<section><h2>03　事業群財務表現</h2>{segment_table(segs, seg_label, seg_note, seg_src)}</section>
+<section><h2>{esc(seg_title)}</h2>{segment_table(segs, seg_label, seg_note, seg_src)}</section>
 
 <section><h2>04　五年趨勢｜營收 × OPM</h2>{chart_5y(k)}<p class="mini">年度 fin_rows（{k['annual'][0]['fiscal_year']}–{k['annual'][-1]['fiscal_year']}）；上格營收、下格營業利益率，共用年度軸。</p></section>
 
@@ -1031,7 +1049,7 @@ def render(k: dict, n: dict, crawler: dict | None, new: dict, cmp: dict | None) 
 </div>
 <p class="mini">{formula_note}{rounding_note}</p></section>
 
-<div class="band">法說會資訊</div>
+<div class="band">{esc(ir_band)}</div>
 {ir_src}
 {headline_table(latest)}
 {ir_sections(n, latest, k)}
