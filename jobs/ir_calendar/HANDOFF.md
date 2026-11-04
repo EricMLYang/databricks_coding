@@ -36,7 +36,7 @@ Databricks 上貼到哪一版、還沒貼什麼、爬蟲端告警現況、下一
 - **中光電投控 3718**：MOPS 財報 API 只有 2026Q3（2026-09-03 股份轉換新設控股，歷史在舊代號 5371），年度 0 筆 → 報告五年節全空，未列入範例。主檔要有「前身代號」對照（5371→3718、6173→6120 同類），財報基本資料庫才接得上歷史。
 - **3M 速動比全缺**：SEC companyfacts 抓不到 3M 的現金（`cash` 全 null，應收、流動負債都有），`connectors/edgar_facts.py` 的現金 tag 要加候選（3M 用的 tag 與 Corning 不同）。
 - 爬蟲 2026-10-21 新版 prompt 的第六類 `management_views.topic = "AUO 相關議題"` 這批起真的出現（Corning、3M 都有），報告法說 06 已優先用它；Databricks `s_ir_calendar_summary` 的 `management_views` 是 ARRAY<STRUCT> 直接收，`build_ir_report` [c05a]／[c07a] 要認這個 topic。
-- 南亞 10-27 彙整：簡報（MOPS 130320261027M001.pdf）已抓到、Q3 財報 doc.twse 尚無檔（manifest PARTIAL）；`business_segments` 四部門 3Q26 營益率（電子材料 30.9%）＋營收占比，`qa_highlights` 空、notes 註明未提及 AUO；報告頁首法說時間軸 8-21／9-24／10-13／10-27 四場。
+- 南亞 10-27 彙整：LLM 彙整有讀到 10-27 簡報（MOPS 130320261027M001.pdf），**但 manifest 只存了 10-13 那份簡報（130320261012M001.pdf），10-27 的沒下載**（11-04 更正，見 `backlog.md` B4）；Q3 財報 doc.twse 尚無檔（manifest PARTIAL，法定期限 11/14）；`business_segments` 四部門 3Q26 營益率（電子材料 30.9%）＋營收占比，`qa_highlights` 空、notes 註明未提及 AUO；報告頁首法說時間軸 8-21／9-24／10-13／10-27 四場。
 - 3M 的 LLM 彙整第一次回傳不合 schema（`call.py` 重試一次成功）；claude `-p` 含 WebSearch 一場 3～6 分鐘。
 
 **下次接續**：(1) 把上表第三欄改進 `build_ir_report`（純程式部分先做，LLM 挑格與結論 prompt 一起改 `PROMPT_VERSIONS`），跑 `tests/test_ir_calendar_build_ir_report.py`；(2) §0 步驟 6c 整支重新匯入時一併帶上；(3) 範例財報的 HTML 給需求方看第一版調整是否符合，再決定要不要再調。

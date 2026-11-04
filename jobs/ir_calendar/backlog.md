@@ -36,6 +36,7 @@
 | B1 | 爬蟲端（MI_Crawler `outputs.write_health`） | 把「有歷年同季錨點、本季卻 NOT_FOUND」的公司寫成一則 alert，例如 `法說漏抓 3 家（歷年同季有開）：TPE:3481:2026Q3, …` | 用錨點過濾是為了排除「本來就不開」的公司，不然每季會有幾十筆噪音。job 端對不認得的訊息預設 WARN 且每次都印、寫進 `batch_log.crawler_alerts`，**B1 做完 job 不改任何一行就看得到** |
 | B2 | job 端 `consume_batches` [c03] `alert_level` | 決定 `法說漏抓` 前綴要不要升 FATAL | 建議先維持 WARN 跑一季看噪音量，再決定；升 FATAL 只要在 `alert_level` 的前綴清單加一個字串，並在 `tests/test_ir_calendar_consume.py` 的 alert 分級表加一列 |
 | B3（選做） | job 端 `check_landing` | 新增一個 check：讀 `health.json` 的 `window_not_found`，跟 `s_ir_calendar_conference` 歷年同季有列的公司 join，印出「歷史有、今年沒有」清單 | 等於把爬蟲端 `tools/report_gap.py` 的邏輯搬到 Databricks 用 silver 算；優點是不依賴爬蟲端的 anchor state，缺點是新公司前幾季沒有歷史，看不出來 |
+| B4（2026-11-04 發現） | 爬蟲端（MI_Crawler 文件下載／manifest） | 同一季有多份簡報時，manifest 要收進最新那份（或全收），不能停在第一份 | 南亞 2026Q3 沙箱批次 `dev_20261103T232657`：ir_summary 的 sources 第一筆是 10-27 法說簡報 `130320261027M001.pdf`（LLM 彙整讀到了），但 `docs/TPE_1303/2026Q3/manifest.json` 的 files 只有 10-13 摩根大通論壇簡報 `130320261012M001.pdf`（doc_date 2026-10-13），10-27 那份沒下載。現在報告直接用 summary 影響不大；D3／`digest_documents` 改讀存檔文件後會讀到舊簡報。同批小瑕疵：summary sources 把 10-27 簡報標成「2026Q4 法人說明會簡報」（內容是 3Q26）。job 端可補一個檢查：summary sources 有 MOPS／公司官網 PDF、manifest 卻沒有同 URL 的檔 → WARN |
 
 ## C. 備忘：這次上版不需要 job 配合、但會看到的變化
 
